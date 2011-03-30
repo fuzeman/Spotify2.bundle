@@ -4,6 +4,7 @@ Spotify plugin
 from spotify.manager import SpotifySessionManager
 from spotify import Link
 from tempfile import NamedTemporaryFile
+from time import sleep
 import aifc
 import threading
 import struct
@@ -207,6 +208,8 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
         for track in tracks:
+            while not track.is_loaded():
+                sleep(0.1)
             artists = (a.name().decode("utf-8") for a in track.artists())
             uri = str(Link.from_track(track, 0))
             callback = Callback(self.play_track, uri = uri, ext = "aiff")
@@ -233,11 +236,8 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(title2 = "Playlists")
         playlists = self.manager.playlists
         for playlist in playlists:
-            if not playlist.is_loaded():
-                directory.add(
-                    title = "Playlist loading..."
-                )
-                continue
+            while not playlist.is_loaded():
+                sleep(0.1)
             no_tracks = len(playlist)
             if not no_tracks:
                 Log("Ignoring empty playlist: %s", playlist.name())
