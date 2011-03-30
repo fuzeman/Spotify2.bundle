@@ -128,18 +128,45 @@ class SpotifyPlugin(object):
         self.manager.start()
 
     def get_playlist(self, index):
-        pass
+        playlists = self.manager.playlists
+        if len(playlists) < index + 1:
+            return MessageContainer(
+                header = "Error Retrieving Playlist",
+                message = "The selected playlist details could not be found"
+            )
+        playlist = playlists[index]
+        Log("Get playlist: %s", playlist.name().decode("utf-8"))
+        directory = ObjectContainer()
+
+        '''
+        TrackItem(
+          PlayTrack,
+          title = track.name(),
+          artist = ", ".join(map(lambda artist: artist.name(), track.artists())),
+          album = track.album(),
+          index = track.index(),
+          thumb = server.art(str(Link.from_album(track.album()))),
+          duration = int(track.duration()),
+          contextKey = track.name(),
+          contextArgs = {}
+        ),
+
+        '''
+
 
     def get_playlists(self):
         Log("Get playlists")
         if not self.logged_in:
             return self.access_denied_message
-        directory = ObjectContainer()
+        directory = ObjectContainer(title2 = "Playlists")
         playlists = self.manager.playlists
         for playlist in playlists:
             if not playlist.is_loaded():
                 continue
             no_tracks = len(playlist)
+            if not no_tracks:
+                Log("Ignoring empty playlist: %s", playlist.name())
+                continue
             index = playlists.index(playlist)
             info_label = (
                 "%s %s" % (no_tracks, "tracks" if no_tracks > 1 else "track"))
@@ -155,6 +182,7 @@ class SpotifyPlugin(object):
     def main_menu(self):
         Log("Spotify main menu")
         menu = ObjectContainer(
+            title2 = "Spotify",
             objects = [
                 DirectoryObject(
                     key = Callback(self.get_playlists),

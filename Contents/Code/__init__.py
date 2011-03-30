@@ -8,12 +8,17 @@ ROUTEBASE   = PREFIX + '/'
 shared_plugin = SpotifyPlugin()
 
 
-def plugin_callback(method, plugin = None):
+def plugin_callback(method, plugin = None, *args, **kwargs):
     ''' Invokes callbacks on a plugin instance '''
     global shared_plugin
     if not plugin:
         plugin = shared_plugin
-    return method(plugin)
+    return method(plugin, *args, **kwargs)
+
+
+def get_playlist(plugin = None, **kwargs):
+    ''' Top-level function to retrieve a specific playlist '''
+    return plugin_callback(SpotifyPlugin.get_playlist, plugin, **kwargs)
 
 
 def get_playlists(plugin = None):
