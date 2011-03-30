@@ -34,6 +34,13 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         return self.username != username \
             or self.password != password
 
+    def is_logging_in(self):
+        return self.session is None \
+            and not self.logout_event.isSet()
+
+    def is_logged_in(self):
+        return self.session
+
     def logout(self):
         if not self.session:
             return
@@ -46,8 +53,9 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         self.session = session
         Log("Logged in to Spotify")
 
-    def logged_out(self, sess):
+    def logged_out(self, session):
         Log("Logged out of Spotify")
+        self.session = None
         self.logout_event.set()
 
     def connection_error(self, sess, error):
@@ -66,6 +74,27 @@ class SpotifyPlugin(object):
     def __init__(self):
         self.session_manager = None
         self.start_session_manager()
+
+    @property
+    def logged_in(self):
+        return self.session_manager and self.session_manager.is_logged_in()
+
+    @property
+    def is_logging_in(self):
+        return self.session_manager and self.session_manager.is_logging_in()
+
+    @property
+    def access_denied_message(self):
+        if self.is_logging_in:
+            return MessageContainer(
+                header = "Login in Progress",
+                message = "We're still trying to open a Spotify session..."
+            )
+        else:
+            return MessageContainer(
+                header = 'Login Failed',
+                message = 'Check your email and password in the preferences'
+            )
 
     def preferences_updated(self):
         username = Prefs["username"]
@@ -91,10 +120,9 @@ class SpotifyPlugin(object):
 
     def get_playlists(self):
         Log("Get playlists")
-        return MessageContainer(
-            header = 'Error logging in',
-            message = 'Check your email and password in the preferences.'
-        )
+        if not self.logged_in:
+            return self.access_denied_message
+        return None
 
     def main_menu(self):
         Log("Spotify main menu")
