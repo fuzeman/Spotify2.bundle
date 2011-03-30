@@ -16,6 +16,10 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         SpotifySessionManager.__init__(self, username, password)
         threading.Thread.__init__(self, name = 'SpotifySessionManagerThread')
 
+    @property
+    def playlists(self):
+        return list(self.session.playlist_container()) if self.session else []
+
     def run(self):
         Log("Attempting to log in to Spotify as %s", self.username)
         try:
@@ -72,16 +76,24 @@ class SpotifyPlugin(object):
     ''' The main spotify plugin class '''
 
     def __init__(self):
-        self.session_manager = None
+        self.manager = None
         self.start_session_manager()
 
     @property
     def logged_in(self):
-        return self.session_manager and self.session_manager.is_logged_in()
+        return self.manager and self.manager.is_logged_in()
 
     @property
     def is_logging_in(self):
-        return self.session_manager and self.session_manager.is_logging_in()
+        return self.manager and self.manager.is_logging_in()
+
+    @property
+    def username(self):
+        return Prefs["username"]
+
+    @property
+    def password(self):
+        return Prefs["password"]
 
     @property
     def access_denied_message(self):
@@ -97,32 +109,48 @@ class SpotifyPlugin(object):
             )
 
     def preferences_updated(self):
-        username = Prefs["username"]
-        password = Prefs["password"]
-        if not self.session_manager:
+        if not self.manager:
             self.start_session_manager()
-        elif self.session_manager.needs_restart(username, password):
+        elif self.manager.needs_restart(self.username, self.password):
             Log("Scheduling plugin restart with updated user details")
             Thread.CreateTimer(1, self.restart)
         else:
             Log("User details unchanged")
 
     def restart(self):
-        self.session_manager.stop()
+        self.manager.stop()
         HTTP.Request(RESTART_URL, immediate = True)
 
     def start_session_manager(self):
-        if not Prefs["username"] or not Prefs["password"]:
+        if not self.username or not self.password:
             return
-        self.session_manager = SessionManager(
-            Prefs["username"], Prefs["password"])
-        self.session_manager.start()
+        self.manager = SessionManager(self.username, self.password)
+        self.manager.start()
+
+    def get_playlist(self, index):
+        pass
 
     def get_playlists(self):
         Log("Get playlists")
         if not self.logged_in:
             return self.access_denied_message
-        return None
+        directory = ObjectContainer()
+        playlists = self.manager.playlists
+        for playlist in playlists:
+            if not playlist.is_loaded():
+                continue
+            no_tracks = len(playlist)
+            index = playlists.index(playlist)
+            info_label = (
+                "%s %s" % (no_tracks, "tracks" if no_tracks > 1 else "track"))
+            directory.add(
+                DirectoryObject(
+                    key = Callback(self.get_playlist, index = index),
+                    title = playlist.name().decode("utf-8"),
+                    infoLabel = info_label
+                )
+            )
+        return directory
 
     def main_menu(self):
         Log("Spotify main menu")
