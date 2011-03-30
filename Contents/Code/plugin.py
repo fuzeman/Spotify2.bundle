@@ -2,6 +2,7 @@
 Spotify plugin
 '''
 from spotify.manager import SpotifySessionManager
+from spotify import Link
 import threading
 
 PLUGIN_ID = "com.plexapp.plugins.spotify"
@@ -9,10 +10,12 @@ RESTART_URL = "http://localhost:32400/:/plugins/%s/restart" % PLUGIN_ID
 
 class SessionManager(SpotifySessionManager, threading.Thread):
 
+    user_agent = PLUGIN_ID
+    application_key = Resource.Load('spotify_appkey.key')
+
     def __init__(self, username, password):
         self.session = None
         self.logout_event = threading.Event()
-        self.application_key = Resource.Load('spotify_appkey.key')
         SpotifySessionManager.__init__(self, username, password)
         threading.Thread.__init__(self, name = 'SpotifySessionManagerThread')
 
@@ -61,6 +64,12 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         Log("Logged out of Spotify")
         self.session = None
         self.logout_event.set()
+
+    def metadata_updated(self, sess):
+        Log("SPOTIFY: metatadata update")
+
+    def log_message(self, sess, data):
+        Log("SPOTIFY: %s", data)
 
     def connection_error(self, sess, error):
         Log("SPOTIFY: connection_error")
@@ -127,6 +136,9 @@ class SpotifyPlugin(object):
         self.manager = SessionManager(self.username, self.password)
         self.manager.start()
 
+    def play_track(self, uri):
+        Log("Play track: %s", uri)
+
     def get_playlist(self, index):
         playlists = self.manager.playlists
         if len(playlists) < index + 1:
@@ -135,9 +147,28 @@ class SpotifyPlugin(object):
                 message = "The selected playlist details could not be found"
             )
         playlist = playlists[index]
+        tracks = list(playlist)
         Log("Get playlist: %s", playlist.name().decode("utf-8"))
-        directory = ObjectContainer()
-
+        directory = ObjectContainer(
+            title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
+        for track in tracks:
+            artists = (a.name().decode("utf-8") for a in track.artists())
+            uri = str(Link.from_track(track, 0))
+            callback = Callback(self.play_track, uri = uri, ext = "aiff")
+            directory.add(
+                TrackObject(
+                    items = [
+                        MediaObject(
+                            parts = [PartObject(key = callback)],
+                        )
+                    ],
+                    key = "Track",
+                    title = track.name().decode("utf-8"),
+                    artist = ", ".join(artists),
+                    index = track.index(),
+                    duration = int(track.duration())
+                )
+            )
         '''
         TrackItem(
           PlayTrack,
@@ -152,6 +183,7 @@ class SpotifyPlugin(object):
         ),
 
         '''
+        return directory
 
 
     def get_playlists(self):
@@ -162,6 +194,9 @@ class SpotifyPlugin(object):
         playlists = self.manager.playlists
         for playlist in playlists:
             if not playlist.is_loaded():
+                directory.add(
+                    title = "Playlist loading..."
+                )
                 continue
             no_tracks = len(playlist)
             if not no_tracks:

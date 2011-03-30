@@ -16,6 +16,11 @@ def plugin_callback(method, plugin = None, *args, **kwargs):
     return method(plugin, *args, **kwargs)
 
 
+def play_track(plugin = None, **kwargs):
+    ''' Top-level function to retrieve a specific playlist '''
+    return plugin_callback(SpotifyPlugin.play_track, plugin, **kwargs)
+
+
 def get_playlist(plugin = None, **kwargs):
     ''' Top-level function to retrieve a specific playlist '''
     return plugin_callback(SpotifyPlugin.get_playlist, plugin, **kwargs)
