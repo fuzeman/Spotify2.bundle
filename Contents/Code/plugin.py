@@ -3,10 +3,14 @@ Spotify plugin
 '''
 from spotify.manager import SpotifySessionManager
 from spotify import Link
+from tempfile import NamedTemporaryFile
+import aifc
 import threading
+import struct
 
 PLUGIN_ID = "com.plexapp.plugins.spotify"
 RESTART_URL = "http://localhost:32400/:/plugins/%s/restart" % PLUGIN_ID
+
 
 class SessionManager(SpotifySessionManager, threading.Thread):
 
@@ -15,7 +19,9 @@ class SessionManager(SpotifySessionManager, threading.Thread):
 
     def __init__(self, username, password):
         self.session = None
+        self.current_track = None
         self.logout_event = threading.Event()
+        self.output_file = None
         SpotifySessionManager.__init__(self, username, password)
         threading.Thread.__init__(self, name = 'SpotifySessionManagerThread')
 
@@ -46,24 +52,58 @@ class SessionManager(SpotifySessionManager, threading.Thread):
             and not self.logout_event.isSet()
 
     def is_logged_in(self):
-        return self.session
+        return self.session is not None
+
+    def open_output_file(self):
+        temp_file = NamedTemporaryFile(
+            prefix = "SpotifyTrack-", suffix = ".aiff")
+        output_path = temp_file.name
+        self.output_file = aifc.open(temp_file, "wb")
+        self.output_file.aifc()
+        self.output_file.setsampwidth(2)
+        self.output_file.setnchannels(2)
+        self.output_file.setframerate(44100.0)
+        return output_path
+
+    def play_track(self, uri):
+        if not self.session:
+            return
+        @lock(self)
+        def play_track():
+            track = Link.from_string(uri).as_track()
+            try:
+                self.session.load(track)
+            except:
+                Log("Playback aborted: error loading track")
+                return
+            Log("Playing track: %s", track.name())
+            self.current_track = track
+            self.session.play(True)
+        output_path = self.open_output_file()
+        Log("Writing audio to temporary file: %s", output_path)
+        return output_path
 
     def logout(self):
         if not self.session:
             return
-        Log("Logging out of Spotify")
-        self.session.logout()
+        @lock(self)
+        def logout():
+            Log("Logging out of Spotify")
+            self.session.logout()
         self.logout_event.wait()
-        self.session = None
 
     def logged_in(self, session, error):
-        self.session = session
-        Log("Logged in to Spotify")
+        @lock(self)
+        def logged_in():
+            self.session = session
+            Log("Logged in to Spotify")
 
     def logged_out(self, session):
-        Log("Logged out of Spotify")
-        self.session = None
-        self.logout_event.set()
+        @lock(self)
+        def logged_out():
+            Log("Logged out of Spotify")
+            self.session = None
+            self.logout_event.set()
 
     def metadata_updated(self, sess):
         Log("SPOTIFY: metatadata update")
@@ -79,6 +119,17 @@ class SessionManager(SpotifySessionManager, threading.Thread):
 
     def notify_main_thread(self, sess):
         Log("SPOTIFY: notify_main_thread")
+
+    def music_delivery(self, sess, frames, frame_size, num_frames, sample_type,
+                       sample_rate, channels):
+        try:
+            data = struct.pack(
+                '>' + str(len(frames)/2) + 'H',
+                *struct.unpack('<' + str(len(frames)/2) + 'H', frames)
+            )
+            self.output_file.writeframes(data)
+        except Exception, e:
+            Log("Error: %s" % e)
 
 
 class SpotifyPlugin(object):
@@ -137,7 +188,11 @@ class SpotifyPlugin(object):
         self.manager.start()
 
     def play_track(self, uri):
-        Log("Play track: %s", uri)
+        track_path = self.manager.play_track(uri)
+        if not track_path:
+            return
+        stream = Stream.LocalFile(track_path, size=100000)
+        return Redirect(stream)
 
     def get_playlist(self, index):
         playlists = self.manager.playlists
@@ -169,22 +224,7 @@ class SpotifyPlugin(object):
                     duration = int(track.duration())
                 )
             )
-        '''
-        TrackItem(
-          PlayTrack,
-          title = track.name(),
-          artist = ", ".join(map(lambda artist: artist.name(), track.artists())),
-          album = track.album(),
-          index = track.index(),
-          thumb = server.art(str(Link.from_album(track.album()))),
-          duration = int(track.duration()),
-          contextKey = track.name(),
-          contextArgs = {}
-        ),
-
-        '''
         return directory
-
 
     def get_playlists(self):
         Log("Get playlists")
