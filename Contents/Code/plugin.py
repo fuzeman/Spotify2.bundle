@@ -2,9 +2,10 @@
 Spotify plugin
 '''
 from session import SessionManager
-from utils import wait_until_ready
+from utils import wait_until_ready, create_track_object
 from spotify import Link
 from constants import PLUGIN_ID, RESTART_URL
+from server import StreamProxyServer
 
 
 class SpotifyPlugin(object):
@@ -12,6 +13,7 @@ class SpotifyPlugin(object):
 
     def __init__(self):
         self.manager = None
+        self.server = None
         self.start_session_manager()
 
     @property
@@ -53,7 +55,10 @@ class SpotifyPlugin(object):
             Log("User details unchanged")
 
     def restart(self):
-        self.manager.stop()
+        if self.manager:
+            self.manager.stop()
+        if self.server:
+            self.server.stop()
         HTTP.Request(RESTART_URL, immediate = True)
 
     def start_session_manager(self):
@@ -61,13 +66,19 @@ class SpotifyPlugin(object):
             return
         self.manager = SessionManager(self.username, self.password)
         self.manager.start()
+        self.start_http_server(self.manager)
+
+    def start_http_server(self, manager):
+        self.server = StreamProxyServer(manager)
+        self.server.start()
 
     def play_track(self, uri):
-        track_path = self.manager.play_track(uri)
-        if not track_path:
+        if not uri:
+            Log("Play track callback invoked with NULL URI")
             return
-        stream = Stream.LocalFile(track_path, size=100000)
-        return Redirect(stream)
+        track_url = self.server.get_track_url(uri)
+        Log("Redirecting client to stream proxied at: %s" % track_url)
+        return Redirect(track_url)
 
     def get_playlist(self, index):
         playlists = self.manager.playlists
@@ -82,23 +93,9 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
         for track in wait_until_ready(tracks):
-            artists = (a.name().decode("utf-8") for a in track.artists())
             uri = str(Link.from_track(track, 0))
             callback = Callback(self.play_track, uri = uri, ext = "aiff")
-            directory.add(
-                TrackObject(
-                    items = [
-                        MediaObject(
-                            parts = [PartObject(key = callback)],
-                        )
-                    ],
-                    key = "Track",
-                    title = track.name().decode("utf-8"),
-                    artist = ", ".join(artists),
-                    index = track.index(),
-                    duration = int(track.duration())
-                )
-            )
+            directory.add(create_track_object(track, callback))
         return directory
 
     def get_playlists(self):

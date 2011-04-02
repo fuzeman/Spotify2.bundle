@@ -7,7 +7,6 @@ ROUTEBASE   = PREFIX + '/'
 ''' Globals '''
 shared_plugin = SpotifyPlugin()
 
-
 def plugin_callback(method, plugin = None, *args, **kwargs):
     ''' Invokes callbacks on a plugin instance '''
     global shared_plugin
