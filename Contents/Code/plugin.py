@@ -119,7 +119,8 @@ class SpotifyPlugin(object):
                 DirectoryObject(
                     key = Callback(self.get_playlist, index = index),
                     title = playlist.name().decode("utf-8"),
-                    infoLabel = info_label
+                    infoLabel = info_label,
+                    thumb = R("placeholder-playlist.png")
                 )
             )
         return directory
@@ -127,15 +128,16 @@ class SpotifyPlugin(object):
     def main_menu(self):
         Log("Spotify main menu")
         menu = ObjectContainer(
-            title2 = "Spotify",
             objects = [
                 DirectoryObject(
                     key = Callback(self.get_playlists),
-                    title = L('Playlists')
+                    title = L('Playlists'),
+                    thumb = R("icon-default.png")
                 ),
                 PrefsObject(
-                    title = L('Preferences...')
+                    title = L('Preferences...'),
+                    thumb = R("icon-default.png")
                 )
-            ]
+            ],
         )
         return menu

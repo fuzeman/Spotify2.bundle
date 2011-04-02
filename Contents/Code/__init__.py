@@ -39,7 +39,11 @@ def main_menu(plugin = None):
 def Start():
     ''' Entrypoint '''
     Log("Starting Spotify (version %s)", VERSION)
-    Plugin.AddPrefixHandler(PREFIX, main_menu, 'Spotify (New)')
+    Plugin.AddPrefixHandler(PREFIX, main_menu, 'Spotify')
+    ObjectContainer.title1 = 'Spotify'
+    ObjectContainer.content = 'Items'
+    ObjectContainer.art = R('art-default.png')
+    DirectoryItem.thumb = R('icon-default.png')
 
 
 def ValidatePrefs():
