@@ -12,6 +12,23 @@ import aifc
 import threading
 import struct
 
+class Track(object):
+    def __init__(self, track):
+        self.track = track
+        self.sample_rate = 44100.0
+        self.frames_played = 0
+
+    @property
+    def total_frames(self):
+        return int(self.track.duration() / 1000.0 * self.sample_rate)
+
+    @property
+    def is_finished(self):
+        return self.frames_played >= self.total_frames
+
+    def add_played_frames(self, frame_count):
+        self.frames_played = self.frames_played + frame_count
+
 
 class SessionManager(SpotifySessionManager, threading.Thread):
 
@@ -22,7 +39,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         self.session = None
         self.current_track = None
         self.pipe = None
-        self.aiff_file = None
+        self.output_file = None
         self.logout_event = threading.Event()
         SpotifySessionManager.__init__(self, username, password)
         threading.Thread.__init__(self, name = 'SpotifySessionManagerThread')
@@ -51,12 +68,12 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         @lock(self)
         def stop_playback():
             try:
-                self.aiff_file.close() # will throw if it tries to seek
+                self.output_file.close() # will throw if it tries to seek
             except:
                 pass
             if self.pipe:
                 self.pipe.close()
-            self.aiff_file = None
+            self.output_file = None
             self.current_track = None
             self.pipe = None
 
@@ -71,13 +88,14 @@ class SessionManager(SpotifySessionManager, threading.Thread):
     def is_logged_in(self):
         return self.session is not None
 
-    def create_aiff_wrapper(self):
-        self.aiff_file = aifc.open(self.pipe, "wb")
-        self.aiff_file.aifc()
-        self.aiff_file.setsampwidth(2)
-        self.aiff_file.setnchannels(2)
-        self.aiff_file.setframerate(44100.0)
-        self.aiff_file.setnframes(5090106)
+    def create_aiff_wrapper(self, output_stream, track):
+        aiff_file = aifc.open(self.pipe, "wb")
+        aiff_file.aifc()
+        aiff_file.setsampwidth(2)
+        aiff_file.setnchannels(2)
+        aiff_file.setframerate(track.sample_rate)
+        aiff_file.setnframes(track.total_frames)
+        return aiff_file
 
     def play_track(self, uri):
         if not self.session:
@@ -93,13 +111,17 @@ class SessionManager(SpotifySessionManager, threading.Thread):
                 Log("Playback aborted: error loading track")
                 return
             Log("Playing track: %s", track.name())
-            self.current_track = track
+            self.current_track = Track(track)
             self.session.play(True)
         if not self.current_track:
             return
         read, write = pipe()
-        client_pipe, self.pipe = fdopen(read,'r',0), WritePipeWrapper(write)
-        return client_pipe
+        self.pipe = WritePipeWrapper(write)
+        self.output_file = self.create_aiff_wrapper(
+            self.pipe,
+            self.current_track
+        )
+        return fdopen(read,'r',0)
 
     def logout(self):
         if not self.session:
@@ -135,21 +157,20 @@ class SessionManager(SpotifySessionManager, threading.Thread):
     def message_to_user(self, sess, message):
         Log("SPOTIFY: message_to_user: " + str(message))
 
-    def notify_main_thread(self, sess):
-        Log("SPOTIFY: notify_main_thread")
-
     def music_delivery(self, sess, frames, frame_size, num_frames, sample_type,
                        sample_rate, channels):
         if not self.pipe:
             return
-        if not self.aiff_file:
-            self.create_aiff_wrapper()
         try:
             data = struct.pack('>' + str(len(frames)/2) + 'H',
                 *struct.unpack('<' + str(len(frames)/2) + 'H', frames)
             )
-            self.aiff_file.writeframesraw(data)
-        except OSError, e:
+            self.output_file.writeframesraw(data)
+            self.current_track.add_played_frames(num_frames)
+            if self.current_track.is_finished:
+                Log("Finished playing track: %s", self.current_track.name())
+                self.stop_playback()
+        except (IOError, OSError), e:
             Log("Pipe closed by request handler")
             self.stop_playback()
         except Exception, e:

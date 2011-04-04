@@ -9,18 +9,21 @@ class WritePipeWrapper(object):
     ''' Simple class that wraps a pipe and provides a file like interface '''
 
     def __init__(self, pipe):
-        self.pipe = pipe
+        self.pipe = os.fdopen(pipe, 'w', 0)
         self.bytes_written = 0
 
     def close(self):
-        os.close(self.pipe)
+        self.pipe.close()
+
+    def flush(self):
+        self.pipe.flush()
 
     def tell(self):
         return self.bytes_written
 
     def write(self, bytes):
         self.bytes_written = self.bytes_written + len(bytes)
-        os.write(self.pipe, bytes)
+        self.pipe.write(bytes)
 
 
 def wait_until_ready(objects, interval = 0.1):
