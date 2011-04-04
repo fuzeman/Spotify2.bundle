@@ -18,7 +18,7 @@ class SpotifyHandler(BaseHTTPRequestHandler):
             self.handle_track_request()
         else:
             Log("Ignoring unrecognised request: %s" % self.path)
-            self.send_response(404)
+            self.send_error(404)
 
     def handle_track_request(self):
         Log("Handing track request: %s" % self.path)
@@ -26,7 +26,7 @@ class SpotifyHandler(BaseHTTPRequestHandler):
         try:
             self.pipe = self.server.manager.play_track(spotify_uri)
             if not self.pipe:
-                return self.send_response(404)
+                return self.send_error(404)
             self.send_response(200)
             self.send_header("Content-type", "audio/aiff")
             self.end_headers()
