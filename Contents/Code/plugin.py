@@ -93,9 +93,11 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
         for track in wait_until_ready(tracks):
-            uri = str(Link.from_track(track, 0))
-            callback = Callback(self.play_track, uri = uri, ext = "aiff")
-            directory.add(create_track_object(track, callback))
+            album_uri = str(Link.from_album(track.album()))
+            track_uri = str(Link.from_track(track, 0))
+            thumbnail_url = self.server.get_art_url(album_uri)
+            callback = Callback(self.play_track, uri = track_uri, ext = "aiff")
+            directory.add(create_track_object(track, callback, thumbnail_url))
         return directory
 
     def get_playlists(self):

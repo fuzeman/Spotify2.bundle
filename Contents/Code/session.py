@@ -3,7 +3,7 @@ Spotify session manager
 '''
 from spotify.manager import SpotifySessionManager
 from spotify import Link
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryFile
 from time import sleep
 from constants import PLUGIN_ID, RESTART_URL
 from utils import wait_until_ready, WritePipeWrapper
@@ -41,6 +41,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         self.pipe = None
         self.output_file = None
         self.logout_event = threading.Event()
+        self.lock = threading.RLock()
         SpotifySessionManager.__init__(self, username, password)
         threading.Thread.__init__(self, name = 'SpotifySessionManagerThread')
 
@@ -65,17 +66,17 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         Log("Session manager stopped")
 
     def stop_playback(self):
-        @lock(self)
-        def stop_playback():
-            try:
-                self.output_file.close() # will throw if it tries to seek
-            except:
-                pass
-            if self.pipe:
-                self.pipe.close()
-            self.output_file = None
-            self.current_track = None
-            self.pipe = None
+        self.lock.acquire()
+        try:
+            self.output_file.close() # will throw if it tries to seek
+        except:
+            pass
+        if self.pipe:
+            self.pipe.close()
+        self.output_file = None
+        self.current_track = None
+        self.pipe = None
+        self.lock.release()
 
     def needs_restart(self, username, password):
         return self.username != username \
@@ -100,50 +101,70 @@ class SessionManager(SpotifySessionManager, threading.Thread):
     def play_track(self, uri):
         if not self.session:
             return
+        self.lock.acquire()
         self.stop_playback()
-        @lock(self)
-        def play_track():
-            Log("Resolving Spotify URI: %s", uri)
-            track = Link.from_string(uri).as_track()
-            try:
-                self.session.load(track)
-            except:
-                Log("Playback aborted: error loading track")
-                return
-            Log("Playing track: %s", track.name())
-            self.current_track = Track(track)
+        result = None
+        Log("Resolving Spotify URI: %s", uri)
+        track = Link.from_string(uri).as_track()
+        try:
+            self.session.load(track)
             self.session.play(True)
-        if not self.current_track:
+            self.current_track = Track(track)
+            Log("Playing track: %s", track.name())
+            read, write = pipe()
+            self.pipe = WritePipeWrapper(write)
+            self.output_file = self.create_aiff_wrapper(
+                self.pipe,
+                self.current_track
+            )
+            result = fdopen(read,'r',0)
+        except:
+            Log("Playback aborted: error loading track")
+            self.stop_playback()
+        self.lock.release()
+        return result
+
+    def get_art(self, uri):
+        if not self.session:
             return
-        read, write = pipe()
-        self.pipe = WritePipeWrapper(write)
-        self.output_file = self.create_aiff_wrapper(
-            self.pipe,
-            self.current_track
-        )
-        return fdopen(read,'r',0)
+        self.lock.acquire()
+        resut = None
+        image_id = None
+        link = Link.from_string(uri)
+        if link.type() == Link.LINK_ALBUM:
+            album = link.as_album()
+            image_id = album.cover()
+        if image_id:
+            image = self.session.image_create(image_id)
+            wait_until_ready(image)
+            result = TemporaryFile()
+            data = image.data()
+            result.write(data)
+            result.seek(0)
+        self.lock.release()
+        return result
 
     def logout(self):
         if not self.session:
             return
-        @lock(self)
-        def logout():
-            Log("Logging out of Spotify")
-            self.session.logout()
+        self.lock.acquire()
+        Log("Logging out of Spotify")
+        self.session.logout()
+        self.lock.release()
         self.logout_event.wait()
 
     def logged_in(self, session, error):
-        @lock(self)
-        def logged_in():
-            self.session = session
-            Log("Logged in to Spotify")
+        self.lock.acquire()
+        self.session = session
+        Log("Logged in to Spotify")
+        self.lock.release()
 
     def logged_out(self, session):
-        @lock(self)
-        def logged_out():
-            Log("Logged out of Spotify")
-            self.session = None
-            self.logout_event.set()
+        self.lock.acquire()
+        Log("Logged out of Spotify")
+        self.session = None
+        self.logout_event.set()
+        self.lock.release()
 
     def metadata_updated(self, sess):
         Log("SPOTIFY: metatadata update")

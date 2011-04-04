@@ -16,13 +16,15 @@ class SpotifyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.server.is_track_url(self.path):
             self.handle_track_request()
+        elif self.server.is_art_url(self.path):
+            self.handle_art_request()
         else:
             Log("Ignoring unrecognised request: %s" % self.path)
             self.send_error(404)
 
     def handle_track_request(self):
         Log("Handing track request: %s" % self.path)
-        spotify_uri = self.server.get_spotify_track_uri(self.path)
+        spotify_uri = self.server.get_spotify_uri(self.path)
         try:
             self.pipe = self.server.manager.play_track(spotify_uri)
             if not self.pipe:
@@ -47,6 +49,20 @@ class SpotifyHandler(BaseHTTPRequestHandler):
         if self.pipe:
             self.pipe.close()
 
+    def handle_art_request(self):
+        Log("Handling art request: %s" % self.path)
+        spotify_uri = self.server.get_spotify_uri(self.path)
+        result = self.server.manager.get_art(spotify_uri)
+        if result is None:
+            self.send_error(404)
+            return
+        data = result.read()
+        self.send_response(200)
+        self.send_header("Content-type", "image/jpeg")
+        self.end_headers()
+        self.wfile.write(data)
+        self.wfile.flush()
+
 
 class StreamProxyServer(ThreadingMixIn, HTTPServer, threading.Thread):
     ''' Server implementation '''
@@ -69,14 +85,21 @@ class StreamProxyServer(ThreadingMixIn, HTTPServer, threading.Thread):
         self.join()
         Log("HTTP server stopped")
 
+    def get_art_url(self, uri):
+        return "http://%s:%d/art/%s.jpg" % (
+            gethostname(), self.server_port, E(uri))
+
     def get_track_url(self, uri):
         return "http://%s:%d/track/%s.aiff" % (
             gethostname(), self.server_port, E(uri))
 
-    def get_spotify_track_uri(self, url):
+    def get_spotify_uri(self, url):
         return D(url.split("/")[-1].split(".")[0])
 
     def is_track_url(self, url):
         components = url.split("/")
         return len(components) == 3 and components[1] == "track"
 
+    def is_art_url(self, url):
+        components = url.split("/")
+        return len(components) == 3 and components[1] == "art"

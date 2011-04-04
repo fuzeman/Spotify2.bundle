@@ -28,14 +28,14 @@ class WritePipeWrapper(object):
 
 def wait_until_ready(objects, interval = 0.1):
     ''' Wait until Spotify model instances are ready to use '''
-    instances = objects if not isinstance(objects, list) else list(objects)
+    instances = [objects] if hasattr(objects, "is_loaded") else objects
     for instance in instances:
         while not instance.is_loaded():
             sleep(interval)
     return objects
 
 
-def create_track_object(track, callback):
+def create_track_object(track, callback, thumbnail_url):
     ''' Factory for track directory objects '''
     artists = (a.name().decode("utf-8") for a in track.artists())
     return TrackObject(
@@ -48,5 +48,6 @@ def create_track_object(track, callback):
         title = track.name().decode("utf-8"),
         artist = ", ".join(artists),
         index = track.index(),
-        duration = int(track.duration())
+        duration = int(track.duration()),
+        thumb = thumbnail_url
     )
