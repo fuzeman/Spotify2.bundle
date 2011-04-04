@@ -3,6 +3,7 @@ HTTP Server for proxying Spotify streams to PMS clients
 '''
 
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+from SocketServer import ThreadingMixIn
 from constants import BUFFER_SIZE, SERVER_PORT
 from socket import gethostname
 from socket import error as SocketError
@@ -37,6 +38,7 @@ class SpotifyHandler(BaseHTTPRequestHandler):
                     self.wfile.flush()
                 if len(data) < BUFFER_SIZE:
                     break
+            Log("Playback finished")
         except SocketError, e:
             Log("Socket closed by client")
         except Exception, e:
@@ -46,7 +48,7 @@ class SpotifyHandler(BaseHTTPRequestHandler):
             self.pipe.close()
 
 
-class StreamProxyServer(HTTPServer, threading.Thread):
+class StreamProxyServer(ThreadingMixIn, HTTPServer, threading.Thread):
     ''' Server implementation '''
 
     def __init__(self, manager, port = SERVER_PORT):
