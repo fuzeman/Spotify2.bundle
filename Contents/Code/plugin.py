@@ -93,6 +93,9 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
         for track in wait_until_ready(tracks):
+            if not self.manager.is_playable(track):
+                Log("Ignoring unplayable track: %s" % track.name())
+                continue
             album_uri = str(Link.from_album(track.album()))
             track_uri = str(Link.from_track(track, 0))
             thumbnail_url = self.server.get_art_url(album_uri)

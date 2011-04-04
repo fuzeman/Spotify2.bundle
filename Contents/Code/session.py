@@ -78,6 +78,17 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         self.pipe = None
         self.lock.release()
 
+    def is_playable(self, track):
+        playable = True
+        self.lock.acquire()
+        wait_until_ready(track)
+        if self.session.is_local(track):
+            playable = False
+        elif not self.session.is_available(track):
+            playable = False
+        self.lock.release()
+        return playable
+
     def needs_restart(self, username, password):
         return self.username != username \
             or self.password != password
