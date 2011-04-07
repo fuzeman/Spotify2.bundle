@@ -179,12 +179,12 @@ class SpotifyPlugin(object):
                     title = L('Search Albums'),
                     thumb = R("icon-default.png")
                 ),
-                InputDirectoryObject(
-                    key = Callback(self.search, artists = True),
-                    prompt = L("Search for Artists"),
-                    title = L('Search Artists'),
-                    thumb = R("icon-default.png")
-                )
+                # InputDirectoryObject(
+                #     key = Callback(self.search, artists = True),
+                #     prompt = L("Search for Artists"),
+                #     title = L('Search Artists'),
+                #     thumb = R("icon-default.png")
+                # )
             ],
         )
 
