@@ -65,7 +65,11 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         Log("Session manager stopped")
 
     def stop_playback(self):
+        if not self.current_track:
+            return
+        Log("Session: stop playback")
         self.lock.acquire()
+        self.session.stop()
         try:
             self.output_file.close() # will throw if it tries to seek
         except:
@@ -78,6 +82,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         self.lock.release()
 
     def is_playable(self, track):
+        Log("Session: is playable")
         playable = True
         self.lock.acquire()
         wait_until_ready(track)
@@ -109,6 +114,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         return aiff_file
 
     def play_track(self, uri):
+        Log("Session: play track")
         if not self.session:
             return
         self.lock.acquire()
@@ -135,6 +141,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         return result
 
     def get_art(self, uri):
+        Log("Session: get art")
         if not self.session:
             return
         self.lock.acquire()
@@ -155,6 +162,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         return result
 
     def browse_album(self, album):
+        Log("Session: browse album")
         def browse_finished(browse):
             pass
         if not self.session:
@@ -168,6 +176,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         return browser
 
     def search(self, query):
+        Log("Session: search")
         def search_finished(results):
             pass
         if not self.session:
@@ -181,6 +190,7 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         return search
 
     def logout(self):
+        Log("Session: logout")
         if not self.session:
             return
         self.lock.acquire()
@@ -190,12 +200,14 @@ class SessionManager(SpotifySessionManager, threading.Thread):
         self.logout_event.wait()
 
     def logged_in(self, session, error):
+        Log("Session: logged in")
         self.lock.acquire()
         self.session = session
         Log("Logged in to Spotify")
         self.lock.release()
 
     def logged_out(self, session):
+        Log("Session: logged out")
         self.lock.acquire()
         Log("Logged out of Spotify")
         self.session = None
