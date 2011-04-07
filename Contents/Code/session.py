@@ -4,7 +4,6 @@ Spotify session manager
 from spotify.manager import SpotifySessionManager
 from spotify import Link
 from tempfile import TemporaryFile
-from time import sleep
 from constants import PLUGIN_ID, RESTART_URL
 from utils import wait_until_ready, WritePipeWrapper
 from os import pipe, fdopen
@@ -154,6 +153,32 @@ class SessionManager(SpotifySessionManager, threading.Thread):
             result.seek(0)
         self.lock.release()
         return result
+
+    def browse_album(self, album):
+        def browse_finished(browse):
+            pass
+        if not self.session:
+            return
+        self.lock.acquire()
+        browser = self.session.browse_album(
+            album,
+            browse_finished)
+        wait_until_ready(browser)
+        self.lock.release()
+        return browser
+
+    def search(self, query):
+        def search_finished(results):
+            pass
+        if not self.session:
+            return
+        self.lock.acquire()
+        search = self.session.search(
+            query = query,
+            callback = search_finished)
+        wait_until_ready(search)
+        self.lock.release()
+        return search
 
     def logout(self):
         if not self.session:

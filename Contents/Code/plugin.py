@@ -80,6 +80,16 @@ class SpotifyPlugin(object):
         Log("Redirecting client to stream proxied at: %s" % track_url)
         return Redirect(track_url)
 
+    def add_track_to_directory(self, directory, track):
+        if not self.manager.is_playable(track):
+            Log("Ignoring unplayable track: %s" % track.name())
+            return
+        album_uri = str(Link.from_album(track.album()))
+        track_uri = str(Link.from_track(track, 0))
+        thumbnail_url = self.server.get_art_url(album_uri)
+        callback = Callback(self.play_track, uri = track_uri, ext = "aiff")
+        directory.add(create_track_object(track, callback, thumbnail_url))
+
     def get_playlist(self, index):
         playlists = self.manager.playlists
         if len(playlists) < index + 1:
@@ -93,14 +103,7 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
         for track in wait_until_ready(tracks):
-            if not self.manager.is_playable(track):
-                Log("Ignoring unplayable track: %s" % track.name())
-                continue
-            album_uri = str(Link.from_album(track.album()))
-            track_uri = str(Link.from_track(track, 0))
-            thumbnail_url = self.server.get_art_url(album_uri)
-            callback = Callback(self.play_track, uri = track_uri, ext = "aiff")
-            directory.add(create_track_object(track, callback, thumbnail_url))
+            self.add_track_to_directory(directory, track)
         return directory
 
     def get_playlists(self):
@@ -127,13 +130,76 @@ class SpotifyPlugin(object):
             )
         return directory
 
+    def get_artist_albums(self, uri):
+        Log("Get artist albums: " + str(kwargs))
+
+    def get_album_tracks(self, uri):
+        album = Link.from_string(uri).as_album()
+        Log("Get album: " + album.name())
+        browser = self.manager.browse_album(album)
+        tracks = list(browser)
+        directory = ObjectContainer(
+            title2 = album.name().decode("utf-8"), filelabel = '%A - %T')
+        for track in tracks:
+            self.add_track_to_directory(directory, track)
+        return directory
+
+    def search(self, query, artists = False, albums = False, **kwargs):
+        Log("Search for %s: %s" % ("artists" if artists else "albums", query))
+        results = self.manager.search(query)
+        directory = ObjectContainer(title2 = "Results")
+        for artist in results.artists() if artists else ():
+            artist_uri = str(Link.from_album(artist))
+            directory.add(
+                DirectoryObject(
+                    key = Callback(self.get_artist_albums, uri = artist_uri),
+                    title = artist.name().decode("utf-8"),
+                    thumb = R("placeholder-artist.png")
+                )
+            )
+        for album in results.albums() if albums else ():
+            album_uri = str(Link.from_album(album))
+            directory.add(
+                DirectoryObject(
+                    key = Callback(self.get_album_tracks, uri = album_uri),
+                    title = album.name().decode("utf-8"),
+                    thumb = self.server.get_art_url(album_uri)
+                )
+            )
+        return directory
+
+    def search_menu(self):
+        Log("Search menu")
+        return ObjectContainer(
+            title2 = "Search",
+            objects = [
+                InputDirectoryObject(
+                    key = Callback(self.search, albums = True),
+                    prompt = L("Search for Albums"),
+                    title = L('Search Albums'),
+                    thumb = R("icon-default.png")
+                ),
+                InputDirectoryObject(
+                    key = Callback(self.search, artists = True),
+                    prompt = L("Search for Artists"),
+                    title = L('Search Artists'),
+                    thumb = R("icon-default.png")
+                )
+            ],
+        )
+
     def main_menu(self):
         Log("Spotify main menu")
-        menu = ObjectContainer(
+        return ObjectContainer(
             objects = [
                 DirectoryObject(
                     key = Callback(self.get_playlists),
                     title = L('Playlists'),
+                    thumb = R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key = Callback(self.search_menu),
+                    title = L('Search'),
                     thumb = R("icon-default.png")
                 ),
                 PrefsObject(
@@ -142,4 +208,3 @@ class SpotifyPlugin(object):
                 )
             ],
         )
-        return menu
