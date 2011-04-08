@@ -64,8 +64,8 @@ class SpotifyPlugin(object):
     def start_session_manager(self):
         if not self.username or not self.password:
             return
-        self.manager = SessionManager(self.username, self.password)
-        self.manager.start()
+        self.manager = SessionManager.create(self.username, self.password)
+        self.manager.connect()
         self.start_http_server(self.manager)
 
     def start_http_server(self, manager):
@@ -91,7 +91,7 @@ class SpotifyPlugin(object):
         directory.add(create_track_object(track, callback, thumbnail_url))
 
     def get_playlist(self, index):
-        playlists = self.manager.playlists
+        playlists = self.manager.get_playlists()
         if len(playlists) < index + 1:
             return MessageContainer(
                 header = "Error Retrieving Playlist",
@@ -113,8 +113,8 @@ class SpotifyPlugin(object):
         if not self.logged_in:
             return self.access_denied_message
         directory = ObjectContainer(title2 = "Playlists")
-        playlists = self.manager.playlists
-        for playlist in wait_until_ready(playlists):
+        playlists = self.manager.get_playlists()
+        for playlist in playlists:
             no_tracks = len(playlist)
             if not no_tracks:
                 Log("Ignoring empty playlist: %s", playlist.name())
