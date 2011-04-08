@@ -10,16 +10,12 @@ from server import StreamProxyServer
 
 class ViewMode(object):
     Tracks = "Tracks"
-
-    @classmethod
-    def get_params(cls, name):
-        if name == cls.Tracks:
-            return (cls.Tracks, "List", "songs")
+    Playlists = "Playlists"
 
     @classmethod
     def AddModes(cls, plugin):
-        for mode in [cls.Tracks]:
-            plugin.AddViewGroup(*cls.get_params(mode))
+        plugin.AddViewGroup(cls.Tracks, "List", "songs")
+        plugin.AddViewGroup(cls.Playlists, "List", "items")
 
 
 class SpotifyPlugin(object):
@@ -126,7 +122,9 @@ class SpotifyPlugin(object):
         Log("Get playlists")
         if not self.logged_in:
             return self.access_denied_message
-        directory = ObjectContainer(title2 = "Playlists")
+        directory = ObjectContainer(
+            title2 = "Playlists",
+            view_group = ViewMode.Playlists)
         playlists = self.manager.get_playlists()
         for playlist in playlists:
             no_tracks = len(playlist)
