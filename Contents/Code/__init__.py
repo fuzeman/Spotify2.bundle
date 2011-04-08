@@ -59,6 +59,7 @@ def Start():
     ''' Entrypoint '''
     Log("Starting Spotify (version %s)", VERSION)
     Plugin.AddPrefixHandler(PREFIX, main_menu, 'Spotify')
+    Plugin.AddViewGroup("Tracks", "List", "songs")
     ObjectContainer.title1 = 'Spotify'
     ObjectContainer.content = 'Items'
     ObjectContainer.art = R('art-default.png')

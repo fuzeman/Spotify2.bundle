@@ -101,7 +101,9 @@ class SpotifyPlugin(object):
         tracks = list(playlist)
         Log("Get playlist: %s", playlist.name().decode("utf-8"))
         directory = ObjectContainer(
-            title2 = playlist.name().decode("utf-8"), filelabel = '%A - %T')
+            title2 = playlist.name().decode("utf-8"),
+            filelabel = '%A - %T',
+            view_group = "Tracks")
         for track in wait_until_ready(tracks):
             self.add_track_to_directory(directory, track)
         return directory
