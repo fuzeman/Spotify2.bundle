@@ -1,4 +1,4 @@
-from plugin import SpotifyPlugin
+from plugin import SpotifyPlugin, ViewMode
 
 VERSION     = 0.1
 PREFIX      = "/music/spotify"
@@ -59,7 +59,7 @@ def Start():
     ''' Entrypoint '''
     Log("Starting Spotify (version %s)", VERSION)
     Plugin.AddPrefixHandler(PREFIX, main_menu, 'Spotify')
-    Plugin.AddViewGroup("Tracks", "List", "songs")
+    ViewMode.AddModes(Plugin)
     ObjectContainer.title1 = 'Spotify'
     ObjectContainer.content = 'Items'
     ObjectContainer.art = R('art-default.png')

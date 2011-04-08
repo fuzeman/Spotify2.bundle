@@ -8,6 +8,20 @@ from constants import PLUGIN_ID, RESTART_URL
 from server import StreamProxyServer
 
 
+class ViewMode(object):
+    Tracks = "Tracks"
+
+    @classmethod
+    def get_params(cls, name):
+        if name == cls.Tracks:
+            return (cls.Tracks, "List", "songs")
+
+    @classmethod
+    def AddModes(cls, plugin):
+        for mode in [cls.Tracks]:
+            plugin.AddViewGroup(*cls.get_params(mode))
+
+
 class SpotifyPlugin(object):
     ''' The main spotify plugin class '''
 
@@ -103,7 +117,7 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"),
             filelabel = '%A - %T',
-            view_group = "Tracks")
+            view_group = ViewMode.Tracks)
         for track in wait_until_ready(tracks):
             self.add_track_to_directory(directory, track)
         return directory
@@ -141,7 +155,8 @@ class SpotifyPlugin(object):
         browser = self.manager.browse_album(album)
         tracks = list(browser)
         directory = ObjectContainer(
-            title2 = album.name().decode("utf-8"))
+            title2 = album.name().decode("utf-8"),
+            view_group = ViewMode.Tracks)
         for track in tracks:
             self.add_track_to_directory(directory, track)
         return directory
