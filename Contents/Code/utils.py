@@ -44,7 +44,7 @@ def create_track_object(track, callback, thumbnail_url):
                 parts = [PartObject(key = callback)],
             )
         ],
-        key = "Track",
+        key = track.name().decode("utf-8"),
         title = track.name().decode("utf-8"),
         artist = ", ".join(artists),
         index = track.index(),
