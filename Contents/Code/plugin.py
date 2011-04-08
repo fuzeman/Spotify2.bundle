@@ -139,7 +139,7 @@ class SpotifyPlugin(object):
         browser = self.manager.browse_album(album)
         tracks = list(browser)
         directory = ObjectContainer(
-            title2 = album.name().decode("utf-8"), filelabel = '%A - %T')
+            title2 = album.name().decode("utf-8"))
         for track in tracks:
             self.add_track_to_directory(directory, track)
         return directory
