@@ -28,25 +28,80 @@ class Track(object):
         self.frames_played = self.frames_played + frame_count
 
 
-class AudioStream(object):
-    def __init__(self, track):
-        self.position = 0
-        self.buffer = StringIO()
-        self.aiff_stream = self.create_aiff_wrapper(
-            self.buffer,
-            track)
+class FIFOBuffer(object):
+    ''' Provides a FIFO buffer with file-like input and output.'''
+
+    class PipeWrapper(object):
+        def __init__(self, pipe, mode):
+            super(FIFOBuffer.PipeWrapper, self).__init__()
+            self.pipe = fdopen(pipe, mode, 0)
+            self.position = 0
+
+        def close(self):
+            self.pipe.close()
+
+        def tell(self):
+            return self.position
+
+    class Input(PipeWrapper):
+        def __init__(self, pipe):
+            super(FIFOBuffer.Input, self).__init__(pipe, "w")
+
+        def flush(self):
+            self.pipe.flush()
+
+        def write(self, bytes):
+            self.position = self.position + len(bytes)
+            self.pipe.write(bytes)
+
+    class Output(PipeWrapper):
+        def __init__(self, pipe):
+            super(FIFOBuffer.Output, self).__init__(pipe, "r")
+
+        def read(self, no_bytes):
+            bytes = self.pipe.read(no_bytes)
+            self.position = self.position + len(bytes)
+            return bytes
+
+    def __init__(self):
         read, write = pipe()
-        self.consumer_stream = fdopen(read,'r',0)
+        self.output = self.Output(read)
+        self.input = self.Input(write)
+
+    def close(self):
+        self.input.close()
+
+    @property
+    def bytes_written(self):
+        return self.input.position
+
+    @property
+    def bytes_read(self):
+        return self.output.position
+
+    @property
+    def bytes_pending(self):
+        return self.bytes_written - self.bytes_read
+
+    @property
+    def data(self):
+        return self.output.read(self.bytes_pending)
+
+
+class AudioStream(object):
+    ''' Class to convert Spotify PCM audio data to an AIFF audio stream '''
+
+    def __init__(self, track):
+        self.buffer = FIFOBuffer()
+        self.aiff_stream = self.create_aiff_wrapper(self.buffer.input, track)
+        read, write = pipe()
+        self.consumer_stream = fdopen(read,'r', 0)
         self.output_stream = fdopen(write, 'w', 0)
         #fcntl(self.output_stream, F_SETFL, O_NONBLOCK)
 
     @property
     def output(self):
         return self.consumer_stream
-
-    @property
-    def pending_bytes(self):
-        return self.buffer.getvalue()[self.position:]
 
     def close(self):
         self.aiff_stream.close()
@@ -67,9 +122,7 @@ class AudioStream(object):
         data = struct.pack('>' + str(len(frames)/2) + 'H',
             *struct.unpack('<' + str(len(frames)/2) + 'H', frames))
         self.aiff_stream.writeframesraw(data)
-        chunk = self.pending_bytes
-        self.output_stream.write(chunk)
-        self.position = self.position + len(chunk)
+        self.output_stream.write(self.buffer.data)
         return True
 
 

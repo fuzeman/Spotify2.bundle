@@ -217,7 +217,7 @@ class SessionManager(ThreadSafeSessionManager):
             self.audio_stream = AudioStream(self.current_track)
             return self.audio_stream.output
         except Exception, e:
-            self.log("Playback aborted: error loading track")
+            self.log("Playback aborted: error loading track: %s" % e)
             self.stop_playback()
 
     def music_delivery(self, sess, frames, frame_size, num_frames, sample_type,
