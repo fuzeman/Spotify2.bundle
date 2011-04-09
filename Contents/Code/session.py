@@ -5,12 +5,8 @@ from spotify.manager import SpotifySessionManager
 from spotify import Link, runloop, connect
 from tempfile import TemporaryFile
 from constants import PLUGIN_ID
-from utils import WritePipeWrapper
-from os import pipe, fdopen
-import aifc
+from utils import Track, AudioStream
 import threading
-import struct
-
 
 '''
 For extra detailed logging switch this on
@@ -18,27 +14,11 @@ For extra detailed logging switch this on
 DEBUG = False
 
 
-class Track(object):
-    def __init__(self, track):
-        self.track = track
-        self.sample_rate = 44100.0
-        self.frames_played = 0
-
-    @property
-    def total_frames(self):
-        return int(self.track.duration() / 1000.0 * self.sample_rate)
-
-    @property
-    def is_finished(self):
-        return self.frames_played >= self.total_frames
-
-    def add_played_frames(self, frame_count):
-        self.frames_played = self.frames_played + frame_count
-
-
 class ThreadSafeSessionManager(SpotifySessionManager):
     ''' Spotify session manager that uses a runloop to manage callbacks
-    Create instances of this class using the create() factory method '''
+
+    Create instances of this class using the create() factory method.
+    '''
 
     user_agent = PLUGIN_ID
     application_key = Resource.Load('spotify_appkey.key')
@@ -155,8 +135,7 @@ class SessionManager(ThreadSafeSessionManager):
     def __init__(self, username, password):
         super(SessionManager, self).__init__(username, password)
         self.current_track = None
-        self.pipe = None
-        self.output_file = None
+        self.audio_stream = None
 
     def is_playable(self, track):
         ''' Check if a track can be played by a client or not '''
@@ -171,16 +150,6 @@ class SessionManager(ThreadSafeSessionManager):
     def needs_restart(self, username, password):
         return self.username != username \
             or self.password != password
-
-    def create_aiff_wrapper(self, output_stream, track):
-        ''' Create an aiff wrapper for an output stream '''
-        aiff_file = aifc.open(self.pipe, "wb")
-        aiff_file.aifc()
-        aiff_file.setsampwidth(2)
-        aiff_file.setnchannels(2)
-        aiff_file.setframerate(track.sample_rate)
-        aiff_file.setnframes(track.total_frames)
-        return aiff_file
 
     def create_image_file(self, image_id):
         ''' Create an file containing a spotify image '''
@@ -229,56 +198,41 @@ class SessionManager(ThreadSafeSessionManager):
         return browser
 
     def stop_playback(self):
-        if not self.current_track:
+        if not self.audio_stream:
             return
         self.log("Stop playback")
-        try:
-            self.output_file.close() # will throw if it tries to seek
-        except:
-            pass
-        if self.pipe:
-            self.pipe.close()
-        self.output_file = None
+        self.audio_stream = None
         self.current_track = None
-        self.pipe = None
 
     def play_track(self, uri):
         if not self.session:
             return
-        self.log("Play track: %s" % uri)
         self.stop_playback()
+        self.log("Play track: %s" % uri)
         track = Link.from_string(uri).as_track()
         try:
             self.session.load(track)
             self.session.play(True)
             self.current_track = Track(track)
-            read, write = pipe()
-            self.pipe = WritePipeWrapper(write)
-            self.output_file = self.create_aiff_wrapper(
-                self.pipe,
-                self.current_track
-            )
-            return fdopen(read,'r',0)
-        except:
+            self.audio_stream = AudioStream(self.current_track)
+            return self.audio_stream.output
+        except Exception, e:
             self.log("Playback aborted: error loading track")
             self.stop_playback()
 
     def music_delivery(self, sess, frames, frame_size, num_frames, sample_type,
                        sample_rate, channels):
         ''' Called when libspotify has audio data ready for consumption '''
-        if not self.pipe:
+        if not self.audio_stream:
             return
         try:
-            data = struct.pack('>' + str(len(frames)/2) + 'H',
-                *struct.unpack('<' + str(len(frames)/2) + 'H', frames)
-            )
-            self.output_file.writeframesraw(data)
+            result = self.audio_stream.write(frames)
             self.current_track.add_played_frames(num_frames)
             if self.current_track.is_finished:
                 message = "Finished playing: %s", self.current_track.name()
                 self.log(message, check_thread = False)
                 self.main_thread_proxy.stop_playback()
-            return num_frames
+            return num_frames if result else 0
         except (IOError, OSError), e:
             self.log("Pipe closed by request handler", check_thread = False)
             self.main_thread_proxy.stop_playback()

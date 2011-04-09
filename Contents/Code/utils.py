@@ -1,29 +1,77 @@
 '''
 Common utility functions
 '''
+from cStringIO import StringIO
+from fcntl import fcntl, F_SETFL
+from os import pipe, fdopen, O_NONBLOCK
 from time import sleep
+import aifc
+import struct
 import os
 
 
-class WritePipeWrapper(object):
-    ''' Simple class that wraps a pipe and provides a file like interface '''
+class Track(object):
+    def __init__(self, track):
+        self.track = track
+        self.sample_rate = 44100.0
+        self.frames_played = 0
 
-    def __init__(self, pipe):
-        self.pipe = os.fdopen(pipe, 'w', 0)
-        self.bytes_written = 0
+    @property
+    def total_frames(self):
+        return int(self.track.duration() / 1000.0 * self.sample_rate)
+
+    @property
+    def is_finished(self):
+        return self.frames_played >= self.total_frames
+
+    def add_played_frames(self, frame_count):
+        self.frames_played = self.frames_played + frame_count
+
+
+class AudioStream(object):
+    def __init__(self, track):
+        self.position = 0
+        self.buffer = StringIO()
+        self.aiff_stream = self.create_aiff_wrapper(
+            self.buffer,
+            track)
+        read, write = pipe()
+        self.consumer_stream = fdopen(read,'r',0)
+        self.output_stream = fdopen(write, 'w', 0)
+        #fcntl(self.output_stream, F_SETFL, O_NONBLOCK)
+
+    @property
+    def output(self):
+        return self.consumer_stream
+
+    @property
+    def pending_bytes(self):
+        return self.buffer.getvalue()[self.position:]
 
     def close(self):
-        self.pipe.close()
+        self.aiff_stream.close()
+        self.output_stream.write(self.pending_bytes)
+        self.output_stream.flush()
+        self.output_stream.close()
 
-    def flush(self):
-        self.pipe.flush()
+    def create_aiff_wrapper(self, output_stream, track):
+        aiff_file = aifc.open(output_stream, "wb")
+        aiff_file.aifc()
+        aiff_file.setsampwidth(2)
+        aiff_file.setnchannels(2)
+        aiff_file.setframerate(track.sample_rate)
+        aiff_file.setnframes(track.total_frames)
+        return aiff_file
 
-    def tell(self):
-        return self.bytes_written
+    def write(self, frames):
+        data = struct.pack('>' + str(len(frames)/2) + 'H',
+            *struct.unpack('<' + str(len(frames)/2) + 'H', frames))
+        self.aiff_stream.writeframesraw(data)
+        chunk = self.pending_bytes
+        self.output_stream.write(chunk)
+        self.position = self.position + len(chunk)
+        return True
 
-    def write(self, bytes):
-        self.bytes_written = self.bytes_written + len(bytes)
-        self.pipe.write(bytes)
 
 
 def wait_until_ready(objects, interval = 0.1):

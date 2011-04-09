@@ -3,6 +3,7 @@ from types import MethodType
 from time import time
 import threading
 import new
+import sys
 
 
 class RunLoop(threading.Thread):
@@ -14,20 +15,20 @@ class RunLoop(threading.Thread):
             super(RunLoop.CallbackWrapper, self).__init__()
             self.finished = threading.Event()
             self.callback = callback
-            self.exception = None
+            self.exc_info = None
             self.result = None
 
         def __call__(self, *args, **kwargs):
             try:
                 self.result = self.callback(*args, **kwargs)
             except Exception, e:
-                self.exception = e
+                self.exc_info = sys.exc_info()
             self.finished.set()
 
         def wait_until_done(self):
             self.finished.wait()
-            if self.exception:
-                raise self.exception
+            if self.exc_info:
+                raise self.exc_info[1], None, self.exc_info[2]
             return self.result
 
     class Proxy(object):
