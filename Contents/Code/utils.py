@@ -1,10 +1,12 @@
 '''
 Common utility functions
 '''
+from constants import SEND_QUEUE_SIZE
 from cStringIO import StringIO
 from fcntl import fcntl, F_SETFL
 from os import pipe, fdopen, O_NONBLOCK
 from time import sleep
+from Queue import Queue
 import aifc
 import struct
 import os
@@ -28,12 +30,12 @@ class Track(object):
         self.frames_played = self.frames_played + frame_count
 
 
-class FIFOBuffer(object):
-    ''' Provides a FIFO buffer with file-like input and output.'''
+class FIFO(object):
+    ''' A FIFO with file-like input and output.'''
 
     class PipeWrapper(object):
         def __init__(self, pipe, mode):
-            super(FIFOBuffer.PipeWrapper, self).__init__()
+            super(FIFO.PipeWrapper, self).__init__()
             self.pipe = fdopen(pipe, mode, 0)
             self.position = 0
 
@@ -45,7 +47,7 @@ class FIFOBuffer(object):
 
     class Input(PipeWrapper):
         def __init__(self, pipe):
-            super(FIFOBuffer.Input, self).__init__(pipe, "w")
+            super(FIFO.Input, self).__init__(pipe, "w")
 
         def flush(self):
             self.pipe.flush()
@@ -56,7 +58,7 @@ class FIFOBuffer(object):
 
     class Output(PipeWrapper):
         def __init__(self, pipe):
-            super(FIFOBuffer.Output, self).__init__(pipe, "r")
+            super(FIFO.Output, self).__init__(pipe, "r")
 
         def read(self, no_bytes):
             bytes = self.pipe.read(no_bytes)
@@ -69,6 +71,7 @@ class FIFOBuffer(object):
         self.input = self.Input(write)
 
     def close(self):
+        self.input.flush()
         self.input.close()
 
     @property
@@ -83,31 +86,18 @@ class FIFOBuffer(object):
     def bytes_pending(self):
         return self.bytes_written - self.bytes_read
 
-    @property
-    def data(self):
+    def read(self):
         return self.output.read(self.bytes_pending)
 
 
-class AudioStream(object):
+class PCMToAIFFConverter(object):
     ''' Class to convert Spotify PCM audio data to an AIFF audio stream '''
 
-    def __init__(self, track):
-        self.buffer = FIFOBuffer()
-        self.aiff_stream = self.create_aiff_wrapper(self.buffer.input, track)
-        read, write = pipe()
-        self.consumer_stream = fdopen(read,'r', 0)
-        self.output_stream = fdopen(write, 'w', 0)
-        #fcntl(self.output_stream, F_SETFL, O_NONBLOCK)
-
-    @property
-    def output(self):
-        return self.consumer_stream
+    def __init__(self, output_stream, track):
+        self.aiff_stream = self.create_aiff_wrapper(output_stream, track)
 
     def close(self):
         self.aiff_stream.close()
-        self.output_stream.write(self.pending_bytes)
-        self.output_stream.flush()
-        self.output_stream.close()
 
     def create_aiff_wrapper(self, output_stream, track):
         aiff_file = aifc.open(output_stream, "wb")
@@ -118,12 +108,42 @@ class AudioStream(object):
         aiff_file.setnframes(track.total_frames)
         return aiff_file
 
-    def write(self, frames):
+    def convert(self, frames):
         data = struct.pack('>' + str(len(frames)/2) + 'H',
             *struct.unpack('<' + str(len(frames)/2) + 'H', frames))
         self.aiff_stream.writeframesraw(data)
-        self.output_stream.write(self.buffer.data)
-        return True
+
+
+class AudioStream(object):
+    ''' Convert and stream PCM audio data to a client via a queue '''
+
+    def __init__(self, track):
+        self.buffer = FIFO()
+        self.track = Track(track)
+        self.converter = PCMToAIFFConverter(self.buffer.input, self.track)
+        self.output_queue = Queue(SEND_QUEUE_SIZE)
+
+    @property
+    def output(self):
+        return self.output_queue
+
+    @property
+    def is_finished(self):
+        return self.track.is_finished
+
+    def close(self):
+        ''' Close the stream '''
+        Log("Close stream")
+        self.output_queue.put('')
+
+    def process_frames(self, frames, frame_count):
+        ''' Process PCM returning the number of frames consumed '''
+        if self.output_queue.full():
+            return 0
+        self.converter.convert(frames)
+        self.output_queue.put(self.buffer.read())
+        self.track.add_played_frames(frame_count)
+        return frame_count
 
 
 

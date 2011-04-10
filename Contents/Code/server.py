@@ -4,7 +4,7 @@ HTTP Server for proxying Spotify streams to PMS clients
 
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 from SocketServer import ThreadingMixIn
-from constants import BUFFER_SIZE, SERVER_PORT
+from constants import SERVER_PORT
 from socket import gethostname
 from socket import error as SocketError
 import threading
@@ -26,28 +26,26 @@ class SpotifyHandler(BaseHTTPRequestHandler):
         Log("Handing track request: %s" % self.path)
         spotify_uri = self.server.get_spotify_uri(self.path)
         try:
-            self.pipe = self.server.manager.play_track(spotify_uri)
-            if not self.pipe:
+            queue = self.server.manager.play_track(spotify_uri)
+            if not queue:
                 return self.send_error(404)
             self.send_response(200)
             self.send_header("Content-type", "audio/aiff")
             self.end_headers()
             Log("Streaming track data to client...")
-            while 1:
-                data = self.pipe.read(BUFFER_SIZE)
-                if len(data) > 0:
-                    self.wfile.write(data)
-                    self.wfile.flush()
-                if len(data) < BUFFER_SIZE:
+            while True:
+                data = queue.get()
+                if not len(data):
                     break
-            Log("Playback finished")
+                self.wfile.write(data)
+                self.wfile.flush()
+            return Log("Playback finished")
         except SocketError, e:
             Log("Socket closed by client")
         except Exception, e:
-            Log("Exception streaming track: %s", e)
+            Log("Unexpected error streaming track")
             Log(Plugin.Traceback())
-        if self.pipe:
-            self.pipe.close()
+        self.server.manager.stop_playback()
 
     def handle_art_request(self):
         Log("Handling art request: %s" % self.path)

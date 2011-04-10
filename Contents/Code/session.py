@@ -4,14 +4,9 @@ Spotify session manager
 from spotify.manager import SpotifySessionManager
 from spotify import Link, runloop, connect
 from tempfile import TemporaryFile
-from constants import PLUGIN_ID
-from utils import Track, AudioStream
+from constants import PLUGIN_ID, DEBUG,
+from utils import AudioStream
 import threading
-
-'''
-For extra detailed logging switch this on
-'''
-DEBUG = False
 
 
 class ThreadSafeSessionManager(SpotifySessionManager):
@@ -104,6 +99,10 @@ class ThreadSafeSessionManager(SpotifySessionManager):
         self.session.logout()
         self.logout_event.wait()
 
+    def track_ended(self, session):
+        self.log("Track ended")
+        #self.session.unload()
+
     def logged_in(self, session, error):
         self.log("Logged in", check_thread = False)
         self.session = session
@@ -112,6 +111,10 @@ class ThreadSafeSessionManager(SpotifySessionManager):
         self.log("Logged out", check_thread = False)
         self.session = None
         self.logout_event.set()
+
+    def end_of_track(self, session):
+        ''' Called when the current track ends '''
+        self.loop.invoke_async(lambda: self.track_ended(session))
 
     def wake(self, session):
         self.log("Waking main thread", debug = True, check_thread = False)
@@ -134,7 +137,6 @@ class SessionManager(ThreadSafeSessionManager):
 
     def __init__(self, username, password):
         super(SessionManager, self).__init__(username, password)
-        self.current_track = None
         self.audio_stream = None
 
     def is_playable(self, track):
@@ -164,8 +166,6 @@ class SessionManager(ThreadSafeSessionManager):
         return result
 
     def get_art(self, uri):
-        if not self.session:
-            return
         self.log("Get artwork: %s" % uri)
         link = Link.from_string(uri)
         if link.type() != Link.LINK_ALBUM:
@@ -181,8 +181,6 @@ class SessionManager(ThreadSafeSessionManager):
         return sorted(self.wait_for_objects(lists), key = lambda l: l.name())
 
     def search(self, query):
-        if not self.session:
-            return
         self.log("Search (query = %s)" % query)
         search = self.session.search(
             query = query, callback = lambda results: None)
@@ -190,8 +188,6 @@ class SessionManager(ThreadSafeSessionManager):
         return search
 
     def browse_album(self, album):
-        if not self.session:
-            return
         self.log("Browse album: %s" % album)
         browser = self.session.browse_album(album, lambda browser: None)
         self.wait_for_objects(browser)
@@ -201,42 +197,29 @@ class SessionManager(ThreadSafeSessionManager):
         if not self.audio_stream:
             return
         self.log("Stop playback")
+        self.audio_stream.close()
         self.audio_stream = None
-        self.current_track = None
 
     def play_track(self, uri):
-        if not self.session:
-            return
-        self.stop_playback()
-        self.log("Play track: %s" % uri)
-        track = Link.from_string(uri).as_track()
         try:
+            self.log("Play track: %s" % uri)
+            track = Link.from_string(uri).as_track()
+            self.stop_playback()
             self.session.load(track)
             self.session.play(True)
-            self.current_track = Track(track)
-            self.audio_stream = AudioStream(self.current_track)
+            self.audio_stream = AudioStream(track)
             return self.audio_stream.output
         except Exception, e:
             self.log("Playback aborted: error loading track: %s" % e)
             self.stop_playback()
 
-    def music_delivery(self, sess, frames, frame_size, num_frames, sample_type,
-                       sample_rate, channels):
+    def music_delivery(self, session, frames, frame_size, num_frames,
+                       sample_type, sample_rate, channels):
         ''' Called when libspotify has audio data ready for consumption '''
-        if not self.audio_stream:
-            return
         try:
-            result = self.audio_stream.write(frames)
-            self.current_track.add_played_frames(num_frames)
-            if self.current_track.is_finished:
-                message = "Finished playing: %s", self.current_track.name()
-                self.log(message, check_thread = False)
-                self.main_thread_proxy.stop_playback()
-            return num_frames if result else 0
-        except (IOError, OSError), e:
-            self.log("Pipe closed by request handler", check_thread = False)
-            self.main_thread_proxy.stop_playback()
+            return self.audio_stream.process_frames(frames, num_frames)
         except Exception, e:
-            self.log("Playback error: %s" % e, check_thread = False)
-            self.main_thread_proxy.stop_playback()
-
+            if self.audio_stream:
+                self.log("Playback error: %s" % e, check_thread = False)
+                self.main_thread_proxy.stop_playback()
+            return 0
