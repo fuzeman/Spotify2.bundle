@@ -193,6 +193,12 @@ class SessionManager(ThreadSafeSessionManager):
         self.wait_for_objects(browser)
         return browser
 
+    def browse_artist(self, artist):
+        self.log("Browse artist: %s" % artist)
+        browser = self.session.browse_artist(artist, lambda browser: None)
+        self.wait_for_objects(browser)
+        return browser
+
     def stop_playback(self):
         if not self.audio_stream:
             return

@@ -145,7 +145,23 @@ class SpotifyPlugin(object):
         return directory
 
     def get_artist_albums(self, uri):
-        Log("Get artist albums: " + str(kwargs))
+        artist = Link.from_string(uri).as_artist()
+        Log("Get artist albums: " + artist.name().decode("utf-8"))
+        browser = self.manager.browse_artist(artist)
+        albums = list(browser)
+        directory = ObjectContainer(
+            title2 = artist.name().decode("utf-8"),
+            view_group = ViewMode.Tracks)
+        for album in albums:
+            album_uri = str(Link.from_album(album))
+            directory.add(
+                DirectoryObject(
+                    key = Callback(self.get_album_tracks, uri = album_uri),
+                    title = album.name().decode("utf-8"),
+                    thumb = self.server.get_art_url(album_uri)
+                )
+            )
+        return directory
 
     def get_album_tracks(self, uri):
         album = Link.from_string(uri).as_album()
@@ -164,7 +180,7 @@ class SpotifyPlugin(object):
         results = self.manager.search(query)
         directory = ObjectContainer(title2 = "Results")
         for artist in results.artists() if artists else ():
-            artist_uri = str(Link.from_album(artist))
+            artist_uri = str(Link.from_artist(artist))
             directory.add(
                 DirectoryObject(
                     key = Callback(self.get_artist_albums, uri = artist_uri),
@@ -194,12 +210,12 @@ class SpotifyPlugin(object):
                     title = L('Search Albums'),
                     thumb = R("icon-default.png")
                 ),
-                # InputDirectoryObject(
-                #     key = Callback(self.search, artists = True),
-                #     prompt = L("Search for Artists"),
-                #     title = L('Search Artists'),
-                #     thumb = R("icon-default.png")
-                # )
+                InputDirectoryObject(
+                    key = Callback(self.search, artists = True),
+                    prompt = L("Search for Artists"),
+                    title = L('Search Artists'),
+                    thumb = R("icon-default.png")
+                )
             ],
         )
 
