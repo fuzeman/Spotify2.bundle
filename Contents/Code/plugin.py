@@ -105,6 +105,7 @@ class SpotifyPlugin(object):
             ],
             key = track.name().decode("utf-8"),
             title = track.name().decode("utf-8"),
+            album = track.album().name().decode("utf-8"),
             artist = ", ".join(artists),
             index = track.index(),
             duration = int(track.duration()),
