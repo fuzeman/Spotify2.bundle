@@ -2,7 +2,7 @@
 Spotify plugin
 '''
 from session import SessionManager
-from utils import wait_until_ready, create_track_object
+from utils import wait_until_ready
 from spotify import Link
 from constants import PLUGIN_ID, RESTART_URL
 from server import StreamProxyServer
@@ -90,15 +90,57 @@ class SpotifyPlugin(object):
         Log("Redirecting client to stream proxied at: %s" % track_url)
         return Redirect(track_url)
 
-    def add_track_to_directory(self, directory, track):
-        if not self.manager.is_playable(track):
-            Log("Ignoring unplayable track: %s" % track.name())
-            return
+    def create_track_object(self, track):
+        ''' Factory for track directory objects '''
         album_uri = str(Link.from_album(track.album()))
         track_uri = str(Link.from_track(track, 0))
         thumbnail_url = self.server.get_art_url(album_uri)
         callback = Callback(self.play_track, uri = track_uri, ext = "aiff")
-        directory.add(create_track_object(track, callback, thumbnail_url))
+        artists = (a.name().decode("utf-8") for a in track.artists())
+        return TrackObject(
+            items = [
+                MediaObject(
+                    parts = [PartObject(key = callback)],
+                )
+            ],
+            key = track.name().decode("utf-8"),
+            title = track.name().decode("utf-8"),
+            artist = ", ".join(artists),
+            index = track.index(),
+            duration = int(track.duration()),
+            thumb = thumbnail_url
+       )
+
+    def create_album_object(self, album):
+        ''' Factory method for album objects '''
+        album_uri = str(Link.from_album(album))
+        return DirectoryObject(
+            key = Callback(self.get_album_tracks, uri = album_uri),
+            title = album.name().decode("utf-8"),
+            thumb = self.server.get_art_url(album_uri)
+        )
+
+    def add_track_to_directory(self, track, directory):
+        if not self.manager.is_track_playable(track):
+            Log("Ignoring unplayable track: %s" % track.name())
+            return
+        directory.add(self.create_track_object(track))
+
+    def add_album_to_directory(self, album, directory):
+        if not self.manager.is_album_playable(album):
+            Log("Ignoring unplayable album: %s" % album.name())
+            return
+        directory.add(self.create_album_object(album))
+
+    def add_artist_to_directory(self, artist, directory):
+        artist_uri = str(Link.from_artist(artist))
+        directory.add(
+            DirectoryObject(
+                key = Callback(self.get_artist_albums, uri = artist_uri),
+                title = artist.name().decode("utf-8"),
+                thumb = R("placeholder-artist.png")
+            )
+        )
 
     def get_playlist(self, index):
         playlists = self.manager.get_playlists()
@@ -115,7 +157,7 @@ class SpotifyPlugin(object):
             filelabel = '%A - %T',
             view_group = ViewMode.Tracks)
         for track in wait_until_ready(tracks):
-            self.add_track_to_directory(directory, track)
+            self.add_track_to_directory(track, directory)
         return directory
 
     def get_playlists(self):
@@ -153,14 +195,7 @@ class SpotifyPlugin(object):
             title2 = artist.name().decode("utf-8"),
             view_group = ViewMode.Tracks)
         for album in albums:
-            album_uri = str(Link.from_album(album))
-            directory.add(
-                DirectoryObject(
-                    key = Callback(self.get_album_tracks, uri = album_uri),
-                    title = album.name().decode("utf-8"),
-                    thumb = self.server.get_art_url(album_uri)
-                )
-            )
+            self.add_album_to_directory(album, directory)
         return directory
 
     def get_album_tracks(self, uri):
@@ -172,7 +207,7 @@ class SpotifyPlugin(object):
             title2 = album.name().decode("utf-8"),
             view_group = ViewMode.Tracks)
         for track in tracks:
-            self.add_track_to_directory(directory, track)
+            self.add_track_to_directory(track, directory)
         return directory
 
     def search(self, query, artists = False, albums = False, **kwargs):
@@ -180,23 +215,9 @@ class SpotifyPlugin(object):
         results = self.manager.search(query)
         directory = ObjectContainer(title2 = "Results")
         for artist in results.artists() if artists else ():
-            artist_uri = str(Link.from_artist(artist))
-            directory.add(
-                DirectoryObject(
-                    key = Callback(self.get_artist_albums, uri = artist_uri),
-                    title = artist.name().decode("utf-8"),
-                    thumb = R("placeholder-artist.png")
-                )
-            )
+            self.add_artist_to_directory(artist, directory)
         for album in results.albums() if albums else ():
-            album_uri = str(Link.from_album(album))
-            directory.add(
-                DirectoryObject(
-                    key = Callback(self.get_album_tracks, uri = album_uri),
-                    title = album.name().decode("utf-8"),
-                    thumb = self.server.get_art_url(album_uri)
-                )
-            )
+            self.add_album_to_directory(album, directory)
         return directory
 
     def search_menu(self):

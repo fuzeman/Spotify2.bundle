@@ -154,21 +154,3 @@ def wait_until_ready(objects, interval = 0.1):
         while not instance.is_loaded():
             sleep(interval)
     return objects
-
-
-def create_track_object(track, callback, thumbnail_url):
-    ''' Factory for track directory objects '''
-    artists = (a.name().decode("utf-8") for a in track.artists())
-    return TrackObject(
-        items = [
-            MediaObject(
-                parts = [PartObject(key = callback)],
-            )
-        ],
-        key = track.name().decode("utf-8"),
-        title = track.name().decode("utf-8"),
-        artist = ", ".join(artists),
-        index = track.index(),
-        duration = int(track.duration()),
-        thumb = thumbnail_url
-    )

@@ -139,7 +139,12 @@ class SessionManager(ThreadSafeSessionManager):
         super(SessionManager, self).__init__(username, password)
         self.audio_stream = None
 
-    def is_playable(self, track):
+    def is_album_playable(self, album):
+        ''' Check if an album can be played by a client or not '''
+        self.wait_for_objects(album)
+        return album.is_available()
+
+    def is_track_playable(self, track):
         ''' Check if a track can be played by a client or not '''
         playable = True
         self.wait_for_objects(track)
