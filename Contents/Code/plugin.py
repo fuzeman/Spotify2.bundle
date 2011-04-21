@@ -155,7 +155,6 @@ class SpotifyPlugin(object):
         Log("Get playlist: %s", playlist.name().decode("utf-8"))
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"),
-            filelabel = '%A - %T',
             view_group = ViewMode.Tracks)
         for track in wait_until_ready(tracks):
             self.add_track_to_directory(track, directory)
@@ -175,13 +174,10 @@ class SpotifyPlugin(object):
                 Log("Ignoring empty playlist: %s", playlist.name())
                 continue
             index = playlists.index(playlist)
-            info_label = (
-                "%s %s" % (no_tracks, "tracks" if no_tracks > 1 else "track"))
             directory.add(
                 DirectoryObject(
                     key = Callback(self.get_playlist, index = index),
                     title = playlist.name().decode("utf-8"),
-                    infoLabel = info_label,
                     thumb = R("placeholder-playlist.png")
                 )
             )
