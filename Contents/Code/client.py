@@ -141,8 +141,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             return
         self.log("Stop playback")
         self.audio_converter = None
-        if self.stop_callback:
-            self.stop_callback()
+        self.invoke_stop_callback()
         # self.session.unload() // FIXME: unloading crashes for some reason
 
     def load_image(self, image_id):
@@ -222,6 +221,13 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         timeout = session.process_events()
         self.schedule_periodic_check(session, timeout / 1000.0)
 
+    def invoke_stop_callback(self):
+        ''' Invoke the playback stopped callback '''
+        if self.stop_callback is None:
+            return
+        self.stop_callback()
+        self.stop_callback = None
+
     ''' Spotify callbacks '''
 
     def logged_in(self, session, error):
@@ -239,8 +245,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
     def end_of_track(self, session):
         ''' libspotify callback for when the current track ends '''
         self.log("Track ended")
-        if self.stop_callback():
-            self.stop_callback()
+        self.audio_converter = None
+        self.invoke_stop_callback()
 
     def wake(self, session):
         ''' libspotify callback to wake the main thread '''

@@ -104,7 +104,7 @@ class ArtHandler(SpotifyHandler):
 class TrackHandler(SpotifyHandler):
     ''' Handler for spotify track requests '''
 
-    @async_with_timeout(REQUEST_TIMEOUT)
+    @asynchronous
     def get(self, spotify_uri):
         spotify_uri = self.decode_spotify_uri(spotify_uri)
         Log("Handling track request: %s" % spotify_uri)
@@ -129,7 +129,7 @@ class SpotifyServer(object):
             ("%s(.*).jpg" % self.art_path, ArtHandler),
             ("%s(.*).aiff" % self.track_path, TrackHandler)
         ])
-        self.server = HTTPServer(app)
+        self.server = HTTPServer(app, no_keep_alive = True)
         self.manager = manager
         self.port = port
 
