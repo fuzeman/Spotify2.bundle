@@ -99,11 +99,22 @@ class IOLoopProxy(object):
 class RunLoopMixin(object):
     ''' Mixin class that adds ioloop convenience methods '''
 
+    def wrap_callback(self, callback):
+        ''' Return a wrapper function that catches and logs exceptions '''
+        def wrapper():
+            try:
+                callback()
+            except:
+                Log("Exception in callback: %s" % callback)
+                Log(Plugin.Traceback())
+        return wrapper
+
     def invoke_async(self, callback):
-        self.ioloop.add_callback(callback)
+        self.ioloop.add_callback(self.wrap_callback(callback))
 
     def schedule_timer(self, delay, callback):
         deadline = time() + delay
+        callback = self.wrap_callback(callback)
         return self.ioloop.add_timeout(deadline, callback)
 
     def cancel_timer(self, timer):
