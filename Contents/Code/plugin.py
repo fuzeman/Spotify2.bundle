@@ -25,6 +25,7 @@ class SpotifyPlugin(object):
         self.ioloop = ioloop
         self.manager = None
         self.server = None
+        self.browsers = {}
         self.start_session_manager()
 
     @property
@@ -198,17 +199,23 @@ class SpotifyPlugin(object):
             self.add_album_to_directory(album, directory)
         return directory
 
-    def get_album_tracks(self, uri):
+    def get_album_tracks(self, uri, completion):
+        ''' Browse an album invoking the completion callback when done.
+
+        :param uri:            The Spotify URI of the album to browse.
+        :param completion:     A callback to invoke with results when done.
+        '''
         album = Link.from_string(uri).as_album()
-        Log("Get album: " + album.name())
-        browser = self.manager.browse_album(album)
-        tracks = list(browser)
-        directory = ObjectContainer(
-            title2 = album.name().decode("utf-8"),
-            view_group = ViewMode.Tracks)
-        for track in tracks:
-            self.add_track_to_directory(track, directory)
-        return directory
+        def browse_finished(browser):
+            del self.browsers[uri]
+            tracks = list(browser)
+            directory = ObjectContainer(
+                title2 = album.name().decode("utf-8"),
+                view_group = ViewMode.Tracks)
+            for track in tracks:
+                self.add_track_to_directory(track, directory)
+            completion(directory)
+        self.browsers[uri] = self.manager.browse_album(album, browse_finished)
 
     def search(self, query, completion, artists = False, albums = False):
         ''' Search asynchronously invoking the completion callback when done.
