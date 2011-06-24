@@ -3,7 +3,7 @@ Settings used throughout the plguin
 '''
 
 PLUGIN_ID = "com.plexapp.plugins.spotify"
-VERSION     = 0.1
+VERSION     = 0.2
 PREFIX      = "/music/spotify"
 ROUTEBASE   = PREFIX + '/'
 RESTART_URL = "http://localhost:32400/:/plugins/%s/restart" % PLUGIN_ID
