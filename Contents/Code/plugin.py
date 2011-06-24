@@ -187,6 +187,17 @@ class SpotifyPlugin(object):
         Log("Got playlists")
         return directory
 
+    def get_starred_tracks(self):
+        ''' Return a directory containing the user's starred tracks'''
+        Log("Get starred tracks")
+        directory = ObjectContainer(
+            title2 = "Favourites",
+            view_group = ViewMode.Tracks)
+        starred = list(self.manager.get_starred_tracks())
+        for track in starred:
+            self.add_track_to_directory(track, directory)
+        return directory
+
     def get_artist_albums(self, uri, completion):
         ''' Browse an artist invoking the completion callback when done.
 
@@ -275,6 +286,11 @@ class SpotifyPlugin(object):
                 DirectoryObject(
                     key = Callback(self.search_menu),
                     title = L('Search'),
+                    thumb = R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key = Callback(self.get_starred_tracks),
+                    title = L('Favourites'),
                     thumb = R("icon-default.png")
                 ),
                 PrefsObject(

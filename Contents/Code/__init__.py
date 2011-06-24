@@ -58,6 +58,11 @@ def get_playlists(**kwargs):
     return plugin_callback(SpotifyPlugin.get_playlists, **kwargs)
 
 
+def get_starred_tracks(**kwargs):
+    ''' Top-level function to retrieve starred user tracks '''
+    return plugin_callback(SpotifyPlugin.get_starred_tracks, **kwargs)
+
+
 def search(**kwargs):
     ''' Top-level function to execute a search '''
     return plugin_callback(SpotifyPlugin.search, async = True, **kwargs)

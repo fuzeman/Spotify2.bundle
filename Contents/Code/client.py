@@ -107,6 +107,15 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         lists = list(self.session.playlist_container()) if self.session else []
         return sorted(assert_loaded(lists), key = lambda l: l.name())
 
+    def get_starred_tracks(self):
+        ''' Return the user's starred tracks
+
+        TODO this should be made async with a callback rather than assuming
+        the starred playlist is loaded (will fail if it isn't right now).
+        '''
+        self.log("Get starred")
+        return assert_loaded(self.session.starred()) if self.session else None
+
     def search(self, query, callback):
         ''' Execute a search
 
