@@ -27,7 +27,8 @@ def async_with_timeout(seconds):
         func = asynchronous(func)
         def wrapper(*args, **kwargs):
             start_time = time()
-            callback = lambda: finish_request(args[0], start_time)
+            request = args[0]
+            callback = lambda: finish_request(request, start_time)
             request.ioloop.add_timeout(time() + seconds, callback)
             return func(*args, **kwargs)
         return wrapper
