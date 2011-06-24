@@ -5,7 +5,7 @@ from client import SpotifyClient
 from settings import PLUGIN_ID, RESTART_URL
 from spotify import Link
 from server import SpotifyServer
-from utils import assert_loaded, NotReadyError
+from utils import assert_loaded
 
 
 class ViewMode(object):
