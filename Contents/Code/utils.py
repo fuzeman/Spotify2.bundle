@@ -10,6 +10,7 @@ from threading import Event
 import aifc
 import struct
 import os
+import sys
 
 
 class IOLoopProxy(object):
@@ -19,20 +20,35 @@ class IOLoopProxy(object):
     IOLoop and wait for the responses synchronously.
     '''
 
-    class Future(object):
-        ''' Invokes callbacks on the IOLoop and waits for the result '''
-        def __init__(self, callback):
-            super(IOLoopProxy.Future, self).__init__()
+    class AsyncFuture(object):
+        ''' Invokes callbacks on the IOLoop with a completion callback
+
+        Callbacks invoked using an AsyncFuture instance should accept
+        a parameter named 'completion' which should be invoked when the
+        task completes to unblock the caller.
+        '''
+
+        def __init__(self, callback, args, kwargs):
             self.finished = Event()
             self.callback = callback
+            self.args = args
+            self.kwargs = kwargs
             self.exc_info = None
             self.result = None
 
-        def __call__(self, *args, **kwargs):
+        def __call__(self):
             try:
-                self.result = self.callback(*args, **kwargs)
-            except Exception, e:
-                self.exc_info = sys.exc_info()
+                self.kwargs["completion"] = self.finish
+                self.callback(*self.args, **self.kwargs)
+            except Exception:
+                self.handle_exception()
+
+        def finish(self, result):
+            self.result = result
+            self.finished.set()
+
+        def handle_exception(self):
+            self.exc_info = sys.exc_info()
             self.finished.set()
 
         def wait_until_done(self):
@@ -41,6 +57,15 @@ class IOLoopProxy(object):
                 raise self.exc_info[1], None, self.exc_info[2]
             return self.result
 
+    class Future(AsyncFuture):
+        ''' Invokes callbacks on the IOLoop and waits for the result '''
+
+        def __call__(self):
+            try:
+                self.finish(self.callback(*self.args, **self.kwargs))
+            except Exception:
+                self.handle_exception()
+
     class Timeout(Exception):
         ''' Exception thrown when a callback times out '''
         pass
@@ -48,15 +73,25 @@ class IOLoopProxy(object):
     def __init__(self, ioloop):
         self.ioloop = ioloop
 
-    def invoke(self, callback, timeout = None):
+    def invoke(self, callback, args = (), kwargs = {},
+               timeout = None, async = False):
         ''' Invoke a callback on the IOLoop and wait for the result.
 
         :param callback:     The callable to invoke on the IOLoop.
+        :param args:         A optional tuple of args to pass to the callback.
+        :param kwargs:       A optional dict of kwargs to pass to the callback.
         :param timeout:      An optional timeout (in seconds) for the operation.
                              If a timeout is given and reached an exception will
                              be thrown.
+        :param async:        Pass True if the callback is asyncronous.
+                             An async callback should accept a "completion"
+                             parameter which should be used to return the
+                             result when the callback is done.
         '''
-        future = type(self).Future(callback)
+        if async:
+            future = type(self).AsyncFuture(callback, args, kwargs)
+        else:
+            future = type(self).Future(callback, args, kwargs)
         self.ioloop.add_callback(future)
         return future.wait_until_done()
 

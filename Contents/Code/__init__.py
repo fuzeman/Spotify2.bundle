@@ -12,7 +12,7 @@ runloop = IOLoopProxy(IOLoop.instance())
 plugin = SpotifyPlugin(runloop.ioloop)
 
 
-def plugin_callback(method, *args, **kwargs):
+def plugin_callback(method, async = False, **kwargs):
     ''' Invokes callbacks on the plugin instance
 
     To simplify things we bounce these calls to the reactor thread
@@ -21,8 +21,8 @@ def plugin_callback(method, *args, **kwargs):
     is not thread-safe.
     '''
     global plugin, runloop
-    callback = lambda: method(plugin, *args, **kwargs)
-    return runloop.invoke(callback)
+    callback = lambda *a, **kw: method(plugin, *a, **kw)
+    return runloop.invoke(callback, async = async, kwargs = kwargs)
 
 
 def play_track(**kwargs):
