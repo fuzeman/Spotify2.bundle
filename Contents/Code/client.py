@@ -107,12 +107,15 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         lists = list(self.session.playlist_container()) if self.session else []
         return sorted(assert_loaded(lists), key = lambda l: l.name())
 
-    def search(self, query):
-        ''' Execute a search '''
+    def search(self, query, callback):
+        ''' Execute a search
+
+        :param query:          A query string.
+        :param callback:       A callback to invoke when the search is finished.
+                               Should take the results list as a parameter.
+        '''
         self.log("Search (query = %s)" % query)
-        search = self.session.search(
-            query = query, callback = lambda results: None)
-        return assert_loaded(search)
+        search = self.session.search(query = query, callback = callback)
 
     def browse_album(self, album, callback):
         ''' Browse an album, invoking the callback when done

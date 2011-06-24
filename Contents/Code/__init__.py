@@ -52,7 +52,7 @@ def get_playlists(**kwargs):
 
 def search(**kwargs):
     ''' Top-level function to execute a search '''
-    return plugin_callback(SpotifyPlugin.search, **kwargs)
+    return plugin_callback(SpotifyPlugin.search, async = True, **kwargs)
 
 
 def search_menu(**kwargs):

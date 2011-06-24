@@ -210,15 +210,25 @@ class SpotifyPlugin(object):
             self.add_track_to_directory(track, directory)
         return directory
 
-    def search(self, query, artists = False, albums = False, **kwargs):
-        Log("Search for %s: %s" % ("artists" if artists else "albums", query))
-        results = self.manager.search(query)
-        directory = ObjectContainer(title2 = "Results")
-        for artist in results.artists() if artists else ():
-            self.add_artist_to_directory(artist, directory)
-        for album in results.albums() if albums else ():
-            self.add_album_to_directory(album, directory)
-        return directory
+    def search(self, query, completion, artists = False, albums = False):
+        ''' Search asynchronously invoking the completion callback when done.
+
+        :param query:          The query string to use.
+        :param completion:     A callback to invoke with results when done.
+        :param artists:        Determines whether artist matches are returned.
+        :param albums:         Determines whether album matches are returned.
+        '''
+        params = "%s: %s" % ("artists" if artists else "albums", query)
+        Log("Search for %s" % params)
+        def search_finished(results):
+            Log("Search completed: %s" % params)
+            directory = ObjectContainer(title2 = "Results")
+            for artist in results.artists() if artists else ():
+                self.add_artist_to_directory(artist, directory)
+            for album in results.albums() if albums else ():
+                self.add_album_to_directory(album, directory)
+            completion(directory)
+        self.manager.search(query, search_finished)
 
     def search_menu(self):
         Log("Search menu")
