@@ -1,62 +1,72 @@
+'''
+Plugin entry-point
+'''
 from plugin import SpotifyPlugin, ViewMode
+from settings import PLUGIN_ID, PREFIX, VERSION
+from tornado.ioloop import IOLoop
+from utils import IOLoopProxy
 
-VERSION     = 0.1
-PREFIX      = "/music/spotify"
-ROUTEBASE   = PREFIX + '/'
 
 ''' Globals '''
-shared_plugin = SpotifyPlugin()
-
-def plugin_callback(method, plugin = None, *args, **kwargs):
-    ''' Invokes callbacks on a plugin instance '''
-    global shared_plugin
-    if not plugin:
-        plugin = shared_plugin
-    return method(plugin, *args, **kwargs)
+runloop = IOLoopProxy(IOLoop.instance())
+plugin = SpotifyPlugin(runloop.ioloop)
 
 
-def play_track(plugin = None, **kwargs):
+def plugin_callback(method, *args, **kwargs):
+    ''' Invokes callbacks on the plugin instance
+
+    To simplify things we bounce these calls to the reactor thread
+    and wait on a signal for them to return.  This way we don't have to
+    lock things all over the place which would be needed because libspotify
+    is not thread-safe.
+    '''
+    global plugin, runloop
+    callback = lambda: method(plugin, *args, **kwargs)
+    return runloop.invoke(callback)
+
+
+def play_track(**kwargs):
     ''' Top-level function to retrieve a specific playlist '''
-    return plugin_callback(SpotifyPlugin.play_track, plugin, **kwargs)
+    return plugin_callback(SpotifyPlugin.play_track, **kwargs)
 
 
-def get_artist_albums(plugin = None, **kwargs):
+def get_artist_albums(**kwargs):
     ''' Top-level function to retrieve an artists albums '''
-    return plugin_callback(SpotifyPlugin.get_artist_albums, plugin, **kwargs)
+    return plugin_callback(SpotifyPlugin.get_artist_albums, **kwargs)
 
 
-def get_album_tracks(plugin = None, **kwargs):
+def get_album_tracks(**kwargs):
     ''' Top-level function to retrieve the tracks in an album '''
-    return plugin_callback(SpotifyPlugin.get_album_tracks, plugin, **kwargs)
+    return plugin_callback(SpotifyPlugin.get_album_tracks, **kwargs)
 
 
-def get_playlist(plugin = None, **kwargs):
+def get_playlist(**kwargs):
     ''' Top-level function to retrieve a specific playlist '''
-    return plugin_callback(SpotifyPlugin.get_playlist, plugin, **kwargs)
+    return plugin_callback(SpotifyPlugin.get_playlist, **kwargs)
 
 
-def get_playlists(plugin = None):
+def get_playlists(**kwargs):
     ''' Top-level function to retrieve user playlists '''
-    return plugin_callback(SpotifyPlugin.get_playlists, plugin)
+    return plugin_callback(SpotifyPlugin.get_playlists, **kwargs)
 
 
-def search(plugin = None, **kwargs):
+def search(**kwargs):
     ''' Top-level function to execute a search '''
-    return plugin_callback(SpotifyPlugin.search, plugin, **kwargs)
+    return plugin_callback(SpotifyPlugin.search, **kwargs)
 
 
-def search_menu(plugin = None):
+def search_menu(**kwargs):
     ''' Top-level function to retrieve the search menu '''
-    return plugin_callback(SpotifyPlugin.search_menu, plugin)
+    return plugin_callback(SpotifyPlugin.search_menu, **kwargs)
 
 
-def main_menu(plugin = None):
+def main_menu(**kwargs):
     ''' Top-level function to retrieve the main menu '''
-    return plugin_callback(SpotifyPlugin.main_menu, plugin)
+    return plugin_callback(SpotifyPlugin.main_menu, **kwargs)
 
 
 def Start():
-    ''' Entrypoint '''
+    ''' Initialization function '''
     Log("Starting Spotify (version %s)", VERSION)
     Plugin.AddPrefixHandler(PREFIX, main_menu, 'Spotify')
     ViewMode.AddModes(Plugin)

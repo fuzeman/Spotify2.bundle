@@ -1,11 +1,11 @@
 '''
 Spotify plugin
 '''
-from session import SessionManager
-from utils import wait_until_ready
+from client import SpotifyClient
+from settings import PLUGIN_ID, RESTART_URL
 from spotify import Link
-from constants import PLUGIN_ID, RESTART_URL
-from server import StreamProxyServer
+from server import SpotifyServer
+from utils import assert_loaded, NotReadyError
 
 
 class ViewMode(object):
@@ -21,7 +21,8 @@ class ViewMode(object):
 class SpotifyPlugin(object):
     ''' The main spotify plugin class '''
 
-    def __init__(self):
+    def __init__(self, ioloop):
+        self.ioloop = ioloop
         self.manager = None
         self.server = None
         self.start_session_manager()
@@ -73,13 +74,14 @@ class SpotifyPlugin(object):
 
     def start_session_manager(self):
         if not self.username or not self.password:
+            Log("Username or password not set: not logging in")
             return
-        self.manager = SessionManager.create(self.username, self.password)
+        self.manager = SpotifyClient(self.username, self.password, self.ioloop)
         self.manager.connect()
         self.start_http_server(self.manager)
 
     def start_http_server(self, manager):
-        self.server = StreamProxyServer(manager)
+        self.server = SpotifyServer(manager)
         self.server.start()
 
     def play_track(self, uri):
@@ -156,7 +158,7 @@ class SpotifyPlugin(object):
         directory = ObjectContainer(
             title2 = playlist.name().decode("utf-8"),
             view_group = ViewMode.Tracks)
-        for track in wait_until_ready(tracks):
+        for track in assert_loaded(tracks):
             self.add_track_to_directory(track, directory)
         return directory
 
@@ -181,6 +183,7 @@ class SpotifyPlugin(object):
                     thumb = R("placeholder-playlist.png")
                 )
             )
+        Log("Got playlists")
         return directory
 
     def get_artist_albums(self, uri):

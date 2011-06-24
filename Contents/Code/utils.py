@@ -1,15 +1,78 @@
 '''
 Common utility functions
 '''
-from constants import SEND_QUEUE_SIZE
-from cStringIO import StringIO
-from fcntl import fcntl, F_SETFL
-from os import pipe, fdopen, O_NONBLOCK
+from settings import SEND_QUEUE_SIZE
+from os import pipe, fdopen
 from time import sleep
 from Queue import Queue
+from time import time
+from threading import Event
 import aifc
 import struct
 import os
+
+
+class IOLoopProxy(object):
+    ''' Class used to proxy requests to an IOLoop instance
+
+    A convenience class that lets worker threads bounce requests to an
+    IOLoop and wait for the responses synchronously.
+    '''
+
+    class Future(object):
+        ''' Invokes callbacks on the IOLoop and waits for the result '''
+        def __init__(self, callback):
+            super(IOLoopProxy.Future, self).__init__()
+            self.finished = Event()
+            self.callback = callback
+            self.exc_info = None
+            self.result = None
+
+        def __call__(self, *args, **kwargs):
+            try:
+                self.result = self.callback(*args, **kwargs)
+            except Exception, e:
+                self.exc_info = sys.exc_info()
+            self.finished.set()
+
+        def wait_until_done(self):
+            self.finished.wait()
+            if self.exc_info:
+                raise self.exc_info[1], None, self.exc_info[2]
+            return self.result
+
+    class Timeout(Exception):
+        ''' Exception thrown when a callback times out '''
+        pass
+
+    def __init__(self, ioloop):
+        self.ioloop = ioloop
+
+    def invoke(self, callback, timeout = None):
+        ''' Invoke a callback on the IOLoop and wait for the result.
+
+        :param callback:     The callable to invoke on the IOLoop.
+        :param timeout:      An optional timeout (in seconds) for the operation.
+                             If a timeout is given and reached an exception will
+                             be thrown.
+        '''
+        future = type(self).Future(callback)
+        self.ioloop.add_callback(future)
+        return future.wait_until_done()
+
+
+class RunLoopMixin(object):
+    ''' Mixin class that adds ioloop convenience methods '''
+
+    def invoke_async(self, callback):
+        self.ioloop.add_callback(callback)
+
+    def schedule_timer(self, delay, callback):
+        deadline = time() + delay
+        return self.ioloop.add_timeout(deadline, callback)
+
+    def cancel_timer(self, timer):
+        self.ioloop.remove_timeout(timer)
 
 
 class Track(object):
@@ -93,8 +156,11 @@ class FIFO(object):
 class PCMToAIFFConverter(object):
     ''' Class to convert Spotify PCM audio data to an AIFF audio stream '''
 
-    def __init__(self, output_stream, track):
-        self.aiff_stream = self.create_aiff_wrapper(output_stream, track)
+    def __init__(self, track):
+        self.track = Track(track)
+        self.buffer = FIFO()
+        self.aiff_stream = self.create_aiff_wrapper(
+            self.buffer.input, self.track)
 
     def close(self):
         self.aiff_stream.close()
@@ -108,49 +174,25 @@ class PCMToAIFFConverter(object):
         aiff_file.setnframes(track.total_frames)
         return aiff_file
 
-    def convert(self, frames):
+    def convert(self, frames, frame_count):
         data = struct.pack('>' + str(len(frames)/2) + 'H',
             *struct.unpack('<' + str(len(frames)/2) + 'H', frames))
-        self.aiff_stream.writeframesraw(data)
-
-
-class AudioStream(object):
-    ''' Convert and stream PCM audio data to a client via a queue '''
-
-    def __init__(self, track):
-        self.buffer = FIFO()
-        self.track = Track(track)
-        self.converter = PCMToAIFFConverter(self.buffer.input, self.track)
-        self.output_queue = Queue(SEND_QUEUE_SIZE)
-
-    @property
-    def output(self):
-        return self.output_queue
-
-    @property
-    def is_finished(self):
-        return self.track.is_finished
-
-    def close(self):
-        ''' Close the stream '''
-        Log("Close stream")
-        self.output_queue.put('')
-
-    def process_frames(self, frames, frame_count):
-        ''' Process PCM returning the number of frames consumed '''
-        if self.output_queue.full():
-            return 0
-        self.converter.convert(frames)
-        self.output_queue.put(self.buffer.read())
         self.track.add_played_frames(frame_count)
-        return frame_count
+        return self.aiff_stream.writeframesraw(data)
+
+    def get_pending_data(self):
+        return self.buffer.output.read(self.buffer.bytes_pending)
 
 
+class NotReadyError(Exception):
+    ''' Exception thrown when a libspotify object is not loaded '''
+    pass
 
-def wait_until_ready(objects, interval = 0.1):
-    ''' Wait until Spotify model instances are ready to use '''
+
+def assert_loaded(objects):
+    ''' Wait until libspotify objects are loaded and ready to use '''
     instances = [objects] if hasattr(objects, "is_loaded") else objects
     for instance in instances:
-        while not instance.is_loaded():
-            sleep(interval)
+        if not instance.is_loaded():
+            raise NotReadyError()
     return objects
