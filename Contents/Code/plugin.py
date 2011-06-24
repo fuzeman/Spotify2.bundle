@@ -5,7 +5,45 @@ from client import SpotifyClient
 from settings import PLUGIN_ID, RESTART_URL
 from spotify import Link
 from server import SpotifyServer
-from utils import assert_loaded
+from utils import RunLoopMixin, assert_loaded
+
+
+def authenticated(func):
+    ''' Decorator used to force a valid session for a given call
+
+    We must return a class with a __name__ property here since the Plex
+    framework uses it to generate a route and it stops us assigning
+    properties to function objects.
+    '''
+    class decorator(object):
+        @property
+        def __name__(self):
+            return func.func_name
+
+        def __call__(self, *args, **kwargs):
+            plugin = args[0]
+            manager = plugin.manager
+            if not manager or not manager.is_logged_in():
+                return self.access_denied_message(manager)
+            return func(*args, **kwargs)
+
+        def access_denied_message(self, manager):
+            if not manager:
+                return MessageContainer(
+                    header = "Authentication Details Missing",
+                    message = "No username and password have been configured"
+                )
+            elif manager.is_logging_in():
+                return MessageContainer(
+                    header = "Login in Progress",
+                    message = "We're still trying to open a Spotify session..."
+                )
+            else:
+                return MessageContainer(
+                    header = 'Login Failed',
+                    message = manager.login_error
+                )
+    return decorator()
 
 
 class ViewMode(object):
@@ -27,14 +65,6 @@ class SpotifyPlugin(RunLoopMixin):
         self.server = None
         self.browsers = {}
         self.start_session_manager()
-
-    @property
-    def logged_in(self):
-        return self.manager and self.manager.is_logged_in()
-
-    @property
-    def is_logging_in(self):
-        return self.manager and self.manager.is_logging_in()
 
     @property
     def username(self):
@@ -137,6 +167,7 @@ class SpotifyPlugin(RunLoopMixin):
             )
         )
 
+    @authenticated
     def get_playlist(self, index):
         playlists = self.manager.get_playlists()
         if len(playlists) < index + 1:
@@ -154,10 +185,47 @@ class SpotifyPlugin(RunLoopMixin):
             self.add_track_to_directory(track, directory)
         return directory
 
+    @authenticated
+    def get_artist_albums(self, uri, completion):
+        ''' Browse an artist invoking the completion callback when done.
+
+        :param uri:            The Spotify URI of the artist to browse.
+        :param completion:     A callback to invoke with results when done.
+        '''
+        artist = Link.from_string(uri).as_artist()
+        def browse_finished(browser):
+            del self.browsers[uri]
+            albums = list(browser)
+            directory = ObjectContainer(
+                title2 = artist.name().decode("utf-8"),
+                view_group = ViewMode.Tracks)
+            for album in albums:
+                self.add_album_to_directory(album, directory)
+            completion(directory)
+        self.browsers[uri] = self.manager.browse_artist(artist, browse_finished)
+
+    @authenticated
+    def get_album_tracks(self, uri, completion):
+        ''' Browse an album invoking the completion callback when done.
+
+        :param uri:            The Spotify URI of the album to browse.
+        :param completion:     A callback to invoke with results when done.
+        '''
+        album = Link.from_string(uri).as_album()
+        def browse_finished(browser):
+            del self.browsers[uri]
+            tracks = list(browser)
+            directory = ObjectContainer(
+                title2 = album.name().decode("utf-8"),
+                view_group = ViewMode.Tracks)
+            for track in tracks:
+                self.add_track_to_directory(track, directory)
+            completion(directory)
+        self.browsers[uri] = self.manager.browse_album(album, browse_finished)
+
+    @authenticated
     def get_playlists(self):
         Log("Get playlists")
-        if not self.logged_in:
-            return self.access_denied_message
         directory = ObjectContainer(
             title2 = "Playlists",
             view_group = ViewMode.Playlists)
@@ -178,6 +246,7 @@ class SpotifyPlugin(RunLoopMixin):
         Log("Got playlists")
         return directory
 
+    @authenticated
     def get_starred_tracks(self):
         ''' Return a directory containing the user's starred tracks'''
         Log("Get starred tracks")
@@ -189,42 +258,7 @@ class SpotifyPlugin(RunLoopMixin):
             self.add_track_to_directory(track, directory)
         return directory
 
-    def get_artist_albums(self, uri, completion):
-        ''' Browse an artist invoking the completion callback when done.
-
-        :param uri:            The Spotify URI of the artist to browse.
-        :param completion:     A callback to invoke with results when done.
-        '''
-        artist = Link.from_string(uri).as_artist()
-        def browse_finished(browser):
-            del self.browsers[uri]
-            albums = list(browser)
-            directory = ObjectContainer(
-                title2 = artist.name().decode("utf-8"),
-                view_group = ViewMode.Tracks)
-            for album in albums:
-                self.add_album_to_directory(album, directory)
-            completion(directory)
-        self.browsers[uri] = self.manager.browse_artist(artist, browse_finished)
-
-    def get_album_tracks(self, uri, completion):
-        ''' Browse an album invoking the completion callback when done.
-
-        :param uri:            The Spotify URI of the album to browse.
-        :param completion:     A callback to invoke with results when done.
-        '''
-        album = Link.from_string(uri).as_album()
-        def browse_finished(browser):
-            del self.browsers[uri]
-            tracks = list(browser)
-            directory = ObjectContainer(
-                title2 = album.name().decode("utf-8"),
-                view_group = ViewMode.Tracks)
-            for track in tracks:
-                self.add_track_to_directory(track, directory)
-            completion(directory)
-        self.browsers[uri] = self.manager.browse_album(album, browse_finished)
-
+    @authenticated
     def search(self, query, completion, artists = False, albums = False):
         ''' Search asynchronously invoking the completion callback when done.
 
@@ -245,6 +279,7 @@ class SpotifyPlugin(RunLoopMixin):
             completion(directory)
         self.manager.search(query, search_finished)
 
+    @authenticated
     def search_menu(self):
         Log("Search menu")
         return ObjectContainer(
