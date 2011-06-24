@@ -145,6 +145,3 @@ class SpotifyServer(object):
         return "http://%s:%d%s%s.aiff" % (
             gethostname(), self.port, self.track_path, E(uri))
 
-    def get_spotify_uri(self, url):
-        return D(url.split("/")[-1].split(".")[0])
-
