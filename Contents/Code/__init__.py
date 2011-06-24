@@ -32,7 +32,8 @@ def play_track(**kwargs):
 
 def get_artist_albums(**kwargs):
     ''' Top-level function to retrieve an artists albums '''
-    return plugin_callback(SpotifyPlugin.get_artist_albums, **kwargs)
+    return plugin_callback(
+        SpotifyPlugin.get_artist_albums, async = True, **kwargs)
 
 
 def get_album_tracks(**kwargs):

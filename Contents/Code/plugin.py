@@ -187,17 +187,23 @@ class SpotifyPlugin(object):
         Log("Got playlists")
         return directory
 
-    def get_artist_albums(self, uri):
+    def get_artist_albums(self, uri, completion):
+        ''' Browse an artist invoking the completion callback when done.
+
+        :param uri:            The Spotify URI of the artist to browse.
+        :param completion:     A callback to invoke with results when done.
+        '''
         artist = Link.from_string(uri).as_artist()
-        Log("Get artist albums: " + artist.name().decode("utf-8"))
-        browser = self.manager.browse_artist(artist)
-        albums = list(browser)
-        directory = ObjectContainer(
-            title2 = artist.name().decode("utf-8"),
-            view_group = ViewMode.Tracks)
-        for album in albums:
-            self.add_album_to_directory(album, directory)
-        return directory
+        def browse_finished(browser):
+            del self.browsers[uri]
+            albums = list(browser)
+            directory = ObjectContainer(
+                title2 = artist.name().decode("utf-8"),
+                view_group = ViewMode.Tracks)
+            for album in albums:
+                self.add_album_to_directory(album, directory)
+            completion(directory)
+        self.browsers[uri] = self.manager.browse_artist(artist, browse_finished)
 
     def get_album_tracks(self, uri, completion):
         ''' Browse an album invoking the completion callback when done.

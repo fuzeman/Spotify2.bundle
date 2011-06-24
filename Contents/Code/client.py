@@ -124,18 +124,27 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         :param callback:       A callback to invoke when the album is loaded.
                                Should take the browser as a single parameter.
         '''
+        link = Link.from_album(album)
         def callback_wrapper(browser):
-            self.log("Album browse complete: %s" % Link.from_album(album))
+            self.log("Album browse complete: %s" % link)
             callback(browser)
-        self.log("Browse album: %s" % Link.from_album(album))
+        self.log("Browse album: %s" % link)
         browser = self.session.browse_album(album, callback_wrapper)
         return browser
 
-    def browse_artist(self, artist):
-        ''' Browse an artist '''
-        self.log("Browse artist: %s" % artist)
-        browser = self.session.browse_artist(artist, lambda browser: None)
-        assert_loaded(artist)
+    def browse_artist(self, artist, callback):
+        ''' Browse an artist, invoking the callback when done
+
+        :param artist:         An artist instance to browse.
+        :param callback:       A callback to invoke when the album is loaded.
+                               Should take the browser as a single parameter.
+        '''
+        link = Link.from_artist(artist)
+        def callback_wrapper(browser):
+            self.log("Artist browse complete: %s" % Link.from_artist(artist))
+            callback(browser)
+        self.log("Browse artist: %s" % link)
+        browser = self.session.browse_artist(artist, callback_wrapper)
         return browser
 
     def stop_playback(self):
