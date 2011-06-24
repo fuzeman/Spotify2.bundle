@@ -31,6 +31,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.ioloop = ioloop
         self.timer = None
         self.session = None
+        self.login_error = None
         self.logging_in = False
         self.stop_callback = None
         self.audio_callback = None
@@ -252,12 +253,18 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
 
     def logged_in(self, session, error):
         ''' libspotify callback for login attempts '''
-        self.log("Logged in")
         self.logging_in = False
-        self.session = session
+        if error:
+            self.log("Error logging in: %s" % error)
+            self.login_error = error
+        else:
+            self.log("Logged in")
+            self.session = session
 
     def logged_out(self, session):
         ''' libspotiy callback for logout requests '''
+        if not self.seesion:
+            return
         self.log("Logged out")
         self.session = None
         self.cancel_timer(self.timer)
