@@ -38,7 +38,7 @@ def async_with_timeout(seconds):
 class SpotifyHandler(RequestHandler):
     ''' Base class for Spotify HTTP request handlers '''
 
-    manager = None
+    client = None
 
     def __init__(self, *args, **kwargs):
         super(SpotifyHandler, self).__init__(*args, **kwargs)
@@ -46,7 +46,7 @@ class SpotifyHandler(RequestHandler):
 
     @property
     def ioloop(self):
-        return self.manager.ioloop
+        return self.client.ioloop
 
     def decode_spotify_uri(self, spotify_uri):
         ''' Return a decoded spotify URI
@@ -95,7 +95,7 @@ class ArtHandler(SpotifyHandler):
         Log("Handling art request: %s" % spotify_uri)
         try:
             callback = lambda data: self.send_data(data, finish = True)
-            self.browser = self.manager.get_art(spotify_uri, callback)
+            self.browser = self.client.get_art(spotify_uri, callback)
             self.set_header("Content-type", "image/jpeg")
         except Exception:
             self.handle_exception("Unexpected error fetching artwork")
@@ -110,7 +110,7 @@ class TrackHandler(SpotifyHandler):
         Log("Handling track request: %s" % spotify_uri)
         try:
             callback = lambda data: self.send_data(data, finish = False)
-            self.manager.play_track(spotify_uri, callback, self.finish)
+            self.client.play_track(spotify_uri, callback, self.finish)
             self.set_header("Content-type", "audio/aiff")
             Log("Streaming track data to client...")
         except Exception:
@@ -123,14 +123,14 @@ class SpotifyServer(object):
     art_path = "/art/"
     track_path = "/track/"
 
-    def __init__(self, manager, port = SERVER_PORT):
-        SpotifyHandler.manager = manager
+    def __init__(self, client, port = SERVER_PORT):
+        SpotifyHandler.client = client
         app = Application([
             ("%s(.*).jpg" % self.art_path, ArtHandler),
             ("%s(.*).aiff" % self.track_path, TrackHandler)
         ])
         self.server = HTTPServer(app, no_keep_alive = True)
-        self.manager = manager
+        self.client = client
         self.port = port
 
     def start(self):

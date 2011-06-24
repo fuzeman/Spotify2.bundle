@@ -22,18 +22,18 @@ def authenticated(func):
 
         def __call__(self, *args, **kwargs):
             plugin = args[0]
-            manager = plugin.manager
-            if not manager or not manager.is_logged_in():
-                return self.access_denied_message(manager)
+            client = plugin.client
+            if not client or not client.is_logged_in():
+                return self.access_denied_message(client)
             return func(*args, **kwargs)
 
-        def access_denied_message(self, manager):
-            if not manager:
+        def access_denied_message(self, client):
+            if not client:
                 return MessageContainer(
                     header = "Authentication Details Missing",
                     message = "No username and password have been configured"
                 )
-            elif manager.is_logging_in():
+            elif client.is_logging_in():
                 return MessageContainer(
                     header = "Login in Progress",
                     message = "We're still trying to open a Spotify session..."
@@ -41,7 +41,7 @@ def authenticated(func):
             else:
                 return MessageContainer(
                     header = 'Login Failed',
-                    message = manager.login_error
+                    message = client.login_error
                 )
     return decorator()
 
@@ -61,10 +61,10 @@ class SpotifyPlugin(RunLoopMixin):
 
     def __init__(self, ioloop):
         self.ioloop = ioloop
-        self.manager = None
+        self.client = None
         self.server = None
         self.browsers = {}
-        self.start_session_manager()
+        self.start()
 
     @property
     def username(self):
@@ -75,9 +75,15 @@ class SpotifyPlugin(RunLoopMixin):
         return Prefs["password"]
 
     def preferences_updated(self):
-        if not self.manager:
-            self.start_session_manager()
-        elif self.manager.needs_restart(self.username, self.password):
+        ''' Called when the user updates the plugin preferences
+
+        Note: if a user changes the username and password and we have an
+        existing client we need to restart the plugin to use the new details.
+        libspotify doesn't play nice with username and password changes.
+        '''
+        if not self.client:
+            self.start()
+        elif self.client.needs_restart(self.username, self.password):
             self.restart()
         else:
             Log("User details unchanged")
@@ -89,24 +95,23 @@ class SpotifyPlugin(RunLoopMixin):
         Instead schedule a callback on the ioloop's next tick
         '''
         Log("Restarting plugin")
-        if self.manager:
-            self.manager.disconnect()
+        if self.client:
+            self.client.disconnect()
         callback = lambda: HTTP.Request(RESTART_URL, immediate = True)
         self.invoke_async(callback)
 
-    def start_session_manager(self):
+    def start(self):
+        ''' Start the Spotify client and HTTP server '''
         if not self.username or not self.password:
             Log("Username or password not set: not logging in")
             return
-        self.manager = SpotifyClient(self.username, self.password, self.ioloop)
-        self.manager.connect()
-        self.start_http_server(self.manager)
-
-    def start_http_server(self, manager):
-        self.server = SpotifyServer(manager)
+        self.client = SpotifyClient(self.username, self.password, self.ioloop)
+        self.client.connect()
+        self.server = SpotifyServer(self.client)
         self.server.start()
 
     def play_track(self, uri):
+        ''' Play a spotify track: redirect the user to the actual stream '''
         if not uri:
             Log("Play track callback invoked with NULL URI")
             return
@@ -146,13 +151,13 @@ class SpotifyPlugin(RunLoopMixin):
         )
 
     def add_track_to_directory(self, track, directory):
-        if not self.manager.is_track_playable(track):
+        if not self.client.is_track_playable(track):
             Log("Ignoring unplayable track: %s" % track.name())
             return
         directory.add(self.create_track_object(track))
 
     def add_album_to_directory(self, album, directory):
-        if not self.manager.is_album_playable(album):
+        if not self.client.is_album_playable(album):
             Log("Ignoring unplayable album: %s" % album.name())
             return
         directory.add(self.create_album_object(album))
@@ -169,7 +174,7 @@ class SpotifyPlugin(RunLoopMixin):
 
     @authenticated
     def get_playlist(self, index):
-        playlists = self.manager.get_playlists()
+        playlists = self.client.get_playlists()
         if len(playlists) < index + 1:
             return MessageContainer(
                 header = "Error Retrieving Playlist",
@@ -202,7 +207,7 @@ class SpotifyPlugin(RunLoopMixin):
             for album in albums:
                 self.add_album_to_directory(album, directory)
             completion(directory)
-        self.browsers[uri] = self.manager.browse_artist(artist, browse_finished)
+        self.browsers[uri] = self.client.browse_artist(artist, browse_finished)
 
     @authenticated
     def get_album_tracks(self, uri, completion):
@@ -221,7 +226,7 @@ class SpotifyPlugin(RunLoopMixin):
             for track in tracks:
                 self.add_track_to_directory(track, directory)
             completion(directory)
-        self.browsers[uri] = self.manager.browse_album(album, browse_finished)
+        self.browsers[uri] = self.client.browse_album(album, browse_finished)
 
     @authenticated
     def get_playlists(self):
@@ -229,7 +234,7 @@ class SpotifyPlugin(RunLoopMixin):
         directory = ObjectContainer(
             title2 = "Playlists",
             view_group = ViewMode.Playlists)
-        playlists = self.manager.get_playlists()
+        playlists = self.client.get_playlists()
         for playlist in playlists:
             no_tracks = len(playlist)
             if not no_tracks:
@@ -253,7 +258,7 @@ class SpotifyPlugin(RunLoopMixin):
         directory = ObjectContainer(
             title2 = "Favourites",
             view_group = ViewMode.Tracks)
-        starred = list(self.manager.get_starred_tracks())
+        starred = list(self.client.get_starred_tracks())
         for track in starred:
             self.add_track_to_directory(track, directory)
         return directory
@@ -277,7 +282,7 @@ class SpotifyPlugin(RunLoopMixin):
             for album in results.albums() if albums else ():
                 self.add_album_to_directory(album, directory)
             completion(directory)
-        self.manager.search(query, search_finished)
+        self.client.search(query, search_finished)
 
     @authenticated
     def search_menu(self):
