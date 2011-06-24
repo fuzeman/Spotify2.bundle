@@ -18,7 +18,7 @@ class ViewMode(object):
         plugin.AddViewGroup(cls.Playlists, "List", "items")
 
 
-class SpotifyPlugin(object):
+class SpotifyPlugin(RunLoopMixin):
     ''' The main spotify plugin class '''
 
     def __init__(self, ioloop):
@@ -44,34 +44,25 @@ class SpotifyPlugin(object):
     def password(self):
         return Prefs["password"]
 
-    @property
-    def access_denied_message(self):
-        if self.is_logging_in:
-            return MessageContainer(
-                header = "Login in Progress",
-                message = "We're still trying to open a Spotify session..."
-            )
-        else:
-            return MessageContainer(
-                header = 'Login Failed',
-                message = 'Check your email and password in the preferences'
-            )
-
     def preferences_updated(self):
         if not self.manager:
             self.start_session_manager()
         elif self.manager.needs_restart(self.username, self.password):
-            Log("Scheduling plugin restart with updated user details")
-            Thread.CreateTimer(1, self.restart)
+            self.restart()
         else:
             Log("User details unchanged")
 
     def restart(self):
+        ''' Restart the plugin to pick up new authentication details
+
+        Note: don't restart inline since it will make the framework barf.
+        Instead schedule a callback on the ioloop's next tick
+        '''
+        Log("Restarting plugin")
         if self.manager:
-            self.manager.stop()
-        if self.server:
-            self.server.stop()
-        HTTP.Request(RESTART_URL, immediate = True)
+            self.manager.disconnect()
+        callback = lambda: HTTP.Request(RESTART_URL, immediate = True)
+        self.invoke_async(callback)
 
     def start_session_manager(self):
         if not self.username or not self.password:
