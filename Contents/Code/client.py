@@ -255,14 +255,14 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         ''' libspotify callback when new metadata arrives '''
         self.log("Metadata update", debug = True)
 
-    def log_message(self, sess, data):
+    def log_message(self, sess, message):
         ''' libspotify callback for system messages '''
-        self.log("Message (%s)" % data)
+        self.log("Message (%s)" % message.strip())
 
     def connection_error(self, sess, error):
         ''' libspotify callback for connection errors '''
         if error is not None:
-            self.log("Connection error (%s)" % error)
+            self.log("Connection error (%s)" % error.strip())
 
     def message_to_user(self, sess, message):
         ''' libspotify callback for user messages '''
