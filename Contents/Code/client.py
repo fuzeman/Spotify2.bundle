@@ -140,7 +140,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
 
     def stop_playback(self):
         ''' Stop playing the current stream '''
-        if not self.audio_converter:
+        if self.audio_converter is None:
             return
         self.log("Stop playback")
         self.cleanup()
