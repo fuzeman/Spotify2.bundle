@@ -1,7 +1,7 @@
 '''
 Spotify client
 '''
-from settings import PLUGIN_ID, DEBUG, POLL_INTERVAL, POLL_TIMEOUT
+from settings import PLUGIN_ID, POLL_INTERVAL, POLL_TIMEOUT
 from spotify.manager import SpotifySessionManager
 from spotify import Link, connect
 from time import time, sleep

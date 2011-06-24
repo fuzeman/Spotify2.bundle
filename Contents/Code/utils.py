@@ -1,10 +1,8 @@
 '''
-Common utility functions
+Utility classes / functions
 '''
-from settings import SEND_QUEUE_SIZE
 from os import pipe, fdopen
 from time import sleep
-from Queue import Queue
 from time import time
 from threading import Event
 import aifc
