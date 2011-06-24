@@ -50,7 +50,8 @@ class SpotifyHandler(RequestHandler):
     def decode_spotify_uri(self, spotify_uri):
         ''' Return a decoded spotify URI
 
-        Assumes that any uri starting with the string 'spotify' is pre-decoded.
+        Assumes that any uri starting with the string 'spotify' is pre-decoded
+        so it's easy to test handlers using curl.
 
         :param spotify_uri:   The URI string to decode.
         '''
