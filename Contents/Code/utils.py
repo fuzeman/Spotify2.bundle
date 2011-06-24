@@ -18,14 +18,8 @@ class IOLoopProxy(object):
     IOLoop and wait for the responses synchronously.
     '''
 
-    class AsyncFuture(object):
-        ''' Invokes callbacks on the IOLoop with a completion callback
-
-        Callbacks invoked using an AsyncFuture instance should accept
-        a parameter named 'completion' which should be invoked when the
-        task completes to unblock the caller.
-        '''
-
+    class FutureBase(object):
+        ''' Base class for "Future" implementations '''
         def __init__(self, callback, args, kwargs):
             self.finished = Event()
             self.callback = callback
@@ -33,13 +27,6 @@ class IOLoopProxy(object):
             self.kwargs = kwargs
             self.exc_info = None
             self.result = None
-
-        def __call__(self):
-            try:
-                self.kwargs["completion"] = self.finish
-                self.callback(*self.args, **self.kwargs)
-            except Exception:
-                self.handle_exception()
 
         def finish(self, result):
             self.result = result
@@ -55,20 +42,33 @@ class IOLoopProxy(object):
                 raise self.exc_info[1], None, self.exc_info[2]
             return self.result
 
-    class Future(AsyncFuture):
-        ''' Invokes callbacks on the IOLoop and waits for the result '''
+    class AsyncFuture(FutureBase):
+        ''' Invokes async calls on the IOLoop with a completion callback
 
+        Callbacks invoked using an AsyncFuture instance should accept
+        a parameter named 'completion' which should be invoked when the
+        task completes to unblock the caller.
+        '''
+        def __call__(self):
+            try:
+                self.kwargs["completion"] = self.finish
+                self.callback(*self.args, **self.kwargs)
+            except Exception:
+                self.handle_exception()
+
+    class Future(FutureBase):
+        ''' Invokes sync calls on the IOLoop and waits for the result '''
         def __call__(self):
             try:
                 self.finish(self.callback(*self.args, **self.kwargs))
             except Exception:
                 self.handle_exception()
 
-    class Timeout(Exception):
-        ''' Exception thrown when a callback times out '''
-        pass
-
     def __init__(self, ioloop):
+        ''' Initializer
+
+        :param ioloop:       The tornado ioloop to bounce calls to.
+        '''
         self.ioloop = ioloop
 
     def invoke(self, callback, args = (), kwargs = {},
