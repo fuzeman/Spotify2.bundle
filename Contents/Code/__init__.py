@@ -18,7 +18,13 @@ def plugin_callback(method, async = False, **kwargs):
     To simplify things we bounce these calls to the reactor thread
     and wait on a signal for them to return.  This way we don't have to
     lock things all over the place which would be needed because libspotify
-    is not thread-safe.
+    is not thread-safe.  By passing everything through this function
+    our entire plugin can be single-threaded.
+
+    :param method:     The method on the SpotifyPlugin class to call.
+    :param async:      Indicates if the method is asynchronous
+                       (see the documentation for IOLoopProxy)
+    :param kwargs:     A dictionary of keyward args to pass to the method.
     '''
     global plugin, runloop
     callback = lambda *a, **kw: method(plugin, *a, **kw)
