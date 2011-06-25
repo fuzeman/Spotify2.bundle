@@ -99,14 +99,18 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         return self.browse_album(album, browse_finished)
 
     def get_playlists(self):
-        ''' Return the user's playlists ordered by name
+        ''' Return the user's playlists
+        The playlists will be ordered by name if it is set in preferences.
 
         TODO this should be made async with a callback rather than assuming
         playlists are loaded (will fail if they aren't right now).
         '''
         self.log("Get playlists")
         lists = list(self.session.playlist_container()) if self.session else []
-        return sorted(assert_loaded(lists), key = lambda l: l.name())
+        if Prefs["sortPlaylists"]:
+            return sorted(assert_loaded(lists), key = lambda l: l.name())
+        else:
+            return assert_loaded(lists)
 
     def get_starred_tracks(self):
         ''' Return the user's starred tracks
