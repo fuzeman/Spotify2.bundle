@@ -4,6 +4,7 @@
   "PREFS_TITLE"                   : "Spotify Preferences",
   "PREF_USERNAME"                 : "Username",
   "PREF_PASSWORD"                 : "Password",
+  "PREF_SORTPLAYLISTS"            : "Whether or not to sort the playlists by name",
   "PREF_ROOTPLAYLISTS"            : "Show all playlists in the main menu",
   "PREF_SOCKTIMEOUT"              : "Connection timeout (seconds)",
   "PREF_RESET_BAD_URIS"           : "Forget broken links",

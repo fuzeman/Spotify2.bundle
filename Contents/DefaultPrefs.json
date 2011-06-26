@@ -11,5 +11,10 @@
     "option": "hidden",
     "label": "PREF_PASSWORD",
     "default": ""
+  }, {
+    "id": "sortPlaylists",
+    "type": "bool",
+    "label": "PREF_SORTPLAYLISTS",
+    "default": "false"
   }
 ]
