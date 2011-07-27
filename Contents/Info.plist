@@ -22,5 +22,7 @@
     <string>Daemon</string>
     <key>PlexPluginCodePolicy</key>
     <string>Elevated</string>
+    <key>PlexClientPlatforms</key>
+    <string>MacOSX</string>
   </dict>
 </plist>
