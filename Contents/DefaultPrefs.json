@@ -1,20 +1,27 @@
 [
-  {
-    "id": "username",
-    "type": "text",
-    "label": "PREF_USERNAME",
-    "default": ""
-  },
-  {
-    "id": "password",
-    "type": "text",
-    "option": "hidden",
-    "label": "PREF_PASSWORD",
-    "default": ""
-  }, {
-    "id": "sortPlaylists",
-    "type": "bool",
-    "label": "PREF_SORTPLAYLISTS",
-    "default": "false"
-  }
+    {
+        "id": "username",
+        "type": "text",
+        "label": "PREF_USERNAME",
+        "default": ""
+    },
+    {
+        "id": "password",
+        "type": "text",
+        "option": "hidden",
+        "label": "PREF_PASSWORD",
+        "default": ""
+    },
+    {
+        "id": "sortPlaylists",
+        "type": "bool",
+        "label": "PREF_SORTPLAYLISTS",
+        "default": "false"
+    },
+    {
+        "id": "displayAlbumYear",
+        "type": "bool",
+        "label": "PREF_SHOWALBUMYEAR",
+        "default": "false"
+    }
 ]

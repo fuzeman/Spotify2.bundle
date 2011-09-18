@@ -144,9 +144,12 @@ class SpotifyPlugin(RunLoopMixin):
     def create_album_object(self, album):
         ''' Factory method for album objects '''
         album_uri = str(Link.from_album(album))
+        title = album.name().decode("utf-8")
+        if Prefs["displayAlbumYear"] and album.year() != 0:
+            title = "%s (%s)" % (title, album.year())
         return DirectoryObject(
             key = Callback(self.get_album_tracks, uri = album_uri),
-            title = album.name().decode("utf-8"),
+            title = title,
             thumb = self.server.get_art_url(album_uri)
         )
 
