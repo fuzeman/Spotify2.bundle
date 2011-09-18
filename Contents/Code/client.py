@@ -166,8 +166,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         if self.audio_converter is None:
             return
         self.log("Stop playback")
+        self.session.play(0)
         self.cleanup()
-        self.session.unload()
         self.log("Playback stopped")
 
     def load_image(self, image_id):
@@ -304,10 +304,6 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
     def music_delivery(self, session, frames, frame_size, num_frames,
                        sample_type, sample_rate, channels):
         ''' Called when libspotify has audio data ready for consumption '''
-
-        self.log("here")
-        if not self.audio_converter:
-            return 0
         try:
             frames_converted = self.audio_converter.convert(frames, num_frames)
             if not self.audio_callback(self.audio_converter.get_pending_data()):
