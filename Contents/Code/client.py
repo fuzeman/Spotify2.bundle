@@ -47,8 +47,6 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
 
     def needs_restart(self, username, password):
         ''' Determines if the library should be restarted '''
-        print "Existing: %s : %s" % (self.username, self.password)
-        print "New: %s : %s" % (username, password)
         return self.username != username \
             or self.password != password
 
