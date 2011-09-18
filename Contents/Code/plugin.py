@@ -5,7 +5,7 @@ from client import SpotifyClient
 from settings import PLUGIN_ID, RESTART_URL
 from spotify import Link
 from server import SpotifyServer
-from utils import RunLoopMixin, assert_loaded
+from utils import RunLoopMixin, assert_loaded, localized_format
 from urllib import urlopen
 
 
@@ -31,17 +31,17 @@ def authenticated(func):
         def access_denied_message(self, client):
             if not client:
                 return MessageContainer(
-                    header = "Authentication Details Missing",
-                    message = "No username and password have been configured"
+                    header = L("MSG_TITLE_MISSING_LOGIN"),
+                    message = L("MSG_BODY_MISSING_LOGIN")
                 )
             elif client.is_logging_in():
                 return MessageContainer(
-                    header = "Login in Progress",
-                    message = "We're still trying to open a Spotify session..."
+                    header = L("MSG_TITLE_LOGIN_IN_PROGRESS"),
+                    message = L("MSG_BODY_LOGIN_IN_PROGRESS")
                 )
             else:
                 return MessageContainer(
-                    header = 'Login Failed',
+                    header = L("MSG_TITLE_LOGIN_FAILED"),
                     message = client.login_error
                 )
     return decorator()
@@ -180,8 +180,8 @@ class SpotifyPlugin(RunLoopMixin):
         playlists = self.client.get_playlists()
         if len(playlists) < index + 1:
             return MessageContainer(
-                header = "Error Retrieving Playlist",
-                message = "The selected playlist details could not be found"
+                header = L("MSG_TITLE_PLAYLIST_ERROR"),
+                message = L("MSG_BODY_PLAYIST_ERROR")
             )
         playlist = playlists[index]
         tracks = list(playlist)
@@ -235,7 +235,7 @@ class SpotifyPlugin(RunLoopMixin):
     def get_playlists(self):
         Log("Get playlists")
         directory = ObjectContainer(
-            title2 = "Playlists",
+            title2 = L("MENU_PREFS"),
             view_group = ViewMode.Playlists)
         playlists = self.client.get_playlists()
         for playlist in playlists:
@@ -260,7 +260,7 @@ class SpotifyPlugin(RunLoopMixin):
         ''' Return a directory containing the user's starred tracks'''
         Log("Get starred tracks")
         directory = ObjectContainer(
-            title2 = "Starred",
+            title2 = L("MENU_STARRED"),
             view_group = ViewMode.Tracks)
         starred = list(self.client.get_starred_tracks())
         for track in starred:
@@ -287,11 +287,12 @@ class SpotifyPlugin(RunLoopMixin):
                 self.add_album_to_directory(album, result)
             if not len(result):
                 if len(results.did_you_mean()):
-                    message = "Did you mean '%s'?" % results.did_you_mean()
+                    message = localized_format(
+                        "MSG_FMT_DID_YOU_MEAN", results.did_you_mean())
                 else:
-                    message = "No matches for search '%s'..." % query
+                    message = localized_format("MSG_FMT_NO_RESULTS", query)
                 result = MessageContainer(
-                    header = "No results", message = message)
+                    header = L("MSG_TITLE_NO_RESULTS"), message = message)
             completion(result)
         self.client.search(query, search_finished)
 
@@ -299,18 +300,18 @@ class SpotifyPlugin(RunLoopMixin):
     def search_menu(self):
         Log("Search menu")
         return ObjectContainer(
-            title2 = "Search",
+            title2 = L("MENU_SEARCH"),
             objects = [
                 InputDirectoryObject(
                     key = Callback(self.search, albums = True),
-                    prompt = L("Search for Albums"),
-                    title = L('Search Albums'),
+                    prompt = L("PROMPT_ALBUM_SEARCH"),
+                    title = L("MENU_ALBUM_SEARCH"),
                     thumb = R("icon-default.png")
                 ),
                 InputDirectoryObject(
                     key = Callback(self.search, artists = True),
-                    prompt = L("Search for Artists"),
-                    title = L('Search Artists'),
+                    prompt = L("PROMPT_ARTIST_SEARCH"),
+                    title = L("MENU_ARTIST_SEARCH"),
                     thumb = R("icon-default.png")
                 )
             ],
@@ -322,21 +323,21 @@ class SpotifyPlugin(RunLoopMixin):
             objects = [
                 DirectoryObject(
                     key = Callback(self.get_playlists),
-                    title = L('Playlists'),
+                    title = L("MENU_PLAYLISTS"),
                     thumb = R("icon-default.png")
                 ),
                 DirectoryObject(
                     key = Callback(self.search_menu),
-                    title = L('Search'),
+                    title = L("MENU_SEARCH"),
                     thumb = R("icon-default.png")
                 ),
                 DirectoryObject(
                     key = Callback(self.get_starred_tracks),
-                    title = L('Favourites'),
+                    title = L("MENU_STARRED"),
                     thumb = R("icon-default.png")
                 ),
                 PrefsObject(
-                    title = L('Preferences...'),
+                    title = L("MENU_PREFS"),
                     thumb = R("icon-default.png")
                 )
             ],

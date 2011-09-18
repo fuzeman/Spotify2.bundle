@@ -240,3 +240,9 @@ def assert_loaded(objects):
         if not instance.is_loaded():
             raise NotReadyError()
     return objects
+
+
+def localized_format(key, args):
+    ''' Return the a localized string formatted with the given args '''
+    return str(L(key)) % args
+
