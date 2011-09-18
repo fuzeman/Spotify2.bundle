@@ -6,6 +6,7 @@ from settings import PLUGIN_ID, RESTART_URL
 from spotify import Link
 from server import SpotifyServer
 from utils import RunLoopMixin, assert_loaded
+from urllib import urlopen
 
 
 def authenticated(func):
@@ -97,8 +98,7 @@ class SpotifyPlugin(RunLoopMixin):
         Log("Restarting plugin")
         if self.client:
             self.client.disconnect()
-        callback = lambda: HTTP.Request(RESTART_URL, immediate = True)
-        self.invoke_async(callback)
+        self.schedule_timer(0.2, lambda: urlopen(RESTART_URL))
 
     def start(self):
         ''' Start the Spotify client and HTTP server '''
