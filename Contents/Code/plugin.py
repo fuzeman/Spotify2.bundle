@@ -238,7 +238,8 @@ class SpotifyPlugin(RunLoopMixin):
         for playlist in playlists:
             no_tracks = len(playlist)
             if not no_tracks:
-                Log("Ignoring empty playlist: %s", playlist.name())
+                # more than likely this is a playlist folder which
+                # we can't handle until PySpotify supports them.
                 continue
             index = playlists.index(playlist)
             directory.add(
