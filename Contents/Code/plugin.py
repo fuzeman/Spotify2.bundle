@@ -257,7 +257,7 @@ class SpotifyPlugin(RunLoopMixin):
         ''' Return a directory containing the user's starred tracks'''
         Log("Get starred tracks")
         directory = ObjectContainer(
-            title2 = "Favourites",
+            title2 = "Starred",
             view_group = ViewMode.Tracks)
         starred = list(self.client.get_starred_tracks())
         for track in starred:
