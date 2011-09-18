@@ -47,6 +47,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
 
     def needs_restart(self, username, password):
         ''' Determines if the library should be restarted '''
+        print "Existing: %s : %s" % (self.username, self.password)
+        print "New: %s : %s" % (username, password)
         return self.username != username \
             or self.password != password
 
@@ -304,6 +306,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
     def music_delivery(self, session, frames, frame_size, num_frames,
                        sample_type, sample_rate, channels):
         ''' Called when libspotify has audio data ready for consumption '''
+
+        self.log("here")
         if not self.audio_converter:
             return 0
         try:

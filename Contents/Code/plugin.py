@@ -274,7 +274,7 @@ class SpotifyPlugin(RunLoopMixin):
         '''
         params = "%s: %s" % ("artists" if artists else "albums", query)
         Log("Search for %s" % params)
-        def search_finished(results):
+        def search_finished(results, userdata):
             Log("Search completed: %s" % params)
             directory = ObjectContainer(title2 = "Results")
             for artist in results.artists() if artists else ():
