@@ -167,7 +167,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             return
         self.log("Stop playback")
         self.cleanup()
-        # self.session.unload() // FIXME: unloading crashes for some reason
+        self.session.unload()
+        self.log("Playback stopped")
 
     def load_image(self, image_id):
         ''' Load an image from an image id
