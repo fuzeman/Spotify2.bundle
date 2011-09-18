@@ -277,12 +277,19 @@ class SpotifyPlugin(RunLoopMixin):
         Log("Search for %s" % params)
         def search_finished(results, userdata):
             Log("Search completed: %s" % params)
-            directory = ObjectContainer(title2 = "Results")
+            result = ObjectContainer(title2 = "Results")
             for artist in results.artists() if artists else ():
-                self.add_artist_to_directory(artist, directory)
+                self.add_artist_to_directory(artist, result)
             for album in results.albums() if albums else ():
-                self.add_album_to_directory(album, directory)
-            completion(directory)
+                self.add_album_to_directory(album, result)
+            if not len(result):
+                if len(results.did_you_mean()):
+                    message = "Did you mean '%s'?" % results.did_you_mean()
+                else:
+                    message = "No matches for search '%s'..." % query
+                result = MessageContainer(
+                    header = "No results", message = message)
+            completion(result)
         self.client.search(query, search_finished)
 
     @authenticated
