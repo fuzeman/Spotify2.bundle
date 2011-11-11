@@ -3,7 +3,7 @@ Spotify client
 '''
 from settings import PLUGIN_ID, POLL_INTERVAL, POLL_TIMEOUT
 from spotify.manager import SpotifySessionManager
-from spotify import Link, connect
+from spotify import Link, PlaylistFolder, connect
 from time import time, sleep
 from utils import RunLoopMixin, PCMToAIFFConverter, assert_loaded
 
@@ -36,6 +36,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.stop_callback = None
         self.audio_callback = None
         self.audio_converter = None
+        self.playlist_folders = {}
 
     ''' Public methods (names with unscores are disallowed by Plex) '''
 
@@ -72,9 +73,9 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         ''' Check if a track can be played by a client or not '''
         playable = True
         assert_loaded(track)
-        if self.session.is_local(track):
+        if track.is_local():
             playable = False
-        elif not self.session.is_available(track):
+        elif not track.availability():
             playable = False
         return playable
 
@@ -98,19 +99,16 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             callback(str(art.data()))
         return self.browse_album(album, browse_finished)
 
-    def get_playlists(self):
+    def get_playlists(self, folder_id = 0):
         ''' Return the user's playlists
-        The playlists will be ordered by name if it is set in preferences.
 
-        TODO this should be made async with a callback rather than assuming
-        playlists are loaded (will fail if they aren't right now).
+        :param folder_id       The id of the playlist folder to return.
         '''
-        self.log("Get playlists")
-        lists = list(self.session.playlist_container()) if self.session else []
-        if Prefs["sortPlaylists"]:
-            return sorted(assert_loaded(lists), key = lambda l: l.name())
-        else:
-            return assert_loaded(lists)
+        self.log("Get playlists (folder id: %s)" % folder_id)
+        result = []
+        if folder_id in self.playlist_folders:
+            result = self.playlist_folders[folder_id]
+        return result
 
     def get_starred_tracks(self):
         ''' Return the user's starred tracks
@@ -265,6 +263,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         else:
             self.log("Logged in")
             self.session = session
+            self.session.playlist_container().add_loaded_callback(
+                self.playlists_loaded_callback)
 
     def logged_out(self, session):
         ''' libspotiy callback for logout requests '''
@@ -273,6 +273,26 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.log("Logged out")
         self.session = None
         self.cancel_timer(self.timer)
+
+    def playlists_loaded_callback(self, container, userinfo):
+        ''' Callback invoked when playlists are loaded '''
+        current_folder = []
+        folder_stack = []
+        folder_map = {
+            0 : current_folder
+        }
+        for playlist in list(self.session.playlist_container()):
+            if isinstance(playlist, PlaylistFolder):
+                if playlist.type() == "folder_start":
+                    folder_stack.append(current_folder)
+                    current_folder.append(playlist)
+                    current_folder = []
+                    folder_map[playlist.id()] = current_folder
+                elif playlist.type() == "folder_end":
+                    current_folder = folder_stack.pop()
+            else:
+                current_folder.append(playlist)
+        self.playlist_folders = folder_map
 
     def end_of_track(self, session):
         ''' libspotify callback for when the current track ends '''

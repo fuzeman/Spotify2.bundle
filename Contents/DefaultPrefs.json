@@ -13,12 +13,6 @@
         "default": ""
     },
     {
-        "id": "sortPlaylists",
-        "type": "bool",
-        "label": "PREF_SORTPLAYLISTS",
-        "default": "false"
-    },
-    {
         "id": "displayAlbumYear",
         "type": "bool",
         "label": "PREF_SHOWALBUMYEAR",

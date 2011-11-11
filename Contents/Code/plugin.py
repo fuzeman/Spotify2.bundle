@@ -3,7 +3,7 @@ Spotify plugin
 '''
 from client import SpotifyClient
 from settings import PLUGIN_ID, RESTART_URL
-from spotify import Link
+from spotify import Link, PlaylistFolder
 from server import SpotifyServer
 from utils import RunLoopMixin, assert_loaded, localized_format
 from urllib import urlopen
@@ -133,6 +133,7 @@ class SpotifyPlugin(RunLoopMixin):
                 )
             ],
             key = track.name().decode("utf-8"),
+            rating_key = track.name().decode("utf-8"),
             title = track.name().decode("utf-8"),
             album = track.album().name().decode("utf-8"),
             artist = ", ".join(artists),
@@ -176,8 +177,8 @@ class SpotifyPlugin(RunLoopMixin):
         )
 
     @authenticated
-    def get_playlist(self, index):
-        playlists = self.client.get_playlists()
+    def get_playlist(self, folder_id, index):
+        playlists = self.client.get_playlists(folder_id)
         if len(playlists) < index + 1:
             return MessageContainer(
                 header = L("MSG_TITLE_PLAYLIST_ERROR"),
@@ -232,27 +233,27 @@ class SpotifyPlugin(RunLoopMixin):
         self.browsers[uri] = self.client.browse_album(album, browse_finished)
 
     @authenticated
-    def get_playlists(self):
+    def get_playlists(self, folder_id = 0):
         Log("Get playlists")
         directory = ObjectContainer(
             title2 = L("MENU_PREFS"),
             view_group = ViewMode.Playlists)
-        playlists = self.client.get_playlists()
+        playlists = self.client.get_playlists(folder_id)
         for playlist in playlists:
-            no_tracks = len(playlist)
-            if not no_tracks:
-                # more than likely this is a playlist folder which
-                # we can't handle until PySpotify supports them.
-                continue
             index = playlists.index(playlist)
+            if isinstance(playlist, PlaylistFolder):
+                callback = Callback(
+                    self.get_playlists, folder_id = playlist.id())
+            else:
+                callback = Callback(
+                    self.get_playlist, folder_id = folder_id, index = index)
             directory.add(
                 DirectoryObject(
-                    key = Callback(self.get_playlist, index = index),
+                    key = callback,
                     title = playlist.name().decode("utf-8"),
                     thumb = R("placeholder-playlist.png")
                 )
             )
-        Log("Got playlists")
         return directory
 
     @authenticated

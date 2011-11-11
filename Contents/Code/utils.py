@@ -233,12 +233,17 @@ class NotReadyError(Exception):
     pass
 
 
-def assert_loaded(objects):
-    ''' Wait until libspotify objects are loaded and ready to use '''
-    instances = [objects] if hasattr(objects, "is_loaded") else objects
+def are_loaded(instances):
     for instance in instances:
         if not instance.is_loaded():
-            raise NotReadyError()
+            return False
+    return True
+
+
+def assert_loaded(objects):
+    ''' Wait until libspotify objects are loaded and ready to use '''
+    if not are_loaded([objects] if hasattr(objects, "is_loaded") else objects):
+        raise NotReadyError()
     return objects
 
 
