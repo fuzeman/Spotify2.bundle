@@ -10,6 +10,7 @@ from _spotify import Album
 from _spotify import Link
 from _spotify import Results
 from _spotify import Playlist
+from _spotify import PlaylistFolder
 from _spotify import PlaylistContainer
 from _spotify import AlbumBrowser
 from _spotify import ArtistBrowser
