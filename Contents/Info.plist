@@ -20,6 +20,8 @@
     <string>Info</string>
     <key>PlexPluginMode</key>
     <string>Daemon</string>
+    <key>PlexClientPlatforms</key>
+    <string>*</string>
     <key>PlexPluginCodePolicy</key>
     <string>Elevated</string>
   </dict>
