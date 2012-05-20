@@ -204,7 +204,7 @@ class SpotifyPlugin(RunLoopMixin):
         artist = Link.from_string(uri).as_artist()
         def browse_finished(browser):
             del self.browsers[uri]
-            albums = list(browser)
+            albums = browser.albums()
             directory = ObjectContainer(
                 title2 = artist.name().decode("utf-8"),
                 view_group = ViewMode.Tracks)

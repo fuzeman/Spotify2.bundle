@@ -141,11 +141,11 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
                                Should take the browser as a single parameter.
         '''
         link = Link.from_album(album)
-        def callback_wrapper(browser):
+        def callback_wrapper(browser, userdata):
             self.log("Album browse complete: %s" % link)
             callback(browser)
         self.log("Browse album: %s" % link)
-        browser = self.session.browse_album(album, callback_wrapper)
+        browser = AlbumBrowser(album, callback_wrapper)
         return browser
 
     def browse_artist(self, artist, callback):
@@ -156,11 +156,11 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
                                Should take the browser as a single parameter.
         '''
         link = Link.from_artist(artist)
-        def callback_wrapper(browser):
+        def callback_wrapper(browser, userdata):
             self.log("Artist browse complete: %s" % Link.from_artist(artist))
             callback(browser)
         self.log("Browse artist: %s" % link)
-        browser = self.session.browse_artist(artist, callback_wrapper)
+        browser = ArtistBrowser(artist, "no_tracks", callback_wrapper)
         return browser
 
     def stop_playback(self):
