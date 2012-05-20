@@ -99,6 +99,10 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             callback(str(art.data()))
         return self.browse_album(album, browse_finished)
 
+    def notify_main_thread(self, session=None):
+        self.log("Notify main thread", debug=True)
+        self.schedule_periodic_check(session or self.session)
+
     def get_playlists(self, folder_id = 0):
         ''' Return the user's playlists
 
@@ -241,9 +245,10 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
 
     def periodic_check(self, session):
         ''' Process pending Spotify events and schedule the next check '''
-        self.log("Processing events", debug = True)
-        timeout = session.process_events()
-        self.schedule_periodic_check(session, timeout / 1000.0)
+        self.log("Processing events", debug=True)
+        timeout = session.process_events() / 1000.0
+        self.log('Will wait %.3fs for next message' % timeout, debug=True)
+        self.schedule_periodic_check(session, timeout)
 
     def cleanup(self):
         ''' Cleanup after a track ends explicitly or implicitly '''
@@ -299,11 +304,6 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         ''' libspotify callback for when the current track ends '''
         self.log("Track ended")
         self.cleanup()
-
-    def wake(self, session):
-        ''' libspotify callback to wake the main thread '''
-        self.log("Waking main thread", debug = True)
-        self.schedule_periodic_check(session)
 
     def metadata_updated(self, sess):
         ''' libspotify callback when new metadata arrives '''
