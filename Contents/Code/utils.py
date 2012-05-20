@@ -113,7 +113,7 @@ class RunLoopMixin(object):
     def schedule_timer(self, delay, callback):
         deadline = time() + delay
         callback = self.wrap_callback(callback)
-        return self.ioloop.add_timeout(deadline, callback)
+        self.invoke_async(lambda: self.ioloop.add_timeout(deadline, callback))
 
     def cancel_timer(self, timer):
         self.ioloop.remove_timeout(timer)
