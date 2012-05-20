@@ -3,7 +3,7 @@ Spotify client
 '''
 from settings import PLUGIN_ID, POLL_INTERVAL, POLL_TIMEOUT
 from spotify.manager import SpotifySessionManager
-from spotify import Link, PlaylistFolder, connect
+from spotify import Link, connect, AlbumBrowser, ArtistBrowser
 from time import time, sleep
 from utils import RunLoopMixin, PCMToAIFFConverter, assert_loaded
 
@@ -282,14 +282,15 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             0 : current_folder
         }
         for playlist in list(self.session.playlist_container()):
-            if isinstance(playlist, PlaylistFolder):
-                if playlist.type() == "folder_start":
-                    folder_stack.append(current_folder)
-                    current_folder.append(playlist)
-                    current_folder = []
-                    folder_map[playlist.id()] = current_folder
-                elif playlist.type() == "folder_end":
-                    current_folder = folder_stack.pop()
+            if playlist.type() == "folder_start":
+                folder_stack.append(current_folder)
+                current_folder.append(playlist)
+                current_folder = []
+                folder_map[playlist.id()] = current_folder
+            elif playlist.type() == "folder_end":
+                current_folder = folder_stack.pop()
+            elif playlist.type() == "placeholder":
+                pass
             else:
                 current_folder.append(playlist)
         self.playlist_folders = folder_map

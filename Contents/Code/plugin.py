@@ -3,7 +3,7 @@ Spotify plugin
 '''
 from client import SpotifyClient
 from settings import PLUGIN_ID, RESTART_URL
-from spotify import Link, PlaylistFolder
+from spotify import Link
 from server import SpotifyServer
 from utils import RunLoopMixin, assert_loaded, localized_format
 from urllib import urlopen
@@ -241,7 +241,7 @@ class SpotifyPlugin(RunLoopMixin):
         playlists = self.client.get_playlists(folder_id)
         for playlist in playlists:
             index = playlists.index(playlist)
-            if isinstance(playlist, PlaylistFolder):
+            if playlist.type() in ['folder_start', 'folder_end', 'placeholder']:
                 callback = Callback(
                     self.get_playlists, folder_id = playlist.id())
             else:
