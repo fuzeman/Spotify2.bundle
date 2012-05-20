@@ -37,6 +37,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.audio_callback = None
         self.audio_converter = None
         self.playlist_folders = {}
+        self.images = {}
 
     ''' Public methods (names with unscores are disallowed by Plex) '''
 
@@ -94,9 +95,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             raise RuntimeError("Non album artwork not supported")
         album = link.as_album()
         def browse_finished(browser):
-            art = self.load_image(album.cover())
-            self.log("Artwork loaded: %s" % album)
-            callback(str(art.data()))
+            self.load_image(uri, album.cover(), callback)
         return self.browse_album(album, browse_finished)
 
     def notify_main_thread(self, session=None):
@@ -172,7 +171,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.cleanup()
         self.log("Playback stopped")
 
-    def load_image(self, image_id):
+    def load_image(self, uri, image_id, callback):
         ''' Load an image from an image id
 
         Note: this currently polls as I had trouble waiting for callbacks
@@ -180,8 +179,19 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
 
         :param image_id:         The spotify id of the image to load.
         '''
-        image = self.session.image_create(image_id)
-        return self.wait_until_loaded(image, POLL_TIMEOUT)
+        def callback_wrapper(image):
+            self.log("Image loaded: %s" % uri)
+            callback(str(image.data()))
+            if uri in self.images:
+                del self.images[uri]
+        self.log("Loading image: %s" % uri)
+        if image_id is not None:
+            image = self.images.get(uri, self.session.image_create(image_id))
+            image.add_load_callback(callback_wrapper)
+            self.images[uri] = image
+            return image
+        else:
+            callback(None)
 
     def load_track(self, uri):
         ''' Load a track from a spotify URI
