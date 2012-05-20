@@ -8,8 +8,8 @@
     "MENU_SEARCH"                   : "Search",
     "MENU_STARRED"                  : "Starred",
     "MENU_PREFS"                    : "Preferences",
-    "MENU_ALBUM_SEARCH"             : "Search by Album",
-    "MENU_ARTIST_SEARCH"            : "Search by Artist",
+    "MENU_ALBUM_SEARCH"             : "Search Albums",
+    "MENU_ARTIST_SEARCH"            : "Search Artists",
 
     "PROMPT_ALBUM_SEARCH"           : "Search for music by Album",
     "PROMPT_ARTIST_SEARCH"          : "Search for music by Artists",
