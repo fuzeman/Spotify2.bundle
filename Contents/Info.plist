@@ -14,5 +14,9 @@
 	<string>Elevated</string>
 	<key>PlexPluginLogLevel</key>
 	<string>Info</string>
+	<key>PlexPluginTesterFlags</key>
+	<array>
+		<string>NoURLServices</string>
+	</array>
 </dict>
 </plist>
