@@ -335,6 +335,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
     def music_delivery(self, session, frames, frame_size, num_frames,
                        sample_type, sample_rate, channels):
         ''' Called when libspotify has audio data ready for consumption '''
+        if num_frames == 0:
+            return 0
         try:
             frames_converted = self.audio_converter.convert(frames, num_frames)
             if not self.audio_callback(self.audio_converter.get_pending_data()):
