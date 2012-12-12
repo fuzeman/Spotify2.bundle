@@ -22,6 +22,13 @@ class SpotifySessionManager(object):
           the re-login feature. The blob is obtained from the
           :meth:`credentials_blob_updated` callback after a successful
           login to the Spotify AP.
+
+    When behind a proxy, the application can specify:
+        - `proxy`: url to the proxy server that should be used. The format
+            is ``protocol://<host>:port`` (where protocol is
+            ``http/https/socks4/socks5``)
+        - `proxy_username`: username to authenticate with the proxy server.
+        - `proxy_password`: password to authenticate with the proxy server.
     """
 
     api_version = spotify.api_version
@@ -32,11 +39,15 @@ class SpotifySessionManager(object):
     user_agent = 'pyspotify-example'
 
     def __init__(self, username=None, password=None, remember_me=False,
-                 login_blob=''):
+                 login_blob='', proxy=None, proxy_username=None,
+                 proxy_password=None):
         self._cmdqueue = Queue.Queue()
         self.username = username
         self.password = password
         self.remember_me = remember_me
+        self.proxy = proxy
+        self.proxy_username = proxy_username
+        self.proxy_password = proxy_password
         self.login_blob = login_blob
         if self.application_key is None:
             self.application_key = open(self.appkey_file).read()
@@ -70,7 +81,7 @@ class SpotifySessionManager(object):
                         session, *message['args'])
                     message['reply_to'].put(num_frames)
                 elif message.get('command') == 'process_events':
-                    logger.info('Got message; processing events')
+                    logger.debug('Got message; processing events')
                     timeout = session.process_events() / 1000.0
                     logger.debug('Will wait %.3fs for next message', timeout)
                 elif message.get('command') == 'disconnect':
