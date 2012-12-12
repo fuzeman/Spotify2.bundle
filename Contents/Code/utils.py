@@ -223,7 +223,7 @@ class PCMToAIFFConverter(object):
             *struct.unpack('<' + str(len(frames)/2) + 'H', frames))
         self.track.add_played_frames(frame_count)
         if not self.track.is_finished:
-          self.aiff_stream.writeframesraw(data)
+            self.aiff_stream.writeframesraw(data)
         return frame_count
 
     def get_pending_data(self):
