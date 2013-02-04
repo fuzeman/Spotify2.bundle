@@ -1,6 +1,7 @@
 '''
 Spotify client
 '''
+from Queue import Queue, Empty
 from settings import PLUGIN_ID, POLL_INTERVAL, POLL_TIMEOUT
 from spotify.manager import SpotifySessionManager
 from spotify import Link, connect, AlbumBrowser, ArtistBrowser
@@ -17,6 +18,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
     so that it is not necessary to lock non thread-safe code.
     '''
 
+    audio_buffer_size = 50
     user_agent = PLUGIN_ID
     application_key = Resource.Load('spotify_appkey.key')
 
@@ -34,7 +36,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.login_error = None
         self.logging_in = False
         self.stop_callback = None
-        self.audio_callback = None
+        self.audio_buffer = None
         self.audio_converter = None
         self.playlist_folders = {}
         self.images = {}
@@ -98,10 +100,6 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             self.load_image(uri, album.cover(), callback)
         return self.browse_album(album, browse_finished)
 
-    def notify_main_thread(self, session=None):
-        self.log("Notify main thread", debug=True)
-        self.schedule_periodic_check(session or self.session)
-
     def get_playlists(self, folder_id = 0):
         ''' Return the user's playlists
 
@@ -130,7 +128,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
                                Should take the results list as a parameter.
         '''
         self.log("Search (query = %s)" % query)
-        search = self.session.search(query = query, callback = callback)
+        return self.session.search(query = query, callback = callback)
 
     def browse_album(self, album, callback):
         ''' Browse an album, invoking the callback when done
@@ -144,8 +142,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             self.log("Album browse complete: %s" % link)
             callback(browser)
         self.log("Browse album: %s" % link)
-        browser = AlbumBrowser(album, callback_wrapper)
-        return browser
+        return AlbumBrowser(album, callback_wrapper)
 
     def browse_artist(self, artist, callback):
         ''' Browse an artist, invoking the callback when done
@@ -162,22 +159,12 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         browser = ArtistBrowser(artist, "no_tracks", callback_wrapper)
         return browser
 
-    def stop_playback(self):
-        ''' Stop playing the current stream '''
-        if self.audio_converter is None:
-            return
-        self.log("Stop playback")
-        self.session.play(0)
-        self.cleanup()
-        self.log("Playback stopped")
-
     def load_image(self, uri, image_id, callback):
         ''' Load an image from an image id
 
-        Note: this currently polls as I had trouble waiting for callbacks
-        when loading images
-
-        :param image_id:         The spotify id of the image to load.
+        :param image_id:       The spotify id of the image to load.
+        :param callback:       A callback to invoke when the image is loaded.
+                               Should take the image as a single parameter.
         '''
         def callback_wrapper(image):
             self.log("Image loaded: %s" % uri)
@@ -218,9 +205,23 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         self.stop_playback()
         self.session.load(track)
         self.session.play(True)
-        self.audio_converter = PCMToAIFFConverter(track)
-        self.audio_callback = audio_callback
+        self.audio_converter = PCMToAIFFConverter(track, audio_callback)
+        self.audio_buffer = Queue()
         self.stop_callback = stop_callback
+
+    def stop_playback(self):
+        ''' Stop playing the current stream '''
+        if self.audio_converter is None:
+            return
+        self.log("Stop playback")
+        if self.stop_callback is not None:
+            self.stop_callback()
+        self.session.play(0)
+        self.session.unload()
+        self.stop_callback = None
+        self.audio_converter = None
+        self.audio_buffer = None
+        self.log("Playback stopped")
 
     ''' Utility methods '''
 
@@ -233,7 +234,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         start = time()
         while not spotify_object.is_loaded() and start > time() - timeout:
             message = "Waiting for spotify object: %s" % spotify_object
-            self.log(message, debug = True)
+            self.log(message)
             self.session.process_events()
             sleep(POLL_INTERVAL)
         assert_loaded(spotify_object)
@@ -248,26 +249,42 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         message = "SPOTIFY: %s" % message
         Log.Debug(message) if debug else Log(message)
 
+    def run_on_main_thread(self, callback):
+        ''' Bound a call to the main thread '''
+        self.invoke_async(callback)
+
     def schedule_periodic_check(self, session, timeout = 0):
-        ''' Schedules the next periodic Spotify event processing call '''
-        callback = lambda: self.periodic_check(session)
+        ''' Schedules the next periodic Spotify event processing call
+
+        Must be called from the IO loop thread.
+        '''
+        def callback():
+            self.timer = None
+            self.process_events(session)
+        self.cancel_periodic_check()
+        self.log('Processing next messsage in %.3fs' % timeout, debug=True)
         self.timer = self.schedule_timer(timeout, callback)
 
-    def periodic_check(self, session):
+    def cancel_periodic_check(self):
+        if self.timer is not None:
+            self.cancel_timer(self.timer)
+            self.timer = None
+
+    def process_events(self, session):
         ''' Process pending Spotify events and schedule the next check '''
         self.log("Processing events", debug=True)
-        timeout = session.process_events() / 1000.0
-        self.log('Will wait %.3fs for next message' % timeout, debug=True)
+        self.cancel_periodic_check()
+        timeout = 0
+        while timeout == 0:
+            timeout = session.process_events() / 1000.0
         self.schedule_periodic_check(session, timeout)
 
-    def cleanup(self):
-        ''' Cleanup after a track ends explicitly or implicitly '''
-        if self.stop_callback is not None:
-            self.stop_callback()
-            self.stop_callback = None
-        self.audio_converter = None
-
     ''' Spotify callbacks '''
+
+    def notify_main_thread(self, session = None):
+        self.log("Notify main thread", debug=True)
+        callback = lambda: self.process_events(session)
+        self.run_on_main_thread(callback)
 
     def logged_in(self, session, error):
         ''' libspotify callback for login attempts '''
@@ -287,7 +304,7 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
             return
         self.log("Logged out")
         self.session = None
-        self.cancel_timer(self.timer)
+        self.cancel_periodic_check()
 
     def playlists_loaded_callback(self, container, userinfo):
         ''' Callback invoked when playlists are loaded '''
@@ -313,7 +330,8 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
     def end_of_track(self, session):
         ''' libspotify callback for when the current track ends '''
         self.log("Track ended")
-        self.cleanup()
+        self.flush_audio_buffer()
+        self.stop_playback()
 
     def metadata_updated(self, sess):
         ''' libspotify callback when new metadata arrives '''
@@ -332,19 +350,31 @@ class SpotifyClient(SpotifySessionManager, RunLoopMixin):
         ''' libspotify callback for user messages '''
         self.log("User message (%s)" % message)
 
-    def music_delivery(self, session, frames, frame_size, num_frames,
-                       sample_type, sample_rate, channels):
-        ''' Called when libspotify has audio data ready for consumption '''
-        if num_frames == 0:
-            return 0
-        try:
-            frames_converted = self.audio_converter.convert(frames, num_frames)
-            if not self.audio_callback(self.audio_converter.get_pending_data()):
+    def flush_audio_buffer(self):
+        ''' Convert buffered audio data and send it to the caller '''
+        while self.audio_converter:
+            try:
+                self.audio_converter.convert(*self.audio_buffer.get_nowait())
+            except Empty:
+                return
+            except EOFError:
                 self.stop_playback()
-                return 0
-            return frames_converted
-        except Exception, e:
-            if self.audio_converter:
+            except Exception:
                 self.log("Playback error: %s" % Plugin.Traceback())
                 self.stop_playback()
+
+    def music_delivery(self, session, frames, frame_size, num_frames,
+                       sample_type, sample_rate, channels):
+        ''' Called when libspotify has audio data ready for consumption
+
+        NOTE: this call is made on a background thread.  If any calls
+        need to be made against the Spotify API they *MUST* be bounced
+        to the main thread for execution.
+        '''
+        if num_frames == 0:
             return 0
+        copied_frames = str(frames)
+        self.audio_buffer.put((copied_frames, num_frames))
+        if self.audio_buffer.qsize() >= self.audio_buffer_size:
+            self.invoke_async(self.flush_audio_buffer)
+        return num_frames

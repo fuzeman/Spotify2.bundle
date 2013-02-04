@@ -4,10 +4,10 @@ framework API (eg audio streams).
 '''
 from settings import REQUEST_TIMEOUT, SERVER_PORT
 from socket import gethostname
-from socket import error as SocketError
 from time import time
 from tornado.httpserver import HTTPServer
 from tornado.web import Application, RequestHandler, HTTPError, asynchronous
+from utils import RunLoopMixin
 
 
 def async_with_timeout(seconds):
@@ -22,7 +22,7 @@ def async_with_timeout(seconds):
             return
         duration = int(time() - start_time)
         Log("Request timed out after %d seconds" % duration)
-        request.send_error(408)
+        handler.request.send_error(408)
     def decorator(func):
         func = asynchronous(func)
         def wrapper(*args, **kwargs):
@@ -101,16 +101,20 @@ class ArtHandler(SpotifyHandler):
             self.handle_exception("Unexpected error fetching artwork")
 
 
-class TrackHandler(SpotifyHandler):
+class TrackHandler(SpotifyHandler, RunLoopMixin):
     ''' Handler for spotify track requests '''
+
+    def __init__(self, *args, **kwargs):
+        super(SpotifyHandler, self).__init__(*args, **kwargs)
+        self.bytes_written = 0
 
     @asynchronous
     def get(self, spotify_uri):
-        spotify_uri = self.decode_spotify_uri(spotify_uri)
+        uri = self.decode_spotify_uri(spotify_uri)
         Log("Handling track request: %s" % spotify_uri)
         try:
             callback = lambda data: self.send_data(data, finish = False)
-            self.client.play_track(spotify_uri, callback, self.finish)
+            self.client.play_track(uri, callback, self.finish)
             self.set_header("Content-type", "audio/aiff")
             Log("Streaming track data to client...")
         except Exception:

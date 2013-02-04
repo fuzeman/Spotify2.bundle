@@ -1,13 +1,10 @@
 '''
 Utility classes / functions
 '''
-from os import pipe, fdopen
-from time import sleep
 from time import time
 from threading import Event
 import aifc
 import struct
-import os
 import sys
 
 
@@ -37,7 +34,9 @@ class IOLoopProxy(object):
             self.finished.set()
 
         def wait_until_done(self):
+            Log("Waiting for callback to complete")
             self.finished.wait()
+            Log("Callback completed")
             if self.exc_info:
                 raise self.exc_info[1], None, self.exc_info[2]
             return self.result
@@ -108,12 +107,18 @@ class RunLoopMixin(object):
         return wrapper
 
     def invoke_async(self, callback):
+        ''' Invoke a callback on the io thread.
+
+        Safe to call from any thread '''
         self.ioloop.add_callback(self.wrap_callback(callback))
 
     def schedule_timer(self, delay, callback):
+        ''' Schedule a callback after a given interval.
+
+        Callback will be invoked on the io thread '''
         deadline = time() + delay
         callback = self.wrap_callback(callback)
-        self.invoke_async(lambda: self.ioloop.add_timeout(deadline, callback))
+        return self.ioloop.add_timeout(deadline, callback)
 
     def cancel_timer(self, timer):
         self.ioloop.remove_timeout(timer)
@@ -137,77 +142,26 @@ class Track(object):
         self.frames_played = self.frames_played + frame_count
 
 
-class FIFO(object):
-    ''' A FIFO with file-like input and output.'''
-
-    class PipeWrapper(object):
-        def __init__(self, pipe, mode):
-            super(FIFO.PipeWrapper, self).__init__()
-            self.pipe = fdopen(pipe, mode, 0)
-            self.position = 0
-
-        def close(self):
-            self.pipe.close()
-
-        def tell(self):
-            return self.position
-
-    class Input(PipeWrapper):
-        def __init__(self, pipe):
-            super(FIFO.Input, self).__init__(pipe, "w")
-
-        def flush(self):
-            self.pipe.flush()
-
-        def write(self, bytes):
-            self.position = self.position + len(bytes)
-            self.pipe.write(bytes)
-
-    class Output(PipeWrapper):
-        def __init__(self, pipe):
-            super(FIFO.Output, self).__init__(pipe, "r")
-
-        def read(self, no_bytes):
-            bytes = self.pipe.read(no_bytes)
-            self.position = self.position + len(bytes)
-            return bytes
-
-    def __init__(self):
-        read, write = pipe()
-        self.output = self.Output(read)
-        self.input = self.Input(write)
-
-    def close(self):
-        self.input.flush()
-        self.input.close()
-
-    @property
-    def bytes_written(self):
-        return self.input.position
-
-    @property
-    def bytes_read(self):
-        return self.output.position
-
-    @property
-    def bytes_pending(self):
-        return self.bytes_written - self.bytes_read
-
-    def read(self):
-        return self.output.read(self.bytes_pending)
-
-
 class PCMToAIFFConverter(object):
     ''' Class to convert Spotify PCM audio data to an AIFF audio stream '''
 
-    def __init__(self, track):
-        self.track = Track(track)
-        self.buffer = FIFO()
-        self.aiff_stream = self.create_aiff_wrapper(
-            self.buffer.input, self.track)
+    class Buffer(object):
+        def __init__(self, callback):
+            self.length = 0
+            self.callback = callback
 
-    def close(self):
-        self.aiff_stream.close()
+        def write(self, bytes):
+            self.length = self.length + len(bytes)
+            if not self.callback(bytes):
+                raise EOFError()
+
+        def tell(self):
+            return self.length
+
+    def __init__(self, track, callback):
+        self.track = Track(track)
+        self.aiff_stream = self.create_aiff_wrapper(
+            self.Buffer(callback), self.track)
 
     def create_aiff_wrapper(self, output_stream, track):
         aiff_file = aifc.open(output_stream, "wb")
@@ -225,9 +179,6 @@ class PCMToAIFFConverter(object):
         if not self.track.is_finished:
             self.aiff_stream.writeframesraw(data)
         return frame_count
-
-    def get_pending_data(self):
-        return self.buffer.output.read(self.buffer.bytes_pending)
 
 
 class NotReadyError(Exception):
@@ -252,4 +203,3 @@ def assert_loaded(objects):
 def localized_format(key, args):
     ''' Return the a localized string formatted with the given args '''
     return str(L(key)) % args
-
