@@ -158,6 +158,9 @@ class PCMToAIFFConverter(object):
         def tell(self):
             return self.length
 
+        def seek(self, *args):
+            pass
+
     def __init__(self, track, callback):
         self.track = Track(track)
         self.aiff_stream = self.create_aiff_wrapper(
