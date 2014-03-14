@@ -2,9 +2,9 @@
 Spotify plugin
 '''
 from client import SpotifyClient
-from settings import PLUGIN_ID, RESTART_URL
-from spotify import Link
-from server import SpotifyServer
+from settings import PLUGIN_ID, RESTART_URL, PREFIX
+#from spotify import Link
+#from server import SpotifyServer
 from utils import RunLoopMixin, assert_loaded, localized_format
 from urllib import urlopen
 
@@ -105,10 +105,12 @@ class SpotifyPlugin(RunLoopMixin):
         if not self.username or not self.password:
             Log("Username or password not set: not logging in")
             return
-        self.client = SpotifyClient(self.username, self.password, self.ioloop)
+
+        self.client = SpotifyClient(self.username, self.password)
         self.client.connect()
-        self.server = SpotifyServer(self.client)
-        self.server.start()
+
+        #self.server = SpotifyServer(self.client)
+        #self.server.start()
 
     def play_track(self, uri):
         ''' Play a spotify track: redirect the user to the actual stream '''
@@ -232,6 +234,7 @@ class SpotifyPlugin(RunLoopMixin):
             completion(directory)
         self.browsers[uri] = self.client.browse_album(album, browse_finished)
 
+    @route(PREFIX + '/playlists')
     @authenticated
     def get_playlists(self, folder_id = 0):
         Log("Get playlists")
@@ -256,6 +259,7 @@ class SpotifyPlugin(RunLoopMixin):
             )
         return directory
 
+    @route(PREFIX + '/starred')
     @authenticated
     def get_starred_tracks(self):
         ''' Return a directory containing the user's starred tracks'''
@@ -297,6 +301,7 @@ class SpotifyPlugin(RunLoopMixin):
             completion(result)
         self.client.search(query, search_finished)
 
+    @route(PREFIX + '/search')
     @authenticated
     def search_menu(self):
         Log("Search menu")
