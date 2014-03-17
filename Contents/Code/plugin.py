@@ -1,5 +1,5 @@
 from client import SpotifyClient
-from settings import PLUGIN_ID, RESTART_URL, PREFIX
+from settings import PLUGIN_ID, RESTART_URL, PREFIX, ROUTEBASE
 from utils import RunLoopMixin, assert_loaded, localized_format
 from urllib import urlopen
 
@@ -106,39 +106,26 @@ class SpotifyPlugin(RunLoopMixin):
         #self.server = SpotifyServer(self.client)
         #self.server.start()
 
-    def play_track(self, uri):
+    @route(ROUTEBASE + 'play')
+    def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
+        Log('play: %s' % uri)
+
         if not uri:
             Log("Play track callback invoked with NULL URI")
             return
-        track_url = self.server.get_track_url(uri)
-        Log("Redirecting client to stream proxied at: %s" % track_url)
+
+        track = self.client.get(uri)
+        track_url = track.getFileURL()
+        Log(track_url)
+
         return Redirect(track_url)
 
     @authenticated
-    def get_playlist(self, folder_id, index):
-        playlists = self.client.get_playlists(folder_id)
-        if len(playlists) < index + 1:
-            return MessageContainer(
-                header=L("MSG_TITLE_PLAYLIST_ERROR"),
-                message=L("MSG_BODY_PLAYIST_ERROR")
-            )
-        playlist = playlists[index]
-        tracks = list(playlist)
-        Log("Get playlist: %s", playlist.name().decode("utf-8"))
-        directory = ObjectContainer(
-            title2=playlist.name().decode("utf-8"),
-            view_group=ViewMode.Tracks)
-        for track in assert_loaded(tracks):
-            self.add_track_to_directory(track, directory)
-        return directory
-
-    @authenticated
-    def get_artist_albums(self, uri):
-        """ Browse an artist invoking the completion callback when done.
+    def artist(self, uri):
+        """ Browse an artist.
 
         :param uri:            The Spotify URI of the artist to browse.
-        :param completion:     A callback to invoke with results when done.
         """
         artist = self.client.get(uri)
 
@@ -153,11 +140,10 @@ class SpotifyPlugin(RunLoopMixin):
         return oc
 
     @authenticated
-    def get_album_tracks(self, uri):
-        """ Browse an album invoking the completion callback when done.
+    def album(self, uri):
+        """ Browse an album.
 
         :param uri:            The Spotify URI of the album to browse.
-        :param completion:     A callback to invoke with results when done.
         """
         album = self.client.get(uri)
 
@@ -172,33 +158,47 @@ class SpotifyPlugin(RunLoopMixin):
         return oc
 
     @authenticated
-    def get_playlists(self, folder_id=0):
-        Log("Get playlists")
-        directory = ObjectContainer(
-            title2=L("MENU_PREFS"),
-            view_group=ViewMode.Playlists)
-        playlists = self.client.get_playlists(folder_id)
+    def playlists(self):
+        Log("playlists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_PLAYLISTS"),
+            view_group=ViewMode.Playlists
+        )
+
+        playlists = self.client.get_playlists()
+
         for playlist in playlists:
-            index = playlists.index(playlist)
-            if playlist.type() in ['folder_start', 'folder_end', 'placeholder']:
-                callback = Callback(
-                    self.get_playlists, folder_id=playlist.id())
-            else:
-                callback = Callback(
-                    self.get_playlist, folder_id=folder_id, index=index)
-            directory.add(
+            oc.add(
                 DirectoryObject(
-                    key=callback,
-                    title=playlist.name().decode("utf-8"),
+                    key=Callback(self.playlist, uri=playlist.getURI()),
+                    title=playlist.getName().decode("utf-8"),
                     thumb=R("placeholder-playlist.png")
                 )
             )
-        return directory
+
+        return oc
 
     @authenticated
-    def get_starred_tracks(self):
+    def playlist(self, uri):
+        pl = self.client.get_playlist(uri)
+
+        Log("Get playlist: %s", pl.getName().decode("utf-8"))
+
+        oc = ObjectContainer(
+            title2=pl.getName().decode("utf-8"),
+            view_group=ViewMode.Tracks
+        )
+
+        for track in pl.getTracks():
+            self.add_track_to_directory(track, oc)
+
+        return oc
+
+    @authenticated
+    def starred(self):
         """ Return a directory containing the user's starred tracks"""
-        Log("Get starred tracks")
+        Log("starred")
 
         oc = ObjectContainer(
             title2=L("MENU_STARRED"),
@@ -252,12 +252,12 @@ class SpotifyPlugin(RunLoopMixin):
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=Callback(self.get_playlists),
+                    key=Callback(self.playlists),
                     title=L("MENU_PLAYLISTS"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=Callback(self.get_starred_tracks),
+                    key=Callback(self.starred),
                     title=L("MENU_STARRED"),
                     thumb=R("icon-default.png")
                 ),
@@ -276,15 +276,16 @@ class SpotifyPlugin(RunLoopMixin):
         album = track.getAlbum()
 
         #thumbnail_url = self.server.get_art_url(album.getURI())
-        callback = Callback(self.play_track, uri=track.getURI(), ext="aiff")
 
         artists = (a.getName().decode("utf-8") for a in track.getArtists())
 
         return TrackObject(
             items=[
                 MediaObject(
-                    parts=[PartObject(key=callback)],
-                    )
+                    parts=[PartObject(key=Callback(self.play, uri=track.getURI(), ext='mp3'))],
+                    container=Container.MP3,
+                    audio_codec=AudioCodec.MP3
+                )
             ],
             key=track.getName().decode("utf-8"),
             rating_key=track.getName().decode("utf-8"),
@@ -304,7 +305,7 @@ class SpotifyPlugin(RunLoopMixin):
             title = "%s (%s)" % (title, album.year())
 
         return DirectoryObject(
-            key=Callback(self.get_album_tracks, uri=album.getURI()),
+            key=Callback(self.album, uri=album.getURI()),
             title=title,
             #thumb=self.server.get_art_url(album.getURI())
         )
@@ -330,7 +331,7 @@ class SpotifyPlugin(RunLoopMixin):
     def add_artist_to_directory(self, artist, oc):
         oc.add(
             DirectoryObject(
-                key=Callback(self.get_artist_albums, uri=artist.getURI()),
+                key=Callback(self.artist, uri=artist.getURI()),
                 title=artist.getName().decode("utf-8"),
                 thumb=R("placeholder-artist.png")
             )

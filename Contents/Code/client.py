@@ -69,6 +69,13 @@ class SpotifyClient(object):
 
         return self.spotify.getPlaylists()
 
+    def get_playlist(self, uri=None, id=None):
+        for pl in self.get_playlists():
+            if pl.getURI() == uri or pl.getID() == id:
+                return pl
+
+        return None
+
     def get_starred(self):
         """ Return the user's starred tracks
 
@@ -76,14 +83,7 @@ class SpotifyClient(object):
         the starred playlist is loaded (will fail if it isn't right now).
         """
 
-        playlists = self.get_playlists()
-
-        for pl in playlists:
-            if pl.getID() == "starred":
-                return pl
-
-        # Unable to find "starred" playlist.
-        return None
+        return self.get_playlist(id='starred')
 
 
     def load_image(self, uri, image_id):

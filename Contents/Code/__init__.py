@@ -1,5 +1,5 @@
 from plugin import SpotifyPlugin, ViewMode
-from settings import PLUGIN_ID, PREFIX, VERSION
+from settings import PLUGIN_ID, PREFIX, VERSION, ROUTEBASE
 
 
 plugin = SpotifyPlugin()
@@ -18,45 +18,36 @@ def plugin_callback(method, **kwargs):
     return callback(**kwargs)
 
 
-def play_track(**kwargs):
-    """ Top-level function to retrieve a specific playlist """
-    return plugin_callback(SpotifyPlugin.play_track, **kwargs)
+@route(ROUTEBASE + 'play')
+def play(**kwargs):
+    return plugin_callback(SpotifyPlugin.play, **kwargs)
 
 
-def get_artist_albums(**kwargs):
-    """ Top-level function to retrieve an artists albums """
-    return plugin_callback(
-        SpotifyPlugin.get_artist_albums, **kwargs)
+def artist(**kwargs):
+    return plugin_callback(SpotifyPlugin.artist, **kwargs)
 
 
-def get_album_tracks(**kwargs):
-    """ Top-level function to retrieve the tracks in an album """
-    return plugin_callback(
-        SpotifyPlugin.get_album_tracks, **kwargs)
+def album(**kwargs):
+    return plugin_callback(SpotifyPlugin.album, **kwargs)
 
 
-def get_playlist(**kwargs):
-    """ Top-level function to retrieve a specific playlist """
-    return plugin_callback(SpotifyPlugin.get_playlist, **kwargs)
+def playlist(**kwargs):
+    return plugin_callback(SpotifyPlugin.playlist, **kwargs)
 
 
-def get_playlists(**kwargs):
-    """ Top-level function to retrieve user playlists """
-    return plugin_callback(SpotifyPlugin.get_playlists, **kwargs)
+def playlists(**kwargs):
+    return plugin_callback(SpotifyPlugin.playlists, **kwargs)
 
 
-def get_starred_tracks(**kwargs):
-    """ Top-level function to retrieve starred user tracks """
-    return plugin_callback(SpotifyPlugin.get_starred_tracks, **kwargs)
+def starred(**kwargs):
+    return plugin_callback(SpotifyPlugin.starred, **kwargs)
 
 
 def search(**kwargs):
-    """ Top-level function to execute a search """
     return plugin_callback(SpotifyPlugin.search, **kwargs)
 
 
 def main_menu(**kwargs):
-    """ Top-level function to retrieve the main menu """
     return plugin_callback(SpotifyPlugin.main_menu, **kwargs)
 
 
