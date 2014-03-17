@@ -24,8 +24,6 @@ class SpotifyClient(object):
         Logging.hook(1, Log.Warn)
         Logging.hook(0, Log.Error)
 
-        self.is_logging_in = False
-
     #
     # Public methods
     #

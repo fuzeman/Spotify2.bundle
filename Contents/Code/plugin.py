@@ -30,7 +30,7 @@ def authenticated(func):
                     header=L("MSG_TITLE_MISSING_LOGIN"),
                     message=L("MSG_BODY_MISSING_LOGIN")
                 )
-            elif client.is_logging_in():
+            elif not client.spotify.api.ws:
                 return MessageContainer(
                     header=L("MSG_TITLE_LOGIN_IN_PROGRESS"),
                     message=L("MSG_BODY_LOGIN_IN_PROGRESS")
@@ -116,51 +116,55 @@ class SpotifyPlugin(RunLoopMixin):
         return Redirect(track_url)
 
     def create_track_object(self, track):
-        """ Factory for track directory objects """
-        album_uri = str(Link.from_album(track.album()))
-        track_uri = str(Link.from_track(track, 0))
-        thumbnail_url = self.server.get_art_url(album_uri)
-        callback = Callback(self.play_track, uri=track_uri, ext="aiff")
-        artists = (a.name().decode("utf-8") for a in track.artists())
+        album = track.getAlbum()
+
+        #thumbnail_url = self.server.get_art_url(album.getURI())
+        callback = Callback(self.play_track, uri=track.getURI(), ext="aiff")
+
+        artists = (a.getName().decode("utf-8") for a in track.getArtists())
+
         return TrackObject(
             items=[
                 MediaObject(
                     parts=[PartObject(key=callback)],
                 )
             ],
-            key=track.name().decode("utf-8"),
-            rating_key=track.name().decode("utf-8"),
-            title=track.name().decode("utf-8"),
-            album=track.album().name().decode("utf-8"),
+            key=track.getName().decode("utf-8"),
+            rating_key=track.getName().decode("utf-8"),
+            title=track.getName().decode("utf-8"),
+            album=album.getName().decode("utf-8"),
             artist=", ".join(artists),
-            index=track.index(),
-            duration=int(track.duration()),
-            thumb=thumbnail_url
+            index=int(track.getNumber()),
+            duration=int(track.getDuration()),
+            #thumb=thumbnail_url
         )
 
     def create_album_object(self, album):
         """ Factory method for album objects """
-        album_uri = str(Link.from_album(album))
-        title = album.name().decode("utf-8")
+        title = album.getName().decode("utf-8")
+
         if Prefs["displayAlbumYear"] and album.year() != 0:
             title = "%s (%s)" % (title, album.year())
+
         return DirectoryObject(
-            key=Callback(self.get_album_tracks, uri=album_uri),
+            key=Callback(self.get_album_tracks, uri=album.getURI()),
             title=title,
-            thumb=self.server.get_art_url(album_uri)
+            #thumb=self.server.get_art_url(album.getURI())
         )
 
-    def add_track_to_directory(self, track, directory):
+    def add_track_to_directory(self, track, oc):
         if not self.client.is_track_playable(track):
             Log("Ignoring unplayable track: %s" % track.name())
             return
-        directory.add(self.create_track_object(track))
 
-    def add_album_to_directory(self, album, directory):
+        oc.add(self.create_track_object(track))
+
+    def add_album_to_directory(self, album, oc):
         if not self.client.is_album_playable(album):
             Log("Ignoring unplayable album: %s" % album.name())
             return
-        directory.add(self.create_album_object(album))
+
+        oc.add(self.create_album_object(album))
 
     def add_artist_to_directory(self, artist, oc):
         oc.add(
@@ -198,34 +202,34 @@ class SpotifyPlugin(RunLoopMixin):
         """
         artist = self.client.get(uri)
 
-        directory = ObjectContainer(
+        oc = ObjectContainer(
             title2=artist.getName().decode("utf-8"),
             view_group=ViewMode.Tracks
         )
 
         for album in artist.getAlbums():
-            self.add_album_to_directory(album, directory)
+            self.add_album_to_directory(album, oc)
+
+        return oc
 
     @authenticated
-    def get_album_tracks(self, uri, completion):
+    def get_album_tracks(self, uri):
         """ Browse an album invoking the completion callback when done.
 
         :param uri:            The Spotify URI of the album to browse.
         :param completion:     A callback to invoke with results when done.
         """
-        album = Link.from_string(uri).as_album()
+        album = self.client.get(uri)
 
-        def browse_finished(browser):
-            del self.browsers[uri]
-            tracks = list(browser)
-            directory = ObjectContainer(
-                title2=album.name().decode("utf-8"),
-                view_group=ViewMode.Tracks)
-            for track in tracks:
-                self.add_track_to_directory(track, directory)
-            completion(directory)
+        oc = ObjectContainer(
+            title2=album.getName().decode("utf-8"),
+            view_group=ViewMode.Tracks
+        )
 
-        self.browsers[uri] = self.client.browse_album(album, browse_finished)
+        for track in album.getTracks():
+            self.add_track_to_directory(track, oc)
+
+        return oc
 
     @authenticated
     def get_playlists(self, folder_id=0):
