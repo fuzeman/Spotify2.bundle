@@ -111,8 +111,34 @@ class SpotifyPlugin(object):
 
         self.current_track = self.client.get(uri)
 
+        return Redirect(self.get_track_url(self.current_track))
+
+    def get_track_url(self, track):
         self.client.spotify.api.send_track_event(self.current_track.getID(), 'play', 0)
-        return Redirect(self.current_track.getFileURL())
+
+        track_url = self.current_track.getFileURL()
+
+        # If first request failed, trigger re-connection to spotify
+        retry_num = 0
+
+        while not track_url and retry_num < 3:
+            retry_num += 1
+
+            Log.Info('get_track_url failed, re-connecting to spotify...')
+            self.start()
+
+            # Update reference to spotify client (otherwise getFileURL request will fail)
+            self.current_track.spotify = self.client.spotify
+
+            Log.Info('Fetching track url...')
+            self.client.spotify.api.send_track_event(self.current_track.getID(), 'play', 0)
+
+            track_url = self.current_track.getFileURL()
+
+        if not track_url:
+            Log.Warn('unable to fetch track URL (connection problem?)')
+
+        return track_url
 
     @authenticated
     def artist(self, uri):
