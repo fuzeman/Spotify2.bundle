@@ -162,12 +162,11 @@ class SpotifyPlugin(RunLoopMixin):
             return
         directory.add(self.create_album_object(album))
 
-    def add_artist_to_directory(self, artist, directory):
-        artist_uri = str(Link.from_artist(artist))
-        directory.add(
+    def add_artist_to_directory(self, artist, oc):
+        oc.add(
             DirectoryObject(
-                key=Callback(self.get_artist_albums, uri=artist_uri),
-                title=artist.name().decode("utf-8"),
+                key=Callback(self.get_artist_albums, uri=artist.getURI()),
+                title=artist.getName().decode("utf-8"),
                 thumb=R("placeholder-artist.png")
             )
         )
@@ -191,25 +190,21 @@ class SpotifyPlugin(RunLoopMixin):
         return directory
 
     @authenticated
-    def get_artist_albums(self, uri, completion):
+    def get_artist_albums(self, uri):
         """ Browse an artist invoking the completion callback when done.
 
         :param uri:            The Spotify URI of the artist to browse.
         :param completion:     A callback to invoke with results when done.
         """
-        artist = Link.from_string(uri).as_artist()
+        artist = self.client.get(uri)
 
-        def browse_finished(browser):
-            del self.browsers[uri]
-            albums = browser.albums()
-            directory = ObjectContainer(
-                title2=artist.name().decode("utf-8"),
-                view_group=ViewMode.Tracks)
-            for album in albums:
-                self.add_album_to_directory(album, directory)
-            completion(directory)
+        directory = ObjectContainer(
+            title2=artist.getName().decode("utf-8"),
+            view_group=ViewMode.Tracks
+        )
 
-        self.browsers[uri] = self.client.browse_artist(artist, browse_finished)
+        for album in artist.getAlbums():
+            self.add_album_to_directory(album, directory)
 
     @authenticated
     def get_album_tracks(self, uri, completion):
@@ -269,35 +264,32 @@ class SpotifyPlugin(RunLoopMixin):
         return directory
 
     @authenticated
-    def search(self, query, completion, artists=False, albums=False):
+    def search(self, query):
         """ Search asynchronously invoking the completion callback when done.
 
         :param query:          The query string to use.
-        :param completion:     A callback to invoke with results when done.
-        :param artists:        Determines whether artist matches are returned.
-        :param albums:         Determines whether album matches are returned.
         """
-        params = "%s: %s" % ("artists" if artists else "albums", query)
-        Log("Search for %s" % params)
+        Log('Searching for "%s"' % query)
 
-        def search_finished(results, userdata):
-            Log("Search completed: %s" % params)
-            result = ObjectContainer(title2="Results")
-            for artist in results.artists() if artists else ():
-                self.add_artist_to_directory(artist, result)
-            for album in results.albums() if albums else ():
-                self.add_album_to_directory(album, result)
-            if not len(result):
-                if len(results.did_you_mean()):
-                    message = localized_format(
-                        "MSG_FMT_DID_YOU_MEAN", results.did_you_mean())
-                else:
-                    message = localized_format("MSG_FMT_NO_RESULTS", query)
-                result = MessageContainer(
-                    header=L("MSG_TITLE_NO_RESULTS"), message=message)
-            completion(result)
+        results = self.client.search(query)
 
-        self.client.search(query, search_finished)
+        oc = ObjectContainer(title2="Results")
+
+        for artist in results.getArtists():
+            self.add_artist_to_directory(artist, oc)
+
+        #for album in results.getAlbums():
+        #    self.add_album_to_directory(album, oc)
+
+        if not len(oc):
+            if len(results.did_you_mean()):
+                message = localized_format("MSG_FMT_DID_YOU_MEAN", results.did_you_mean())
+            else:
+                message = localized_format("MSG_FMT_NO_RESULTS", query)
+
+            oc = MessageContainer(header=L("MSG_TITLE_NO_RESULTS"), message=message)
+
+        return oc
 
     def main_menu(self):
         Log("Spotify main menu")
@@ -305,7 +297,7 @@ class SpotifyPlugin(RunLoopMixin):
         return ObjectContainer(
             objects=[
                 InputDirectoryObject(
-                    key=Callback(self.search, albums=True),
+                    key=Callback(self.search),
                     prompt=L("PROMPT_SEARCH"),
                     title=L("MENU_SEARCH"),
                     thumb=R("icon-default.png")

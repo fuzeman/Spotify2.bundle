@@ -33,6 +33,17 @@ class SpotifyClient(object):
     def is_logged_in(self):
         return self.spotify.logged_in()
 
+    def search(self, query, query_type="all", max_results=50, offset=0):
+        """ Execute a search
+
+        :param query:          A query string.
+        """
+
+        return self.spotify.search(query, query_type, max_results, offset)
+
+    def get(self, uri):
+        return self.spotify.objectFromURI(uri)
+
     def is_album_playable(self, album):
         """ Check if an album can be played by a client or not """
 
@@ -68,16 +79,6 @@ class SpotifyClient(object):
 
         TODO this should be made async with a callback rather than assuming
         the starred playlist is loaded (will fail if it isn't right now).
-        """
-
-        pass
-
-    def search(self, query):
-        """ Execute a search
-
-        :param query:          A query string.
-        :param callback:       A callback to invoke when the search is finished.
-                               Should take the results list as a parameter.
         """
 
         pass

@@ -26,13 +26,13 @@ def play_track(**kwargs):
 def get_artist_albums(**kwargs):
     """ Top-level function to retrieve an artists albums """
     return plugin_callback(
-        SpotifyPlugin.get_artist_albums, async = True, **kwargs)
+        SpotifyPlugin.get_artist_albums, **kwargs)
 
 
 def get_album_tracks(**kwargs):
     """ Top-level function to retrieve the tracks in an album """
     return plugin_callback(
-        SpotifyPlugin.get_album_tracks, async = True, **kwargs)
+        SpotifyPlugin.get_album_tracks, **kwargs)
 
 
 def get_playlist(**kwargs):
@@ -52,12 +52,7 @@ def get_starred_tracks(**kwargs):
 
 def search(**kwargs):
     """ Top-level function to execute a search """
-    return plugin_callback(SpotifyPlugin.search, async = True, **kwargs)
-
-
-def search_menu(**kwargs):
-    """ Top-level function to retrieve the search menu """
-    return plugin_callback(SpotifyPlugin.search_menu, **kwargs)
+    return plugin_callback(SpotifyPlugin.search, **kwargs)
 
 
 def main_menu(**kwargs):
