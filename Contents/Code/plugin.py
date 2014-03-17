@@ -21,10 +21,10 @@ def authenticated(func):
             plugin = args[0]
             client = plugin.client
             if not client or not client.is_logged_in():
-                return self.access_denied_message(client)
+                return self.access_denied_message(plugin, client)
             return func(*args, **kwargs)
 
-        def access_denied_message(self, client):
+        def access_denied_message(self, plugin, client):
             if not client:
                 return MessageContainer(
                     header=L("MSG_TITLE_MISSING_LOGIN"),
@@ -36,9 +36,13 @@ def authenticated(func):
                     message=L("MSG_BODY_LOGIN_IN_PROGRESS")
                 )
             else:
+                # Trigger a re-connect
+                Log.Warn('Connection failed, reconnecting...')
+                plugin.start()
+
                 return MessageContainer(
                     header=L("MSG_TITLE_LOGIN_FAILED"),
-                    message=client.login_error
+                    message=L("MSG_TITLE_LOGIN_FAILED")
                 )
 
     return decorator()
@@ -61,6 +65,8 @@ class SpotifyPlugin(RunLoopMixin):
         self.client = None
         self.server = None
         self.start()
+
+        self.current_track = None
 
     @property
     def username(self):
@@ -103,23 +109,28 @@ class SpotifyPlugin(RunLoopMixin):
 
         self.client = SpotifyClient(self.username, self.password)
 
-        #self.server = SpotifyServer(self.client)
-        #self.server.start()
-
+    @authenticated
     @route(ROUTEBASE + 'play')
     def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
-        Log('play: %s' % uri)
+        Log('play(%s)' % repr(uri))
 
         if not uri:
             Log("Play track callback invoked with NULL URI")
             return
 
-        track = self.client.get(uri)
-        track_url = track.getFileURL()
-        Log(track_url)
+        if self.current_track:
+            # Send stop event for previous track
+            self.client.spotify.api.send_track_event(
+                self.current_track.getID(),
+                'stop',
+                self.current_track.getDuration()
+            )
 
-        return Redirect(track_url)
+        self.current_track = self.client.get(uri)
+
+        self.client.spotify.api.send_track_event(self.current_track.getID(), 'play', 0)
+        return Redirect(self.current_track.getFileURL())
 
     @authenticated
     def artist(self, uri):
