@@ -107,6 +107,10 @@ class SpotifyPlugin(RunLoopMixin):
             Log("Username or password not set: not logging in")
             return
 
+        # Ensure previous client is shutdown
+        if self.client:
+            self.client.shutdown()
+
         self.client = SpotifyClient(self.username, self.password)
 
     @authenticated

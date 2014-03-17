@@ -31,6 +31,9 @@ class SpotifyClient(object):
     def is_logged_in(self):
         return self.spotify.logged_in()
 
+    def shutdown(self):
+        self.spotify.api.shutdown()
+
     def search(self, query, query_type="all", max_results=50, offset=0):
         """ Execute a search
 
