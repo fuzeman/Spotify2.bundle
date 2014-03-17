@@ -299,39 +299,20 @@ class SpotifyPlugin(RunLoopMixin):
 
         self.client.search(query, search_finished)
 
-    @authenticated
-    def search_menu(self):
-        Log("Search menu")
+    def main_menu(self):
+        Log("Spotify main menu")
+
         return ObjectContainer(
-            title2=L("MENU_SEARCH"),
             objects=[
                 InputDirectoryObject(
                     key=Callback(self.search, albums=True),
-                    prompt=L("PROMPT_ALBUM_SEARCH"),
-                    title=L("MENU_ALBUM_SEARCH"),
+                    prompt=L("PROMPT_SEARCH"),
+                    title=L("MENU_SEARCH"),
                     thumb=R("icon-default.png")
                 ),
-                InputDirectoryObject(
-                    key=Callback(self.search, artists=True),
-                    prompt=L("PROMPT_ARTIST_SEARCH"),
-                    title=L("MENU_ARTIST_SEARCH"),
-                    thumb=R("icon-default.png")
-                )
-            ],
-        )
-
-    def main_menu(self):
-        Log("Spotify main menu")
-        return ObjectContainer(
-            objects=[
                 DirectoryObject(
                     key=Callback(self.get_playlists),
                     title=L("MENU_PLAYLISTS"),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=Callback(self.search_menu),
-                    title=L("MENU_SEARCH"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
