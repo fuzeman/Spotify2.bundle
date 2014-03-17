@@ -1,6 +1,3 @@
-'''
-Utility classes / functions
-'''
 from time import time
 from threading import Event
 import aifc
@@ -9,14 +6,15 @@ import sys
 
 
 class IOLoopProxy(object):
-    ''' Class used to proxy requests to an IOLoop instance
+    """ Class used to proxy requests to an IOLoop instance
 
     A convenience class that lets worker threads bounce requests to an
     IOLoop and wait for the responses synchronously.
-    '''
+    """
 
     class FutureBase(object):
-        ''' Base class for "Future" implementations '''
+        """ Base class for "Future" implementations """
+
         def __init__(self, callback, args, kwargs):
             self.finished = Event()
             self.callback = callback
@@ -42,12 +40,13 @@ class IOLoopProxy(object):
             return self.result
 
     class AsyncFuture(FutureBase):
-        ''' Invokes async calls on the IOLoop with a completion callback
+        """ Invokes async calls on the IOLoop with a completion callback
 
         Callbacks invoked using an AsyncFuture instance should accept
         a parameter named 'completion' which should be invoked when the
         task completes to unblock the caller.
-        '''
+        """
+
         def __call__(self):
             try:
                 self.kwargs["completion"] = self.finish
@@ -56,7 +55,8 @@ class IOLoopProxy(object):
                 self.handle_exception()
 
     class Future(FutureBase):
-        ''' Invokes sync calls on the IOLoop and waits for the result '''
+        """ Invokes sync calls on the IOLoop and waits for the result """
+
         def __call__(self):
             try:
                 self.finish(self.callback(*self.args, **self.kwargs))
@@ -64,15 +64,15 @@ class IOLoopProxy(object):
                 self.handle_exception()
 
     def __init__(self, ioloop):
-        ''' Initializer
+        """ Initializer
 
         :param ioloop:       The tornado ioloop to bounce calls to.
-        '''
+        """
         self.ioloop = ioloop
 
-    def invoke(self, callback, args = (), kwargs = {},
-               timeout = None, async = False):
-        ''' Invoke a callback on the IOLoop and wait for the result.
+    def invoke(self, callback, args=(), kwargs={},
+               timeout=None, async=False):
+        """ Invoke a callback on the IOLoop and wait for the result.
 
         :param callback:     The callable to invoke on the IOLoop.
         :param args:         A optional tuple of args to pass to the callback.
@@ -84,7 +84,7 @@ class IOLoopProxy(object):
                              An async callback should accept a "completion"
                              parameter which should be used to return the
                              result when the callback is done.
-        '''
+        """
         if async:
             future = type(self).AsyncFuture(callback, args, kwargs)
         else:
@@ -94,28 +94,30 @@ class IOLoopProxy(object):
 
 
 class RunLoopMixin(object):
-    ''' Mixin class that adds ioloop convenience methods '''
+    """ Mixin class that adds ioloop convenience methods """
 
     def wrap_callback(self, callback):
-        ''' Return a wrapper function that catches and logs exceptions '''
+        """ Return a wrapper function that catches and logs exceptions """
+
         def wrapper():
             try:
                 callback()
             except:
                 Log("Exception in callback: %s" % callback)
                 Log(Plugin.Traceback())
+
         return wrapper
 
     def invoke_async(self, callback):
-        ''' Invoke a callback on the io thread.
+        """ Invoke a callback on the io thread.
 
-        Safe to call from any thread '''
+        Safe to call from any thread """
         self.ioloop.add_callback(self.wrap_callback(callback))
 
     def schedule_timer(self, delay, callback):
-        ''' Schedule a callback after a given interval.
+        """ Schedule a callback after a given interval.
 
-        Callback will be invoked on the io thread '''
+        Callback will be invoked on the io thread """
         deadline = time() + delay
         callback = self.wrap_callback(callback)
         return self.ioloop.add_timeout(deadline, callback)
@@ -143,7 +145,7 @@ class Track(object):
 
 
 class PCMToAIFFConverter(object):
-    ''' Class to convert Spotify PCM audio data to an AIFF audio stream '''
+    """ Class to convert Spotify PCM audio data to an AIFF audio stream """
 
     class Buffer(object):
         def __init__(self, callback):
@@ -176,8 +178,8 @@ class PCMToAIFFConverter(object):
         return aiff_file
 
     def convert(self, frames, frame_count):
-        data = struct.pack('>' + str(len(frames)/2) + 'H',
-            *struct.unpack('<' + str(len(frames)/2) + 'H', frames))
+        data = struct.pack('>' + str(len(frames) / 2) + 'H',
+                           *struct.unpack('<' + str(len(frames) / 2) + 'H', frames))
         self.track.add_played_frames(frame_count)
         if not self.track.is_finished:
             self.aiff_stream.writeframesraw(data)
@@ -185,7 +187,7 @@ class PCMToAIFFConverter(object):
 
 
 class NotReadyError(Exception):
-    ''' Exception thrown when a libspotify object is not loaded '''
+    """ Exception thrown when a libspotify object is not loaded """
     pass
 
 
@@ -197,12 +199,12 @@ def are_loaded(instances):
 
 
 def assert_loaded(objects):
-    ''' Wait until libspotify objects are loaded and ready to use '''
+    """ Wait until libspotify objects are loaded and ready to use """
     if not are_loaded([objects] if hasattr(objects, "is_loaded") else objects):
         raise NotReadyError()
     return objects
 
 
 def localized_format(key, args):
-    ''' Return the a localized string formatted with the given args '''
+    """ Return the a localized string formatted with the given args """
     return str(L(key)) % args

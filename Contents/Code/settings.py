@@ -1,7 +1,3 @@
-'''
-Settings used throughout the plguin
-'''
-
 PLUGIN_ID = "com.plexapp.plugins.spotify"
 VERSION     = 0.2
 PREFIX      = "/music/spotify"
