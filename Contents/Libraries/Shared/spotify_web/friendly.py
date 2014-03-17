@@ -478,7 +478,7 @@ class Spotify():
             playlist_uris += ["spotify:user:"+username+":starred"]
 
         playlist_uris += [playlist.uri for playlist in self.api.playlists_request(username).contents.items]
-        return self.objectFromURI(playlist_uris)
+        return self.objectFromURI(playlist_uris, asArray=True)
 
     def newPlaylist(self, name):
         self._Cache__cache = {}

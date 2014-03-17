@@ -115,66 +115,6 @@ class SpotifyPlugin(RunLoopMixin):
         Log("Redirecting client to stream proxied at: %s" % track_url)
         return Redirect(track_url)
 
-    def create_track_object(self, track):
-        album = track.getAlbum()
-
-        #thumbnail_url = self.server.get_art_url(album.getURI())
-        callback = Callback(self.play_track, uri=track.getURI(), ext="aiff")
-
-        artists = (a.getName().decode("utf-8") for a in track.getArtists())
-
-        return TrackObject(
-            items=[
-                MediaObject(
-                    parts=[PartObject(key=callback)],
-                )
-            ],
-            key=track.getName().decode("utf-8"),
-            rating_key=track.getName().decode("utf-8"),
-            title=track.getName().decode("utf-8"),
-            album=album.getName().decode("utf-8"),
-            artist=", ".join(artists),
-            index=int(track.getNumber()),
-            duration=int(track.getDuration()),
-            #thumb=thumbnail_url
-        )
-
-    def create_album_object(self, album):
-        """ Factory method for album objects """
-        title = album.getName().decode("utf-8")
-
-        if Prefs["displayAlbumYear"] and album.year() != 0:
-            title = "%s (%s)" % (title, album.year())
-
-        return DirectoryObject(
-            key=Callback(self.get_album_tracks, uri=album.getURI()),
-            title=title,
-            #thumb=self.server.get_art_url(album.getURI())
-        )
-
-    def add_track_to_directory(self, track, oc):
-        if not self.client.is_track_playable(track):
-            Log("Ignoring unplayable track: %s" % track.name())
-            return
-
-        oc.add(self.create_track_object(track))
-
-    def add_album_to_directory(self, album, oc):
-        if not self.client.is_album_playable(album):
-            Log("Ignoring unplayable album: %s" % album.name())
-            return
-
-        oc.add(self.create_album_object(album))
-
-    def add_artist_to_directory(self, artist, oc):
-        oc.add(
-            DirectoryObject(
-                key=Callback(self.get_artist_albums, uri=artist.getURI()),
-                title=artist.getName().decode("utf-8"),
-                thumb=R("placeholder-artist.png")
-            )
-        )
-
     @authenticated
     def get_playlist(self, folder_id, index):
         playlists = self.client.get_playlists(folder_id)
@@ -259,13 +199,18 @@ class SpotifyPlugin(RunLoopMixin):
     def get_starred_tracks(self):
         """ Return a directory containing the user's starred tracks"""
         Log("Get starred tracks")
-        directory = ObjectContainer(
+
+        oc = ObjectContainer(
             title2=L("MENU_STARRED"),
-            view_group=ViewMode.Tracks)
-        starred = list(self.client.get_starred_tracks())
-        for track in starred:
-            self.add_track_to_directory(track, directory)
-        return directory
+            view_group=ViewMode.Tracks
+        )
+
+        starred = self.client.get_starred()
+
+        for track in starred.getTracks():
+            self.add_track_to_directory(track, oc)
+
+        return oc
 
     @authenticated
     def search(self, query):
@@ -321,4 +266,72 @@ class SpotifyPlugin(RunLoopMixin):
                     thumb=R("icon-default.png")
                 )
             ],
+        )
+
+    #
+    # Create objects
+    #
+
+    def create_track_object(self, track):
+        album = track.getAlbum()
+
+        #thumbnail_url = self.server.get_art_url(album.getURI())
+        callback = Callback(self.play_track, uri=track.getURI(), ext="aiff")
+
+        artists = (a.getName().decode("utf-8") for a in track.getArtists())
+
+        return TrackObject(
+            items=[
+                MediaObject(
+                    parts=[PartObject(key=callback)],
+                    )
+            ],
+            key=track.getName().decode("utf-8"),
+            rating_key=track.getName().decode("utf-8"),
+            title=track.getName().decode("utf-8"),
+            album=album.getName().decode("utf-8"),
+            artist=", ".join(artists),
+            index=int(track.getNumber()),
+            duration=int(track.getDuration()),
+            #thumb=thumbnail_url
+        )
+
+    def create_album_object(self, album):
+        """ Factory method for album objects """
+        title = album.getName().decode("utf-8")
+
+        if Prefs["displayAlbumYear"] and album.year() != 0:
+            title = "%s (%s)" % (title, album.year())
+
+        return DirectoryObject(
+            key=Callback(self.get_album_tracks, uri=album.getURI()),
+            title=title,
+            #thumb=self.server.get_art_url(album.getURI())
+        )
+
+    #
+    # Insert objects into container
+    #
+
+    def add_track_to_directory(self, track, oc):
+        if not self.client.is_track_playable(track):
+            Log("Ignoring unplayable track: %s" % track.name())
+            return
+
+        oc.add(self.create_track_object(track))
+
+    def add_album_to_directory(self, album, oc):
+        if not self.client.is_album_playable(album):
+            Log("Ignoring unplayable album: %s" % album.name())
+            return
+
+        oc.add(self.create_album_object(album))
+
+    def add_artist_to_directory(self, artist, oc):
+        oc.add(
+            DirectoryObject(
+                key=Callback(self.get_artist_albums, uri=artist.getURI()),
+                title=artist.getName().decode("utf-8"),
+                thumb=R("placeholder-artist.png")
+            )
         )

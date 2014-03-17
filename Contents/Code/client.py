@@ -64,22 +64,27 @@ class SpotifyClient(object):
 
         pass
 
-    def get_playlists(self, folder_id = 0):
-        """ Return the user's playlists
+    def get_playlists(self):
+        """ Return the user's playlists"""
 
-        :param folder_id       The id of the playlist folder to return.
-        """
+        return self.spotify.getPlaylists()
 
-        pass
-
-    def get_starred_tracks(self):
+    def get_starred(self):
         """ Return the user's starred tracks
 
         TODO this should be made async with a callback rather than assuming
         the starred playlist is loaded (will fail if it isn't right now).
         """
 
-        pass
+        playlists = self.get_playlists()
+
+        for pl in playlists:
+            if pl.getID() == "starred":
+                return pl
+
+        # Unable to find "starred" playlist.
+        return None
+
 
     def load_image(self, uri, image_id):
         """ Load an image from an image id
