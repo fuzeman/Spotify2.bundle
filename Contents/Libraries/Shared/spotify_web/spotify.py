@@ -852,9 +852,7 @@ class SpotifyAPI():
                     return self.is_logged_in
                 except:
                     return False
-        except Exception, ex:
-            Logging.warn('(%s) %s' % (type(ex), ex))
-            Logging.debug('host: %s, port: %s' % (repr(self.ws.host), repr(self.ws.port)))
+        except:
             self.disconnect()
             return False
 
@@ -866,7 +864,5 @@ class SpotifyAPI():
         self.heartbeat_marker.set()
 
     def disconnect(self):
-        Logging.debug('Disconnecting...')
-
         if self.ws is not None:
             self.ws.close()

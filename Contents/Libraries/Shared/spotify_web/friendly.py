@@ -175,6 +175,35 @@ class SpotifyArtist(SpotifyMetadataObject):
 
         return self.spotify.objectFromInternalObj("track", top_tracks.track)
 
+    @Cache
+    def getAlbumGroup(self, name):
+        albums = []
+
+        for obj in getattr(self.obj, name + '_group'):
+            if not obj.album:
+                continue
+
+            # TODO do we need determine which album? (instead of picking first)
+            item = self.spotify.objectFromInternalObj("album", obj.album[0])
+            if not item:
+                continue
+
+            albums.append(item[0])
+
+        return albums
+
+    def getAlbums(self):
+        return self.getAlbumGroup('album')
+
+    def getSingles(self):
+        return self.getAlbumGroup('single')
+
+    def getCompilations(self):
+        return self.getAlbumGroup('compilation')
+
+    def getAppearsOn(self):
+        return self.getAlbumGroup('appears_on')
+
 
 class SpotifyAlbum(SpotifyMetadataObject):
     uri_type = "album"
