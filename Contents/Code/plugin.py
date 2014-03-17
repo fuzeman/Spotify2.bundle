@@ -2,6 +2,9 @@ from client import SpotifyClient
 from settings import ROUTEBASE
 from utils import localized_format
 
+from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
+import requests
+
 
 def authenticated(func):
     """ Decorator used to force a valid session for a given call
@@ -112,6 +115,34 @@ class SpotifyPlugin(object):
         self.current_track = self.client.get(uri)
 
         return Redirect(self.get_track_url(self.current_track))
+
+    @authenticated
+    @route(ROUTEBASE + 'image')
+    def image(self, uri):
+        obj = self.client.get(uri)
+
+        url = None
+
+        if isinstance(obj, SpotifyArtist):
+            portraits = obj.getPortraits()
+            url = portraits.get('640')
+
+            if not url:
+                return Redirect(R('placeholder-artist.png'))
+        elif isinstance(obj, SpotifyAlbum):
+            covers = obj.getCovers()
+            url = covers.get('300')
+        elif isinstance(obj, SpotifyTrack):
+            covers = obj.getAlbum().getCovers()
+            url = covers.get('300')
+        else:
+            return None
+
+        if not url:
+            return ''
+
+        response = requests.get(url)
+        return response.content
 
     def get_track_url(self, track):
         self.client.spotify.api.send_track_event(self.current_track.getID(), 'play', 0)
@@ -294,8 +325,6 @@ class SpotifyPlugin(object):
     def create_track_object(self, track):
         album = track.getAlbum()
 
-        #thumbnail_url = self.server.get_art_url(album.getURI())
-
         artists = (a.getName().decode("utf-8") for a in track.getArtists())
 
         return TrackObject(
@@ -313,7 +342,7 @@ class SpotifyPlugin(object):
             artist=", ".join(artists),
             index=int(track.getNumber()),
             duration=int(track.getDuration()),
-            #thumb=thumbnail_url
+            thumb=Callback(self.image, uri=track.getURI(), ext='png')
         )
 
     def create_album_object(self, album):
@@ -326,7 +355,7 @@ class SpotifyPlugin(object):
         return DirectoryObject(
             key=Callback(self.album, uri=album.getURI()),
             title=title,
-            #thumb=self.server.get_art_url(album.getURI())
+            thumb=Callback(self.image, uri=album.getURI(), ext='png')
         )
 
     #
@@ -352,6 +381,6 @@ class SpotifyPlugin(object):
             DirectoryObject(
                 key=Callback(self.artist, uri=artist.getURI()),
                 title=artist.getName().decode("utf-8"),
-                thumb=R("placeholder-artist.png")
+                thumb=Callback(self.image, uri=artist.getURI(), ext='png')
             )
         )

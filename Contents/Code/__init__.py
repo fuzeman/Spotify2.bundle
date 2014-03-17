@@ -22,6 +22,10 @@ def plugin_callback(method, **kwargs):
 def play(**kwargs):
     return plugin_callback(SpotifyPlugin.play, **kwargs)
 
+@route(ROUTEBASE + 'image')
+def image(**kwargs):
+    return plugin_callback(SpotifyPlugin.image, **kwargs)
+
 
 def artist(**kwargs):
     return plugin_callback(SpotifyPlugin.artist, **kwargs)
