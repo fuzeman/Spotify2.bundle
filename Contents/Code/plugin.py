@@ -1,7 +1,6 @@
 from client import SpotifyClient
-from settings import PLUGIN_ID, RESTART_URL, PREFIX, ROUTEBASE
-from utils import RunLoopMixin, assert_loaded, localized_format
-from urllib import urlopen
+from settings import ROUTEBASE
+from utils import localized_format
 
 
 def authenticated(func):
@@ -58,9 +57,7 @@ class ViewMode(object):
         plugin.AddViewGroup(cls.Playlists, "List", "items")
 
 
-class SpotifyPlugin(RunLoopMixin):
-    """ The main spotify plugin class """
-
+class SpotifyPlugin(object):
     def __init__(self):
         self.client = None
         self.server = None
@@ -77,29 +74,10 @@ class SpotifyPlugin(RunLoopMixin):
         return Prefs["password"]
 
     def preferences_updated(self):
-        """ Called when the user updates the plugin preferences
+        """ Called when the user updates the plugin preferences"""
 
-        Note: if a user changes the username and password and we have an
-        existing client we need to restart the plugin to use the new details.
-        libspotify doesn't play nice with username and password changes.
-        """
-        if not self.client:
-            self.start()
-        elif self.client.needs_restart(self.username, self.password):
-            self.restart()
-        else:
-            Log("User details unchanged")
-
-    def restart(self):
-        """ Restart the plugin to pick up new authentication details
-
-        Note: don't restart inline since it will make the framework barf.
-        Instead schedule a callback on the ioloop's next tick
-        """
-        Log("Restarting plugin")
-        if self.client:
-            self.client.disconnect()
-        self.schedule_timer(0.2, lambda: urlopen(RESTART_URL))
+        # Trigger a client restart
+        self.start()
 
     def start(self):
         """ Start the Spotify client and HTTP server """

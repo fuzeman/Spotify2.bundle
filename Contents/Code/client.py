@@ -42,6 +42,10 @@ class SpotifyClient(object):
 
         return self.spotify.search(query, query_type, max_results, offset)
 
+    #
+    # Media
+    #
+
     def get(self, uri):
         return self.spotify.objectFromURI(uri)
 
@@ -55,17 +59,9 @@ class SpotifyClient(object):
 
         return True
 
-    def get_art(self, uri, callback):
-        """ Fetch and return album artwork.
-
-        note:: Currently only album artowk can be retrieved.
-
-        :param uri:            The spotify URI of the album to load art for.
-        :param callback:       The callback to invoke when artwork is loaded.
-                               Should take image data as a single parameter.
-        """
-
-        pass
+    #
+    # Playlists
+    #
 
     def get_playlists(self):
         """ Return the user's playlists"""
@@ -80,49 +76,6 @@ class SpotifyClient(object):
         return None
 
     def get_starred(self):
-        """ Return the user's starred tracks
-
-        TODO this should be made async with a callback rather than assuming
-        the starred playlist is loaded (will fail if it isn't right now).
-        """
+        """ Return the user's starred tracks"""
 
         return self.get_playlist(id='starred')
-
-
-    def load_image(self, uri, image_id):
-        """ Load an image from an image id
-
-        :param image_id:       The spotify id of the image to load.
-        :param callback:       A callback to invoke when the image is loaded.
-                               Should take the image as a single parameter.
-        """
-
-        pass
-
-    def load_track(self, uri):
-        """ Load a track from a spotify URI
-
-        Note: this currently polls as there is no API for browsing
-        individual tracks
-
-        :param uri:              The spotify URI of the track to load.
-        """
-
-        pass
-
-    def play_track(self, uri, audio_callback, stop_callback):
-        """ Start playing a spotify track
-
-        :param uri:              The spotify URI of the track to play.
-        :param audio_callback:   A callback to invoke when audio arrives.
-                                 Return a boolean to indicate if more audio can
-                                 be processed.
-        :param stop_callback:    A callback to invoke when playback is stopped.
-        """
-
-        pass
-
-    def stop_playback(self):
-        """ Stop playing the current stream """
-
-        pass
