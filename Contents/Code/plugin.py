@@ -87,7 +87,7 @@ class SpotifyPlugin(object):
 
         # First try get track url
         self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
-        track_url = track.getFileURL()
+        track_url = track.getFileURL(retries=1)
 
         # If first request failed, trigger re-connection to spotify
         retry_num = 0
@@ -102,7 +102,7 @@ class SpotifyPlugin(object):
 
             Log.Info('Fetching track url...')
             self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
-            track_url = track.getFileURL()
+            track_url = track.getFileURL(retries=1)
 
         # Finished
         if track_url:

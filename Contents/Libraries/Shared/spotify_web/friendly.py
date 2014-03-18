@@ -123,8 +123,8 @@ class SpotifyTrack(SpotifyMetadataObject):
     def getDuration(self):
         return self.obj.duration
 
-    def getFileURL(self, urlOnly=True):
-        resp = self.spotify.api.track_uri(self.obj)
+    def getFileURL(self, urlOnly=True, retries=3):
+        resp = self.spotify.api.track_uri(self.obj, retries=retries)
 
         if False != resp and "uri" in resp:
             return resp["uri"] if urlOnly else resp

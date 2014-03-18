@@ -328,12 +328,12 @@ class SpotifyAPI():
         else:
             self.logged_in_marker.set()
 
-    def track_uri(self, track, callback=False):
+    def track_uri(self, track, callback=False, retries=3):
         track = self.recurse_alternatives(track)
         if not track:
             return False
         args = ["mp3160", SpotifyUtil.gid2id(track.gid)]
-        return self.wrap_request("sp/track_uri", args, callback)
+        return self.wrap_request("sp/track_uri", args, callback, retries=retries)
 
     def parse_metadata(self, sp, resp, callback_data):
         header = mercury_pb2.MercuryReply()
