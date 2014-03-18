@@ -1,5 +1,6 @@
-from plugin import SpotifyPlugin, ViewMode
+from plugin import SpotifyPlugin
 from settings import PREFIX, VERSION, ROUTEBASE
+from utils import ViewMode
 
 
 plugin = SpotifyPlugin()

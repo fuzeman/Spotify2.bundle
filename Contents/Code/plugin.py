@@ -1,63 +1,10 @@
+from threading import Lock
 from client import SpotifyClient
 from settings import ROUTEBASE
-from utils import localized_format
+from utils import localized_format, authenticated, ViewMode, Track
 
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
 import requests
-
-
-def authenticated(func):
-    """ Decorator used to force a valid session for a given call
-
-    We must return a class with a __name__ property here since the Plex
-    framework uses it to generate a route and it stops us assigning
-    properties to function objects.
-    """
-
-    class decorator(object):
-        @property
-        def __name__(self):
-            return func.func_name
-
-        def __call__(self, *args, **kwargs):
-            plugin = args[0]
-            client = plugin.client
-            if not client or not client.is_logged_in():
-                return self.access_denied_message(plugin, client)
-            return func(*args, **kwargs)
-
-        def access_denied_message(self, plugin, client):
-            if not client:
-                return MessageContainer(
-                    header=L("MSG_TITLE_MISSING_LOGIN"),
-                    message=L("MSG_BODY_MISSING_LOGIN")
-                )
-            elif not client.spotify.api.ws:
-                return MessageContainer(
-                    header=L("MSG_TITLE_LOGIN_IN_PROGRESS"),
-                    message=L("MSG_BODY_LOGIN_IN_PROGRESS")
-                )
-            else:
-                # Trigger a re-connect
-                Log.Warn('Connection failed, reconnecting...')
-                plugin.start()
-
-                return MessageContainer(
-                    header=L("MSG_TITLE_LOGIN_FAILED"),
-                    message=L("MSG_TITLE_LOGIN_FAILED")
-                )
-
-    return decorator()
-
-
-class ViewMode(object):
-    Tracks = "Tracks"
-    Playlists = "Playlists"
-
-    @classmethod
-    def AddModes(cls, plugin):
-        plugin.AddViewGroup(cls.Tracks, "List", "songs")
-        plugin.AddViewGroup(cls.Playlists, "List", "items")
 
 
 class SpotifyPlugin(object):
@@ -67,6 +14,8 @@ class SpotifyPlugin(object):
         self.start()
 
         self.current_track = None
+
+        self.track_lock = Lock()
 
     @property
     def username(self):
@@ -107,14 +56,65 @@ class SpotifyPlugin(object):
         if self.current_track:
             # Send stop event for previous track
             self.client.spotify.api.send_track_event(
-                self.current_track.getID(),
+                self.current_track.track.getID(),
                 'stop',
-                self.current_track.getDuration()
+                self.current_track.track.getDuration()
             )
 
-        self.current_track = self.client.get(uri)
+        track = self.client.get(uri)
 
-        return Redirect(self.get_track_url(self.current_track))
+        return Redirect(self.get_track_url(track))
+
+    def get_track_url(self, track):
+        if not track:
+            return None
+
+        self.track_lock.acquire()
+
+        Log.Debug(
+            'Acquired track_lock, current_track: %s',
+            repr(self.current_track)
+        )
+
+        if self.current_track and self.current_track.matches(track):
+            Log.Debug('Using existing track: %s', repr(self.current_track))
+            self.track_lock.release()
+
+            return self.current_track.url
+
+        # Reset current state
+        self.current_track = None
+
+        # First try get track url
+        self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
+        track_url = track.getFileURL()
+
+        # If first request failed, trigger re-connection to spotify
+        retry_num = 0
+        while not track_url and retry_num < 3:
+            retry_num += 1
+
+            Log.Info('get_track_url failed, re-connecting to spotify...')
+            self.start()
+
+            # Update reference to spotify client (otherwise getFileURL request will fail)
+            track.spotify = self.client.spotify
+
+            Log.Info('Fetching track url...')
+            self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
+            track_url = track.getFileURL()
+
+        # Finished
+        if track_url:
+            self.current_track = Track.create(track, track_url)
+            Log.Info('Current Track: %s', repr(self.current_track))
+        else:
+            self.current_track = None
+            Log.Warn('Unable to fetch track URL (connection problem?)')
+
+        Log.Debug('Retrieved track_url: %s', repr(track_url))
+        self.track_lock.release()
+        return track_url
 
     @authenticated
     @route(ROUTEBASE + 'image')
@@ -143,33 +143,6 @@ class SpotifyPlugin(object):
 
         response = requests.get(url)
         return response.content
-
-    def get_track_url(self, track):
-        self.client.spotify.api.send_track_event(self.current_track.getID(), 'play', 0)
-
-        track_url = self.current_track.getFileURL()
-
-        # If first request failed, trigger re-connection to spotify
-        retry_num = 0
-
-        while not track_url and retry_num < 3:
-            retry_num += 1
-
-            Log.Info('get_track_url failed, re-connecting to spotify...')
-            self.start()
-
-            # Update reference to spotify client (otherwise getFileURL request will fail)
-            self.current_track.spotify = self.client.spotify
-
-            Log.Info('Fetching track url...')
-            self.client.spotify.api.send_track_event(self.current_track.getID(), 'play', 0)
-
-            track_url = self.current_track.getFileURL()
-
-        if not track_url:
-            Log.Warn('unable to fetch track URL (connection problem?)')
-
-        return track_url
 
     @authenticated
     def artist(self, uri):
