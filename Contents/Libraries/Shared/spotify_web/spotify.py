@@ -4,6 +4,7 @@ import json
 import operator
 import binascii
 import base64
+import execjs
 from ssl import SSLError
 from threading import Thread, Event, Lock
 
@@ -18,6 +19,24 @@ from .proto import mercury_pb2, metadata_pb2, playlist4changes_pb2,\
 
 
 base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+FLASH_KEY = [[19, 104], [16, 19], [0, 41], [3, 133], [10, 175], [1, 240], [5, 150], [17, 116], [7, 240], [13, 0]]
+
+WORK_RUNNER = """
+var main = {
+  args: null,
+
+  reply: function() {
+    main.args = Array.prototype.slice.call(arguments);
+  },
+
+  run: function() {
+    %s
+
+    return main.args;
+  }
+};
+"""
 
 
 class Logging():
@@ -170,7 +189,9 @@ class SpotifyUtil():
 
 
 class SpotifyAPI():
-    def __init__(self, login_callback_func=False):
+    def __init__(self, login_callback_func=False, log_level=1):
+        Logging.log_level = log_level
+
         self.auth_server = "play.spotify.com"
 
         self.logged_in_marker = Event()
@@ -692,7 +713,6 @@ class SpotifyAPI():
         ms_seeks_forward = 0
         ms_seeks_backward = 0
         ms_latency = 100
-        display_track = None
         play_context = "unknown"
         source_start = "unknown"
         source_end = "unknown"
@@ -702,7 +722,23 @@ class SpotifyAPI():
         referrer_version = "0.1.0"
         referrer_vendor = "com.spotify"
         max_continuous = ms_played
-        args = [lid, ms_played, ms_played_union, n_seeks_forward, n_seeks_backward, ms_seeks_forward, ms_seeks_backward, ms_latency, display_track, play_context, source_start, source_end, reason_start, reason_end, referrer, referrer_version, referrer_vendor, max_continuous]
+
+        args = [
+            lid,
+            ms_played, ms_played_union,
+            n_seeks_forward, n_seeks_backward,
+            ms_seeks_forward, ms_seeks_backward,
+            ms_latency,
+            track_uri,
+            play_context,
+            source_start, source_end,
+            reason_start, reason_end,
+            referrer, referrer_version, referrer_vendor,
+            max_continuous,
+            "none",
+            "na"
+        ]
+
         return self.wrap_request("sp/track_end", args, callback)
 
     def send_track_event(self, lid, event, ms_where, callback=False):
@@ -712,6 +748,7 @@ class SpotifyAPI():
             ev_n = 3
         else:
             return False
+
         return self.wrap_request("sp/track_event", [lid, ev_n, int(ms_where)], callback)
 
     def send_track_progress(self, lid, ms_played, callback=False):
@@ -723,7 +760,18 @@ class SpotifyAPI():
         referrer = "unknown"
         referrer_version = "0.1.0"
         referrer_vendor = "com.spotify"
-        args = [lid, source_start, reason_start, int(ms_played), int(ms_latency), play_context, display_track, referrer, referrer_version, referrer_vendor]
+
+        args = [
+            lid,
+            source_start,
+            reason_start,
+            int(ms_played),
+            int(ms_latency),
+            play_context,
+            display_track,
+            referrer, referrer_version, referrer_vendor
+        ]
+
         return self.wrap_request("sp/track_progress", args, callback)
 
     def send_command(self, name, args=None, callback=None):
@@ -780,16 +828,50 @@ class SpotifyAPI():
             else:
                 Logging.debug("Unhandled command response with id " + str(pid))
 
+    def work(self, payload):
+        Logging.debug("Got do_work message, payload: " + payload)
+
+        ctx = execjs.compile(WORK_RUNNER % payload)
+        result = ctx.eval('main.run.call(main)')
+
+        Logging.debug('Work result: %s' % result)
+
+        self.send_command("sp/work_done", result, self.work_callback)
+
     def work_callback(self, sp, resp):
         Logging.debug("Got ack for message reply")
 
+    def send_pong(self, ping):
+        ping_parts = ping.split(' ')
+
+        pong = "undefined 0"
+
+        if len(ping_parts) >= 20:
+            result = []
+
+            for x in range(len(FLASH_KEY)):
+                idx = FLASH_KEY[x][0]
+                xor = FLASH_KEY[x][1]
+
+                result.append(str(int(ping_parts[idx]) ^ xor))
+
+            pong = ' '.join(result)
+
+        Logging.debug('received flash ping %s, sending pong: %s' % (ping, pong))
+        self.send_command('sp/pong_flash2', [pong])
+
     def handle_message(self, msg):
         cmd = msg[0]
+
+        payload = None
         if len(msg) > 1:
             payload = msg[1]
+
         if cmd == "do_work":
-            Logging.debug("Got do_work message, payload: "+payload)
-            self.send_command("sp/work_done", ["v1"], self.work_callback)
+            self.work(payload)
+
+        if cmd == "ping_flash2":
+            self.send_pong(payload)
 
     def handle_error(self, err):
         if len(err) < 2:

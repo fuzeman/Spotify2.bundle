@@ -460,8 +460,8 @@ class SpotifyToplist():
 class Spotify():
     AUTOREPLACE_TRACKS = True
 
-    def __init__(self, username, password):
-        self.api = SpotifyAPI()
+    def __init__(self, username, password, log_level=1):
+        self.api = SpotifyAPI(log_level=log_level)
         self.api.connect(username, password)
 
     def logged_in(self):

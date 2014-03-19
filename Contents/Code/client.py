@@ -15,14 +15,13 @@ class SpotifyClient(object):
         :param password:       The password to authenticate with.
         """
 
-        self.spotify = Spotify(username, password)
-        self.spotify.api.set_log_level(3)
-
         # Hook logging
         Logging.hook(3, Log.Debug)
         Logging.hook(2, Log.Info)
         Logging.hook(1, Log.Warn)
         Logging.hook(0, Log.Error)
+
+        self.spotify = Spotify(username, password, log_level=3)
 
     #
     # Public methods
