@@ -276,8 +276,6 @@ class SpotifyAPI():
             "landingURL": landingURL,
             "cf":"",
         }
-
-        Logging.notice(str(login_payload))
         
         resp = session.post("https://" + self.auth_server + "/xhr/json/auth.php", data=login_payload, headers=headers)
         resp_json = resp.json()
