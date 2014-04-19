@@ -1,8 +1,4 @@
-'''
-Settings used throughout the plguin
-'''
-
-PLUGIN_ID = "com.plexapp.plugins.spotify"
+PLUGIN_ID = "com.plexapp.plugins.spotify2"
 VERSION     = 0.2
 PREFIX      = "/music/spotify"
 ROUTEBASE   = PREFIX + '/'
