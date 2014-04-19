@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.plexapp.plugins.spotify</string>
+	<string>com.plexapp.plugins.spotify2</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>PlexClientPlatforms</key>
