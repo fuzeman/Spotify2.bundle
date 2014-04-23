@@ -1,6 +1,6 @@
 from threading import Lock
 from client import SpotifyClient
-from settings import ROUTEBASE
+from routing import function_path, route_path
 from utils import localized_format, authenticated, ViewMode, Track
 
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
@@ -44,7 +44,6 @@ class SpotifyPlugin(object):
         self.client = SpotifyClient(self.username, self.password)
 
     @authenticated
-    @route(ROUTEBASE + 'play')
     def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
         Log('play(%s)' % repr(uri))
@@ -117,7 +116,6 @@ class SpotifyPlugin(object):
         return track_url
 
     @authenticated
-    @route(ROUTEBASE + 'image')
     def image(self, uri):
         obj = self.client.get(uri)
 
@@ -194,7 +192,7 @@ class SpotifyPlugin(object):
         for playlist in playlists:
             oc.add(
                 DirectoryObject(
-                    key=Callback(self.playlist, uri=playlist.getURI()),
+                    key=route_path('playlist', playlist.getURI()),
                     title=playlist.getName().decode("utf-8"),
                     thumb=R("placeholder-playlist.png")
                 )
@@ -264,23 +262,21 @@ class SpotifyPlugin(object):
         return oc
 
     def main_menu(self):
-        Log("Spotify main menu")
-
         return ObjectContainer(
             objects=[
                 InputDirectoryObject(
-                    key=Callback(self.search),
+                    key=route_path('search'),
                     prompt=L("PROMPT_SEARCH"),
                     title=L("MENU_SEARCH"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=Callback(self.playlists),
+                    key=route_path('playlists'),
                     title=L("MENU_PLAYLISTS"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=Callback(self.starred),
+                    key=route_path('starred'),
                     title=L("MENU_STARRED"),
                     thumb=R("icon-default.png")
                 ),
@@ -303,7 +299,7 @@ class SpotifyPlugin(object):
         return TrackObject(
             items=[
                 MediaObject(
-                    parts=[PartObject(key=Callback(self.play, uri=track.getURI(), ext='mp3'))],
+                    parts=[PartObject(key=function_path('play', uri=track.getURI(), ext='mp3'))],
                     container=Container.MP3,
                     audio_codec=AudioCodec.MP3
                 )
@@ -315,7 +311,7 @@ class SpotifyPlugin(object):
             artist=", ".join(artists),
             index=int(track.getNumber()),
             duration=int(track.getDuration()),
-            thumb=Callback(self.image, uri=track.getURI(), ext='png')
+            thumb=function_path('image.png', uri=track.getURI())
         )
 
     def create_album_object(self, album):
@@ -326,9 +322,9 @@ class SpotifyPlugin(object):
             title = "%s (%s)" % (title, album.year())
 
         return DirectoryObject(
-            key=Callback(self.album, uri=album.getURI()),
+            key=route_path('album', album.getURI()),
             title=title,
-            thumb=Callback(self.image, uri=album.getURI(), ext='png')
+            thumb=function_path('image.png', uri=album.getURI())
         )
 
     #
@@ -352,8 +348,8 @@ class SpotifyPlugin(object):
     def add_artist_to_directory(self, artist, oc):
         oc.add(
             DirectoryObject(
-                key=Callback(self.artist, uri=artist.getURI()),
+                key=route_path('artist', artist.getURI()),
                 title=artist.getName().decode("utf-8"),
-                thumb=Callback(self.image, uri=artist.getURI(), ext='png')
+                thumb=function_path('image.png', uri=artist.getURI())
             )
         )

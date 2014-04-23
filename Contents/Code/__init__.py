@@ -19,41 +19,48 @@ def plugin_callback(method, **kwargs):
     return callback(**kwargs)
 
 
-@route(ROUTEBASE + 'play')
-def play(**kwargs):
-    return plugin_callback(SpotifyPlugin.play, **kwargs)
-
-@route(ROUTEBASE + 'image')
-def image(**kwargs):
-    return plugin_callback(SpotifyPlugin.image, **kwargs)
-
-
+@route(ROUTEBASE + 'artist/{uri}')
 def artist(**kwargs):
     return plugin_callback(SpotifyPlugin.artist, **kwargs)
 
 
+@route(ROUTEBASE + 'album/{uri}')
 def album(**kwargs):
     return plugin_callback(SpotifyPlugin.album, **kwargs)
 
 
+@route(ROUTEBASE + 'playlist/{uri}')
 def playlist(**kwargs):
     return plugin_callback(SpotifyPlugin.playlist, **kwargs)
 
 
+@route(ROUTEBASE + 'playlists')
 def playlists(**kwargs):
     return plugin_callback(SpotifyPlugin.playlists, **kwargs)
 
 
+@route(ROUTEBASE + 'starred')
 def starred(**kwargs):
     return plugin_callback(SpotifyPlugin.starred, **kwargs)
 
 
+@route(ROUTEBASE + 'search')
 def search(**kwargs):
     return plugin_callback(SpotifyPlugin.search, **kwargs)
 
 
 def main_menu(**kwargs):
     return plugin_callback(SpotifyPlugin.main_menu, **kwargs)
+
+
+@route(ROUTEBASE + 'play')
+def play(**kwargs):
+    return plugin_callback(SpotifyPlugin.play, **kwargs)
+
+
+@route(ROUTEBASE + 'image')
+def image(**kwargs):
+    return plugin_callback(SpotifyPlugin.image, **kwargs)
 
 
 def Start():
@@ -71,4 +78,3 @@ def Start():
 def ValidatePrefs():
     """ Called when the user's prefs are changed """
     plugin_callback(SpotifyPlugin.preferences_updated)
-
