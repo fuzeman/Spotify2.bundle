@@ -1,9 +1,10 @@
-from threading import Lock
 from client import SpotifyClient
 from routing import function_path, route_path
 from utils import localized_format, authenticated, ViewMode, Track
 
+from cachecontrol import CacheControl
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
+from threading import Lock
 import requests
 
 
@@ -12,6 +13,9 @@ class SpotifyPlugin(object):
         self.client = None
         self.server = None
         self.start()
+
+        self.session = requests.session()
+        self.session_cached = CacheControl(self.session)
 
         self.current_track = None
 
@@ -115,32 +119,45 @@ class SpotifyPlugin(object):
         self.track_lock.release()
         return track_url
 
-    @authenticated
-    def image(self, uri):
-        obj = self.client.get(uri)
+    @staticmethod
+    def select_image(images):
+        if images.get('640'):
+            return images['640']
+        elif images.get('300'):
+            return images['300']
 
-        url = None
+        return None
+
+    def get_uri_image(self, uri):
+        obj = self.client.get(uri)
+        images = None
 
         if isinstance(obj, SpotifyArtist):
-            portraits = obj.getPortraits()
-            url = portraits.get('640')
-
-            if not url:
-                return Redirect(R('placeholder-artist.png'))
+            images = obj.getPortraits()
         elif isinstance(obj, SpotifyAlbum):
-            covers = obj.getCovers()
-            url = covers.get('300')
+            images = obj.getCovers()
         elif isinstance(obj, SpotifyTrack):
-            covers = obj.getAlbum().getCovers()
-            url = covers.get('300')
+            images = obj.getAlbum().getCovers()
+
+        return self.select_image(images)
+
+    @authenticated
+    def image(self, uri):
+        image_url = None
+
+        if uri.startswith('spotify:'):
+            # Fetch object for spotify URI and select image
+            image_url = self.get_uri_image(uri)
         else:
-            return None
+            # pre-selected image provided
+            Log.Debug('Using pre-selected image URL: "%s"' % uri)
+            image_url = uri
 
-        if not url:
-            return ''
+        if not image_url:
+            # TODO media specific placeholders
+            return Redirect(R('placeholder-artist.png'))
 
-        response = requests.get(url)
-        return response.content
+        return self.session_cached.get(image_url).content
 
     @authenticated
     def artist(self, uri):
@@ -307,7 +324,7 @@ class SpotifyPlugin(object):
             artist=track.getArtists(nameOnly=True),
             index=int(track.getNumber()),
             duration=int(track.getDuration()),
-            thumb=function_path('image.png', uri=track.getURI())
+            thumb=function_path('image.png', uri=self.select_image(track.getAlbumCovers()))
         )
 
     def create_album_object(self, album):
