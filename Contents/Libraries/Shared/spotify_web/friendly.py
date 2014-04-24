@@ -1,9 +1,10 @@
 from functools import partial
-from lxml import etree
 from threading import Thread
 from Queue import Queue
 
 from .spotify import SpotifyAPI, SpotifyUtil
+from .search import SpotifySearch
+
 # from spotify_web.proto import mercury_pb2, metadata_pb2
 
 
@@ -379,96 +380,6 @@ class SpotifyUserlist():
 
     def getTracks(self):
         return self.tracks
-
-
-class SpotifySearch():
-    def __init__(self, spotify, query, query_type, max_results, offset):
-        self.spotify = spotify
-        self.query = query
-        self.query_type = query_type
-        self.max_results = max_results
-        self.offset = offset
-        self.populate()
-
-    def populate(self):
-        xml = self.spotify.api.search_request(self.query, query_type=self.query_type, max_results=self.max_results, offset=self.offset)
-        xml = xml[38:]  # trim UTF8 declaration
-        self.result = etree.fromstring(xml)
-
-        # invalidate cache
-        self._Cache__cache = {}
-
-    def next(self):
-        self.offset += self.max_results
-        self.populate()
-
-    def prev(self):
-        self.offset = self.offset - self.max_results if self.offset >= self.max_results else 0
-        self.populate()
-
-    def getName(self):
-        return "Search "+self.query_type+": "+self.query
-
-    # Tracks
-    def getTracks(self):
-        return self.getObjByID(self.result, "track")
-
-    def getTracksTotal(self):
-        return self.getTotal('track')
-
-    def getNumTracks(self):
-        return len(self.getTracks())
-
-    # Albums
-    def getAlbums(self):
-        return self.getObjByID(self.result, "album")
-
-    def getAlbumsTotal(self):
-        return self.getTotal('album')
-
-    # artists
-    def getArtists(self):
-        return self.getObjByID(self.result, "artist")
-
-    def getArtistsTotal(self):
-        return self.getTotal('artist')
-
-    # Playlists
-    def getPlaylists(self):
-        return self.getObjByURI(self.result, "playlist")
-
-    def getPlaylistsTotal(self):
-        return self.getTotal('playlist')
-
-    def getObjByID(self, result, obj_type):
-        elems = result.find(obj_type+"s")
-        if elems is None:
-            elems = []
-
-        ids = [elem[0].text for elem in list(elems)]
-        objs = self.spotify.objectFromID(obj_type, ids)
-
-        return objs
-
-    def getObjByURI(self, result, obj_type):
-        elems = result.find(obj_type+"s")
-        if elems is None:
-            elems = []
-
-        uris = [elem[0].text for elem in list(elems)]
-        objs = self.spotify.objectFromURI(uris, asArray=True)
-
-        return objs
-
-    def getTotal(self, obj_type):
-        nodes = self.result.find('total-%ss' % obj_type)
-        if nodes is None:
-            return None
-
-        try:
-            return int(nodes.text)
-        except:
-            return None
 
 
 class SpotifyToplist():

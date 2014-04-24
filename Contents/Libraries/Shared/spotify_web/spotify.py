@@ -38,6 +38,8 @@ var main = {
 };
 """
 
+IMAGE_HOST = "d3rt1990lpmkn.cloudfront.net"
+
 
 class Logging():
     log_level = 1
@@ -141,6 +143,9 @@ class SpotifyUtil():
 
     @staticmethod
     def id2uri(uritype, v):
+        if not v:
+            return None
+
         res = []
         v = int(v, 16)
         while v > 0:
