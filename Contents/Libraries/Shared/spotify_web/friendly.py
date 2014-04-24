@@ -214,6 +214,9 @@ class SpotifyArtist(SpotifyMetadataObject):
 class SpotifyAlbum(SpotifyMetadataObject):
     uri_type = "album"
 
+    def getYear(self):
+        return int(self.obj.date.year)
+
     def getLabel(self):
         return self.obj.label
 

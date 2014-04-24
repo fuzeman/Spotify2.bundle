@@ -339,6 +339,10 @@ class SpotifyPlugin(object):
     #
 
     def create_track_object(self, track):
+        title = track.getName().decode("utf-8")
+
+        image_url = self.select_image(track.getAlbumCovers())
+
         return TrackObject(
             items=[
                 MediaObject(
@@ -347,27 +351,44 @@ class SpotifyPlugin(object):
                     audio_codec=AudioCodec.MP3
                 )
             ],
-            key=track.getName().decode("utf-8"),
-            rating_key=track.getName().decode("utf-8"),
-            title=track.getName().decode("utf-8"),
+
+            key=title,
+            rating_key=title,
+
+            title=title,
             album=track.getAlbum(nameOnly=True).decode("utf-8"),
             artist=track.getArtists(nameOnly=True),
+
             index=int(track.getNumber()),
             duration=int(track.getDuration()),
-            thumb=function_path('image.png', uri=self.select_image(track.getAlbumCovers()))
+
+            source_title='Spotify',
+
+            art=function_path('image.png', uri=image_url),
+            thumb=function_path('image.png', uri=image_url)
         )
 
     def create_album_object(self, album):
         """ Factory method for album objects """
         title = album.getName().decode("utf-8")
 
-        if Prefs["displayAlbumYear"] and album.year() != 0:
-            title = "%s (%s)" % (title, album.year())
+        if Prefs["displayAlbumYear"] and album.getYear() != 0:
+            title = "%s (%s)" % (title, album.getYear())
 
-        return DirectoryObject(
+        image_url = self.select_image(album.getCovers())
+
+        return AlbumObject(
             key=route_path('album', album.getURI()),
+            rating_key=album.getURI(),
+
             title=title,
-            thumb=function_path('image.png', uri=self.select_image(album.getCovers()))
+            artist=album.getArtists(nameOnly=True),
+
+            track_count=album.getNumTracks(),
+            source_title='Spotify',
+
+            art=function_path('image.png', uri=image_url),
+            thumb=function_path('image.png', uri=image_url),
         )
 
     #
@@ -397,11 +418,18 @@ class SpotifyPlugin(object):
         oc.add(self.create_album_object(album))
 
     def add_artist_to_directory(self, artist, oc):
+        image_url = self.select_image(artist.getPortraits())
+
         oc.add(
-            DirectoryObject(
+            ArtistObject(
                 key=route_path('artist', artist.getURI()),
+                rating_key=artist.getURI(),
+
                 title=artist.getName().decode("utf-8"),
-                thumb=function_path('image.png', uri=self.select_image(artist.getPortraits()))
+                source_title='Spotify',
+
+                art=function_path('image.png', uri=image_url),
+                thumb=function_path('image.png', uri=image_url)
             )
         )
 
