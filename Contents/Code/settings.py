@@ -1,5 +1,5 @@
 PLUGIN_ID   = "com.plexapp.plugins.spotify2"
-VERSION     = 0.3
+VERSION     = 0.4
 PREFIX      = "/music/spotify"
 ROUTEBASE   = PREFIX + '/'
 
