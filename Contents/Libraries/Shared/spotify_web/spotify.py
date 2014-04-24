@@ -455,9 +455,7 @@ class SpotifyAPI():
             if available:
                 break
 
-        if available:
-            Logging.notice(SpotifyUtil.gid2uri("track", track.gid) + " is available!")
-        else:
+        if not available:
             Logging.notice(SpotifyUtil.gid2uri("track", track.gid) + " is NOT available!")
 
         return available
