@@ -1,7 +1,9 @@
+from logging_handler import PlexHandler
 from plugin import SpotifyPlugin
-from settings import PREFIX, VERSION, ROUTEBASE
+from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
 from utils import ViewMode
 
+import logging
 
 plugin = SpotifyPlugin()
 
@@ -63,9 +65,20 @@ def image(**kwargs):
     return plugin_callback(SpotifyPlugin.image, **kwargs)
 
 
+def setup_logging():
+    logging.basicConfig(level=logging.DEBUG)
+
+    for name in LOGGERS:
+        logger = logging.getLogger(name)
+
+        logger.setLevel(logging.DEBUG)
+        logger.handlers = [PlexHandler()]
+
+
 def Start():
     """ Initialization function """
     Log("Starting Spotify (version %s)", VERSION)
+
     Plugin.AddPrefixHandler(PREFIX, main_menu, 'Spotify')
     ViewMode.AddModes(Plugin)
 
@@ -73,6 +86,8 @@ def Start():
     ObjectContainer.content = 'Items'
     ObjectContainer.art = R('art-default.png')
     DirectoryItem.thumb = R('icon-default.png')
+
+    setup_logging()
 
 
 def ValidatePrefs():
