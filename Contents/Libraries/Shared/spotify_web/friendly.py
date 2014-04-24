@@ -138,6 +138,12 @@ class SpotifyTrack(SpotifyMetadataObject):
         else:
             return self.spotify.objectFromInternalObj("album", self.obj.album)[0]
 
+    def getAlbumURI(self):
+        return SpotifyUtil.gid2uri('album', self.obj.album.gid)
+
+    def getAlbumCovers(self):
+        return Spotify.imagesFromArray(self.obj.album.cover)
+
     @Cache
     def getArtists(self, nameOnly=False):
         return self.spotify.objectFromInternalObj("artist", self.obj.artist, nameOnly)
