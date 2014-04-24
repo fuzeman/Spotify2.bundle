@@ -3,6 +3,7 @@ from plugin import SpotifyPlugin
 from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
 from utils import ViewMode
 
+import locale
 import logging
 
 plugin = SpotifyPlugin()
@@ -88,6 +89,8 @@ def Start():
     DirectoryItem.thumb = R('icon-default.png')
 
     setup_logging()
+
+    Log.Debug('Using locale: %s', locale.setlocale(locale.LC_ALL, ''))
 
 
 def ValidatePrefs():

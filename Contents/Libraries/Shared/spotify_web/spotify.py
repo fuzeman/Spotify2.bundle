@@ -455,9 +455,6 @@ class SpotifyAPI():
             if available:
                 break
 
-        if not available:
-            Logging.notice(SpotifyUtil.gid2uri("track", track.gid) + " is NOT available!")
-
         return available
 
     def recurse_alternatives(self, track, attempted=None, country=None):

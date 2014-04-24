@@ -5,6 +5,7 @@ from utils import localized_format, authenticated, ViewMode, Track
 from cachecontrol import CacheControl
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
 from threading import Lock
+import locale
 import requests
 
 
@@ -281,7 +282,10 @@ class SpotifyPlugin(object):
             if not items or not len(items):
                 return
 
-            self.add_section_header('%s (%s)' % (title, total), oc)
+            self.add_section_header('%s (%s)' % (
+                title,
+                locale.format('%d', total, grouping=True)
+            ), oc)
 
             for x in range(limit):
                 if x < len(items):
