@@ -210,21 +210,23 @@ class SpotifyPlugin(object):
         playlists = self.client.get_playlists()
 
         for playlist in playlists:
-            oc.add(
-                DirectoryObject(
-                    key=route_path('playlist', playlist.getURI()),
-                    title=playlist.getName().decode("utf-8"),
-                    thumb=R("placeholder-playlist.png")
-                )
-            )
+            self.add_playlist_to_directory(playlist, oc)
 
         return oc
 
     @authenticated
     def playlist(self, uri):
-        pl = self.client.get_playlist(uri)
+        pl = self.client.get(uri)
+
+        if pl is None:
+            # Unable to find playlist
+            return MessageContainer(
+                header=L("MSG_TITLE_UNKNOWN_PLAYLIST"),
+                message='URI: %s' % uri
+            )
 
         Log("Get playlist: %s", pl.getName().decode("utf-8"))
+        Log.Debug('playlist truncated: %s', pl.obj.contents.truncated)
 
         oc = ObjectContainer(
             title2=pl.getName().decode("utf-8"),
@@ -254,30 +256,51 @@ class SpotifyPlugin(object):
         return oc
 
     @authenticated
-    def search(self, query):
+    def search(self, query, limit=7):
         """ Search asynchronously invoking the completion callback when done.
 
-        :param query:          The query string to use.
+        :param query: Search query
+        :type query: str
+
+        :param limit: Number of items to list per type (artist, album, etc..)
+        :type limit: int
         """
         Log('Searching for "%s"' % query)
 
-        results = self.client.search(query)
+        result = self.client.search(query)
 
         oc = ObjectContainer(title2="Results")
 
-        for artist in results.getArtists():
-            self.add_artist_to_directory(artist, oc)
+        def media_append(title, func, key=None):
+            if key is None:
+                key = title
 
-        #for album in results.getAlbums():
-        #    self.add_album_to_directory(album, oc)
+            items = getattr(result, 'get%s' % key)()
+            total = getattr(result, 'get%sTotal' % key)()
+
+            if not items or not len(items):
+                return
+
+            self.add_section_header('%s (%s)' % (title, total), oc)
+
+            for x in range(limit):
+                if x < len(items):
+                    func(items[x], oc)
+                else:
+                    # Add a placeholder to fix alignment on PHT
+                    self.add_section_header('', oc)
+
+
+        media_append('Artists', self.add_artist_to_directory)
+        media_append('Albums', self.add_album_to_directory)
+        media_append('Tracks', self.add_track_to_directory)
+        media_append('Playlists', self.add_playlist_to_directory)
 
         if not len(oc):
-            if len(results.did_you_mean()):
-                message = localized_format("MSG_FMT_DID_YOU_MEAN", results.did_you_mean())
-            else:
-                message = localized_format("MSG_FMT_NO_RESULTS", query)
-
-            oc = MessageContainer(header=L("MSG_TITLE_NO_RESULTS"), message=message)
+            oc = MessageContainer(
+                header=L("MSG_TITLE_NO_RESULTS"),
+                message=localized_format("MSG_FMT_NO_RESULTS", query)
+            )
 
         return oc
 
@@ -347,6 +370,14 @@ class SpotifyPlugin(object):
     # Insert objects into container
     #
 
+    def add_section_header(self, title, oc):
+        oc.add(
+            DirectoryObject(
+                key='',
+                title=title
+            )
+        )
+
     def add_track_to_directory(self, track, oc):
         if not self.client.is_track_playable(track):
             Log("Ignoring unplayable track: %s" % track.name())
@@ -367,5 +398,14 @@ class SpotifyPlugin(object):
                 key=route_path('artist', artist.getURI()),
                 title=artist.getName().decode("utf-8"),
                 thumb=function_path('image.png', uri=self.select_image(artist.getPortraits()))
+            )
+        )
+
+    def add_playlist_to_directory(self, playlist, oc):
+        oc.add(
+            DirectoryObject(
+                key=route_path('playlist', playlist.getURI()),
+                title=playlist.getName().decode("utf-8"),
+                thumb=R("placeholder-playlist.png")
             )
         )

@@ -23,6 +23,8 @@ class SpotifyClient(object):
 
         self.spotify = Spotify(username, password, log_level=3)
 
+        self.username = username
+
     #
     # Public methods
     #
@@ -64,17 +66,8 @@ class SpotifyClient(object):
 
     def get_playlists(self):
         """ Return the user's playlists"""
-
         return self.spotify.getPlaylists()
-
-    def get_playlist(self, uri=None, id=None):
-        for pl in self.get_playlists():
-            if pl.getURI() == uri or pl.getID() == id:
-                return pl
-
-        return None
 
     def get_starred(self):
         """ Return the user's starred tracks"""
-
-        return self.get_playlist(id='starred')
+        return self.get('spotify:user:%s:starred' % self.username)
