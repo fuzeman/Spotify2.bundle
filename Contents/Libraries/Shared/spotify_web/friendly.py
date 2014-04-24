@@ -406,36 +406,66 @@ class SpotifySearch():
     def getName(self):
         return "Search "+self.query_type+": "+self.query
 
+    # Tracks
     def getTracks(self):
         return self.getObjByID(self.result, "track")
+
+    def getTracksTotal(self):
+        return self.getTotal('track')
 
     def getNumTracks(self):
         return len(self.getTracks())
 
+    # Albums
     def getAlbums(self):
         return self.getObjByID(self.result, "album")
 
+    def getAlbumsTotal(self):
+        return self.getTotal('album')
+
+    # artists
     def getArtists(self):
         return self.getObjByID(self.result, "artist")
 
+    def getArtistsTotal(self):
+        return self.getTotal('artist')
+
+    # Playlists
     def getPlaylists(self):
         return self.getObjByURI(self.result, "playlist")
+
+    def getPlaylistsTotal(self):
+        return self.getTotal('playlist')
 
     def getObjByID(self, result, obj_type):
         elems = result.find(obj_type+"s")
         if elems is None:
             elems = []
+
         ids = [elem[0].text for elem in list(elems)]
         objs = self.spotify.objectFromID(obj_type, ids)
+
         return objs
 
     def getObjByURI(self, result, obj_type):
         elems = result.find(obj_type+"s")
         if elems is None:
             elems = []
+
         uris = [elem[0].text for elem in list(elems)]
         objs = self.spotify.objectFromURI(uris, asArray=True)
+
         return objs
+
+    def getTotal(self, obj_type):
+        nodes = self.result.find('total-%ss' % obj_type)
+        if nodes is None:
+            return None
+
+        try:
+            return int(nodes.text)
+        except:
+            return None
 
 
 class SpotifyToplist():
