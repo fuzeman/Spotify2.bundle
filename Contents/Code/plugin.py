@@ -292,10 +292,6 @@ class SpotifyPlugin(object):
     #
 
     def create_track_object(self, track):
-        album = track.getAlbum()
-
-        artists = (a.getName().decode("utf-8") for a in track.getArtists())
-
         return TrackObject(
             items=[
                 MediaObject(
@@ -307,8 +303,8 @@ class SpotifyPlugin(object):
             key=track.getName().decode("utf-8"),
             rating_key=track.getName().decode("utf-8"),
             title=track.getName().decode("utf-8"),
-            album=album.getName().decode("utf-8"),
-            artist=", ".join(artists),
+            album=track.getAlbum(nameOnly=True).decode("utf-8"),
+            artist=track.getArtists(nameOnly=True),
             index=int(track.getNumber()),
             duration=int(track.getDuration()),
             thumb=function_path('image.png', uri=track.getURI())
