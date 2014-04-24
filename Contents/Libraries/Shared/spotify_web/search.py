@@ -300,10 +300,13 @@ class Playlist(Item):
             'name',
         ])
 
-        parts = cls.get_value(node, 'image').split(':')
+        image_uri = cls.get_value(node, 'image')
 
-        if len(parts) == 3 and parts[1] == 'image':
-            o.image = cls.image_url(parts[2])
+        if image_uri:
+            parts = image_uri.split(':')
+
+            if len(parts) == 3 and parts[1] == 'image':
+                o.image = cls.image_url(parts[2])
 
         return o
 
