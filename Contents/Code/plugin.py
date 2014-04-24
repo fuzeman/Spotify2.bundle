@@ -126,6 +126,7 @@ class SpotifyPlugin(object):
         elif images.get('300'):
             return images['300']
 
+        Log.Info('Unable to select image, available sizes: %s' % images.keys())
         return None
 
     def get_uri_image(self, uri):
@@ -143,19 +144,21 @@ class SpotifyPlugin(object):
 
     @authenticated
     def image(self, uri):
-        image_url = None
+        if not uri:
+            # TODO media specific placeholders
+            return Redirect(R('placeholder-artist.png'))
 
         if uri.startswith('spotify:'):
             # Fetch object for spotify URI and select image
             image_url = self.get_uri_image(uri)
+
+            if not image_url:
+                # TODO media specific placeholders
+                return Redirect(R('placeholder-artist.png'))
         else:
             # pre-selected image provided
             Log.Debug('Using pre-selected image URL: "%s"' % uri)
             image_url = uri
-
-        if not image_url:
-            # TODO media specific placeholders
-            return Redirect(R('placeholder-artist.png'))
 
         return self.session_cached.get(image_url).content
 
@@ -337,7 +340,7 @@ class SpotifyPlugin(object):
         return DirectoryObject(
             key=route_path('album', album.getURI()),
             title=title,
-            thumb=function_path('image.png', uri=album.getURI())
+            thumb=function_path('image.png', uri=self.select_image(album.getCovers()))
         )
 
     #
@@ -363,6 +366,6 @@ class SpotifyPlugin(object):
             DirectoryObject(
                 key=route_path('artist', artist.getURI()),
                 title=artist.getName().decode("utf-8"),
-                thumb=function_path('image.png', uri=artist.getURI())
+                thumb=function_path('image.png', uri=self.select_image(artist.getPortraits()))
             )
         )
