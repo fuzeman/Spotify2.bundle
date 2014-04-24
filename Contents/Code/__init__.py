@@ -1,5 +1,6 @@
 from logging_handler import PlexHandler
 from plugin import SpotifyPlugin
+from search import SpotifySearch
 from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
 from utils import ViewMode
 
@@ -7,6 +8,7 @@ import locale
 import logging
 
 plugin = SpotifyPlugin()
+sp_search = SpotifySearch(plugin)
 
 
 def plugin_callback(method, **kwargs):
@@ -49,7 +51,7 @@ def starred(**kwargs):
 
 @route(ROUTEBASE + 'search')
 def search(**kwargs):
-    return plugin_callback(SpotifyPlugin.search, **kwargs)
+    return sp_search.run(**kwargs)
 
 
 def main_menu(**kwargs):

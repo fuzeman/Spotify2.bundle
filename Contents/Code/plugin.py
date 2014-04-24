@@ -256,58 +256,6 @@ class SpotifyPlugin(object):
 
         return oc
 
-    @authenticated
-    def search(self, query, limit=7):
-        """ Search asynchronously invoking the completion callback when done.
-
-        :param query: Search query
-        :type query: str
-
-        :param limit: Number of items to list per type (artist, album, etc..)
-        :type limit: int
-        """
-        Log('Searching for "%s"' % query)
-
-        result = self.client.search(query)
-
-        oc = ObjectContainer(title2="Results")
-
-        def media_append(title, func, key=None):
-            if key is None:
-                key = title
-
-            items = getattr(result, 'get%s' % key)()
-            total = getattr(result, 'get%sTotal' % key)()
-
-            if not items or not len(items):
-                return
-
-            self.add_section_header('%s (%s)' % (
-                title,
-                locale.format('%d', total, grouping=True)
-            ), oc)
-
-            for x in range(limit):
-                if x < len(items):
-                    func(items[x], oc)
-                else:
-                    # Add a placeholder to fix alignment on PHT
-                    self.add_section_header('', oc)
-
-
-        media_append('Artists', self.add_artist_to_directory)
-        media_append('Albums', self.add_album_to_directory)
-        media_append('Tracks', self.add_track_to_directory)
-        media_append('Playlists', self.add_playlist_to_directory)
-
-        if not len(oc):
-            oc = MessageContainer(
-                header=L("MSG_TITLE_NO_RESULTS"),
-                message=localized_format("MSG_FMT_NO_RESULTS", query)
-            )
-
-        return oc
-
     def main_menu(self):
         return ObjectContainer(
             objects=[

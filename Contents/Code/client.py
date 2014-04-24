@@ -35,12 +35,11 @@ class SpotifyClient(object):
     def shutdown(self):
         self.spotify.api.shutdown()
 
-    def search(self, query, query_type="all", max_results=50, offset=0):
+    def search(self, query, query_type='all', max_results=50, offset=0):
         """ Execute a search
 
         :param query:          A query string.
         """
-
         return self.spotify.search(query, query_type, max_results, offset)
 
     #
@@ -52,12 +51,10 @@ class SpotifyClient(object):
 
     def is_album_playable(self, album):
         """ Check if an album can be played by a client or not """
-
         return True
 
     def is_track_playable(self, track):
         """ Check if a track can be played by a client or not """
-
         return True
 
     #
