@@ -1,9 +1,11 @@
-from threading import Lock
 from client import SpotifyClient
-from settings import ROUTEBASE
+from routing import function_path, route_path
 from utils import localized_format, authenticated, ViewMode, Track
 
+from cachecontrol import CacheControl
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
+from threading import Lock
+import locale
 import requests
 
 
@@ -12,6 +14,9 @@ class SpotifyPlugin(object):
         self.client = None
         self.server = None
         self.start()
+
+        self.session = requests.session()
+        self.session_cached = CacheControl(self.session)
 
         self.current_track = None
 
@@ -44,7 +49,6 @@ class SpotifyPlugin(object):
         self.client = SpotifyClient(self.username, self.password)
 
     @authenticated
-    @route(ROUTEBASE + 'play')
     def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
         Log('play(%s)' % repr(uri))
@@ -116,33 +120,48 @@ class SpotifyPlugin(object):
         self.track_lock.release()
         return track_url
 
-    @authenticated
-    @route(ROUTEBASE + 'image')
-    def image(self, uri):
-        obj = self.client.get(uri)
+    @staticmethod
+    def select_image(images):
+        if images.get('640'):
+            return images['640']
+        elif images.get('300'):
+            return images['300']
 
-        url = None
+        Log.Info('Unable to select image, available sizes: %s' % images.keys())
+        return None
+
+    def get_uri_image(self, uri):
+        obj = self.client.get(uri)
+        images = None
 
         if isinstance(obj, SpotifyArtist):
-            portraits = obj.getPortraits()
-            url = portraits.get('640')
-
-            if not url:
-                return Redirect(R('placeholder-artist.png'))
+            images = obj.getPortraits()
         elif isinstance(obj, SpotifyAlbum):
-            covers = obj.getCovers()
-            url = covers.get('300')
+            images = obj.getCovers()
         elif isinstance(obj, SpotifyTrack):
-            covers = obj.getAlbum().getCovers()
-            url = covers.get('300')
+            images = obj.getAlbum().getCovers()
+
+        return self.select_image(images)
+
+    @authenticated
+    def image(self, uri):
+        if not uri:
+            # TODO media specific placeholders
+            return Redirect(R('placeholder-artist.png'))
+
+        if uri.startswith('spotify:'):
+            # Fetch object for spotify URI and select image
+            image_url = self.get_uri_image(uri)
+
+            if not image_url:
+                # TODO media specific placeholders
+                return Redirect(R('placeholder-artist.png'))
         else:
-            return None
+            # pre-selected image provided
+            Log.Debug('Using pre-selected image URL: "%s"' % uri)
+            image_url = uri
 
-        if not url:
-            return ''
-
-        response = requests.get(url)
-        return response.content
+        return self.session_cached.get(image_url).content
 
     @authenticated
     def artist(self, uri):
@@ -192,21 +211,23 @@ class SpotifyPlugin(object):
         playlists = self.client.get_playlists()
 
         for playlist in playlists:
-            oc.add(
-                DirectoryObject(
-                    key=Callback(self.playlist, uri=playlist.getURI()),
-                    title=playlist.getName().decode("utf-8"),
-                    thumb=R("placeholder-playlist.png")
-                )
-            )
+            self.add_playlist_to_directory(playlist, oc)
 
         return oc
 
     @authenticated
     def playlist(self, uri):
-        pl = self.client.get_playlist(uri)
+        pl = self.client.get(uri)
+
+        if pl is None:
+            # Unable to find playlist
+            return MessageContainer(
+                header=L("MSG_TITLE_UNKNOWN_PLAYLIST"),
+                message='URI: %s' % uri
+            )
 
         Log("Get playlist: %s", pl.getName().decode("utf-8"))
+        Log.Debug('playlist truncated: %s', pl.obj.contents.truncated)
 
         oc = ObjectContainer(
             title2=pl.getName().decode("utf-8"),
@@ -235,52 +256,22 @@ class SpotifyPlugin(object):
 
         return oc
 
-    @authenticated
-    def search(self, query):
-        """ Search asynchronously invoking the completion callback when done.
-
-        :param query:          The query string to use.
-        """
-        Log('Searching for "%s"' % query)
-
-        results = self.client.search(query)
-
-        oc = ObjectContainer(title2="Results")
-
-        for artist in results.getArtists():
-            self.add_artist_to_directory(artist, oc)
-
-        #for album in results.getAlbums():
-        #    self.add_album_to_directory(album, oc)
-
-        if not len(oc):
-            if len(results.did_you_mean()):
-                message = localized_format("MSG_FMT_DID_YOU_MEAN", results.did_you_mean())
-            else:
-                message = localized_format("MSG_FMT_NO_RESULTS", query)
-
-            oc = MessageContainer(header=L("MSG_TITLE_NO_RESULTS"), message=message)
-
-        return oc
-
     def main_menu(self):
-        Log("Spotify main menu")
-
         return ObjectContainer(
             objects=[
                 InputDirectoryObject(
-                    key=Callback(self.search),
+                    key=route_path('search'),
                     prompt=L("PROMPT_SEARCH"),
                     title=L("MENU_SEARCH"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=Callback(self.playlists),
+                    key=route_path('playlists'),
                     title=L("MENU_PLAYLISTS"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=Callback(self.starred),
+                    key=route_path('starred'),
                     title=L("MENU_STARRED"),
                     thumb=R("icon-default.png")
                 ),
@@ -296,44 +287,69 @@ class SpotifyPlugin(object):
     #
 
     def create_track_object(self, track):
-        album = track.getAlbum()
+        title = track.getName().decode("utf-8")
 
-        artists = (a.getName().decode("utf-8") for a in track.getArtists())
+        image_url = self.select_image(track.getAlbumCovers())
 
         return TrackObject(
             items=[
                 MediaObject(
-                    parts=[PartObject(key=Callback(self.play, uri=track.getURI(), ext='mp3'))],
+                    parts=[PartObject(key=function_path('play', uri=track.getURI(), ext='mp3'))],
                     container=Container.MP3,
                     audio_codec=AudioCodec.MP3
                 )
             ],
-            key=track.getName().decode("utf-8"),
-            rating_key=track.getName().decode("utf-8"),
-            title=track.getName().decode("utf-8"),
-            album=album.getName().decode("utf-8"),
-            artist=", ".join(artists),
+
+            key=title,
+            rating_key=title,
+
+            title=title,
+            album=track.getAlbum(nameOnly=True).decode("utf-8"),
+            artist=track.getArtists(nameOnly=True),
+
             index=int(track.getNumber()),
             duration=int(track.getDuration()),
-            thumb=Callback(self.image, uri=track.getURI(), ext='png')
+
+            source_title='Spotify',
+
+            art=function_path('image.png', uri=image_url),
+            thumb=function_path('image.png', uri=image_url)
         )
 
     def create_album_object(self, album):
         """ Factory method for album objects """
         title = album.getName().decode("utf-8")
 
-        if Prefs["displayAlbumYear"] and album.year() != 0:
-            title = "%s (%s)" % (title, album.year())
+        if Prefs["displayAlbumYear"] and album.getYear() != 0:
+            title = "%s (%s)" % (title, album.getYear())
 
-        return DirectoryObject(
-            key=Callback(self.album, uri=album.getURI()),
+        image_url = self.select_image(album.getCovers())
+
+        return AlbumObject(
+            key=route_path('album', album.getURI()),
+            rating_key=album.getURI(),
+
             title=title,
-            thumb=Callback(self.image, uri=album.getURI(), ext='png')
+            artist=album.getArtists(nameOnly=True),
+
+            track_count=album.getNumTracks(),
+            source_title='Spotify',
+
+            art=function_path('image.png', uri=image_url),
+            thumb=function_path('image.png', uri=image_url),
         )
 
     #
     # Insert objects into container
     #
+
+    def add_section_header(self, title, oc):
+        oc.add(
+            DirectoryObject(
+                key='',
+                title=title
+            )
+        )
 
     def add_track_to_directory(self, track, oc):
         if not self.client.is_track_playable(track):
@@ -350,10 +366,26 @@ class SpotifyPlugin(object):
         oc.add(self.create_album_object(album))
 
     def add_artist_to_directory(self, artist, oc):
+        image_url = self.select_image(artist.getPortraits())
+
+        oc.add(
+            ArtistObject(
+                key=route_path('artist', artist.getURI()),
+                rating_key=artist.getURI(),
+
+                title=artist.getName().decode("utf-8"),
+                source_title='Spotify',
+
+                art=function_path('image.png', uri=image_url),
+                thumb=function_path('image.png', uri=image_url)
+            )
+        )
+
+    def add_playlist_to_directory(self, playlist, oc):
         oc.add(
             DirectoryObject(
-                key=Callback(self.artist, uri=artist.getURI()),
-                title=artist.getName().decode("utf-8"),
-                thumb=Callback(self.image, uri=artist.getURI(), ext='png')
+                key=route_path('playlist', playlist.getURI()),
+                title=playlist.getName().decode("utf-8"),
+                thumb=R("placeholder-playlist.png")
             )
         )

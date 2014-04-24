@@ -23,6 +23,8 @@ class SpotifyClient(object):
 
         self.spotify = Spotify(username, password, log_level=3)
 
+        self.username = username
+
     #
     # Public methods
     #
@@ -33,12 +35,11 @@ class SpotifyClient(object):
     def shutdown(self):
         self.spotify.api.shutdown()
 
-    def search(self, query, query_type="all", max_results=50, offset=0):
+    def search(self, query, query_type='all', max_results=50, offset=0):
         """ Execute a search
 
         :param query:          A query string.
         """
-
         return self.spotify.search(query, query_type, max_results, offset)
 
     #
@@ -50,12 +51,10 @@ class SpotifyClient(object):
 
     def is_album_playable(self, album):
         """ Check if an album can be played by a client or not """
-
         return True
 
     def is_track_playable(self, track):
         """ Check if a track can be played by a client or not """
-
         return True
 
     #
@@ -64,17 +63,8 @@ class SpotifyClient(object):
 
     def get_playlists(self):
         """ Return the user's playlists"""
-
         return self.spotify.getPlaylists()
-
-    def get_playlist(self, uri=None, id=None):
-        for pl in self.get_playlists():
-            if pl.getURI() == uri or pl.getID() == id:
-                return pl
-
-        return None
 
     def get_starred(self):
         """ Return the user's starred tracks"""
-
-        return self.get_playlist(id='starred')
+        return self.get('spotify:user:%s:starred' % self.username)
