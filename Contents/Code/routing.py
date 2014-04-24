@@ -15,13 +15,20 @@ def pack(obj):
     return urllib.quote(encoded_string)
 
 
-def route_path(path, *args):
-    return '%s/%s%s' % (
+def route_path(path, *args, **kwargs):
+    result = '%s/%s%s' % (
         PREFIX,
         path,
 
-        ('/' + ('/'.join(args))) if args else ''
+        ('/' + ('/'.join([
+            str(x) for x in args
+        ]))) if args else ''
     )
+
+    if kwargs:
+        result += '?' + urllib.urlencode(kwargs)
+
+    return result
 
 
 def function_path(name, ext=None, **kwargs):

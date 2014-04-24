@@ -10,16 +10,38 @@ class SpotifySearch(object):
         self.plugin = plugin
         self.client = self.plugin.client
 
-    def run(self, query, limit=7):
+    @staticmethod
+    def use_placeholders():
+        return Client.Product in [
+            'Plex Home Theater'
+        ]
+
+    @staticmethod
+    def get_title(type):
+        if type == 'artists':
+            return "Results - Artists"
+
+        if type == 'albums':
+            return "Results - Albums"
+
+        if type == 'tracks':
+            return "Results - Tracks"
+
+        if type == 'playlists':
+            return "Results - Playlists"
+
+        return "Results"
+
+    def run(self, query, type='all', limit=7, plain=False):
         query = urllib.unquote(query)
+        limit = int(limit)
 
-        Log('Searching for "%s"' % query)
+        Log('Search query: "%s", type: %s, limit: %s, plain: %s' % (query, type, limit, plain))
+        result = self.client.search(query, type, max_results=limit)
 
-        result = self.client.search(query, max_results=7)
+        oc = ObjectContainer(title2=self.get_title(type))
 
-        oc = ObjectContainer(title2="Results")
-
-        def media_append(title, func, key=None):
+        def media_append(title, func, type, key=None):
             if key is None:
                 key = title
 
@@ -29,22 +51,26 @@ class SpotifySearch(object):
             if not items or not len(items):
                 return
 
-            self.add_header(oc, '%s (%s)' % (
-                title,
-                locale.format('%d', total, grouping=True)
-            ))
+            if not plain:
+                self.add_header(
+                    oc, '%s (%s)' % (
+                        title,
+                        locale.format('%d', total, grouping=True)
+                    ),
+                    route_path('search', query=query, type=type, limit=50, plain=True)
+                )
 
             for x in range(limit):
                 if x < len(items):
                     func(oc, items[x])
-                else:
+                elif not plain and self.use_placeholders():
                     # Add a placeholder to fix alignment on PHT
                     self.add_header(oc, '')
 
-        media_append('Artists', self.add_artist)
-        media_append('Albums', self.add_album)
-        media_append('Tracks', self.add_track)
-        media_append('Playlists', self.add_playlist)
+        media_append('Artists', self.add_artist, 'artists')
+        media_append('Albums', self.add_album, 'albums')
+        media_append('Tracks', self.add_track, 'tracks')
+        media_append('Playlists', self.add_playlist, 'playlists')
 
         if not len(oc):
             oc = MessageContainer(
@@ -127,10 +153,10 @@ class SpotifySearch(object):
     #
 
     @staticmethod
-    def add_header(oc, title):
+    def add_header(oc, title, key=''):
         oc.add(
             DirectoryObject(
-                key='',
+                key=key,
                 title=title
             )
         )
