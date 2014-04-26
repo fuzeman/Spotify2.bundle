@@ -7,6 +7,22 @@ from utils import ViewMode
 import locale
 import logging
 
+
+def setup_logging():
+    Log.Debug(logging.Logger.manager.loggerDict)
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    for name in LOGGERS:
+        logger = logging.getLogger(name)
+
+        logger.setLevel(logging.DEBUG)
+        logger.handlers = [PlexHandler()]
+
+        Log.Debug('PlexHandler added to %s logger' % logger)
+
+setup_logging()
+
 plugin = SpotifyPlugin()
 sp_search = SpotifySearch(plugin)
 
@@ -73,16 +89,6 @@ def image(**kwargs):
     return plugin_callback(SpotifyPlugin.image, kwargs)
 
 
-def setup_logging():
-    logging.basicConfig(level=logging.DEBUG)
-
-    for name in LOGGERS:
-        logger = logging.getLogger(name)
-
-        logger.setLevel(logging.DEBUG)
-        logger.handlers = [PlexHandler()]
-
-
 def Start():
     """ Initialization function """
     Log("Starting Spotify (version %s)", VERSION)
@@ -94,8 +100,6 @@ def Start():
     ObjectContainer.content = 'Items'
     ObjectContainer.art = R('art-default.png')
     DirectoryItem.thumb = R('icon-default.png')
-
-    setup_logging()
 
     Log.Debug('Using locale: %s', locale.setlocale(locale.LC_ALL, ''))
 

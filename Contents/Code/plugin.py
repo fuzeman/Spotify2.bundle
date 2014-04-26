@@ -1,10 +1,10 @@
 from client import SpotifyClient
 from routing import function_path, route_path
-from utils import localized_format, authenticated, ViewMode, Track
+from server import SpotifyServer
+from utils import localized_format, authenticated, ViewMode
 
 from cachecontrol import CacheControl
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
-from threading import Lock
 import locale
 import requests
 
@@ -17,10 +17,6 @@ class SpotifyPlugin(object):
 
         self.session = requests.session()
         self.session_cached = CacheControl(self.session)
-
-        self.current_track = None
-
-        self.track_lock = Lock()
 
     @property
     def username(self):
@@ -42,11 +38,14 @@ class SpotifyPlugin(object):
             Log("Username or password not set: not logging in")
             return
 
-        # Ensure previous client is shutdown
-        if self.client:
-            self.client.shutdown()
+        if not self.client:
+            self.client = SpotifyClient(self.username, self.password)
 
-        self.client = SpotifyClient(self.username, self.password)
+        self.client.start()
+
+        if not self.server:
+            self.server = SpotifyServer(self.client)
+            self.server.start()
 
     @authenticated
     def play(self, uri):
@@ -57,68 +56,9 @@ class SpotifyPlugin(object):
             Log("Play track callback invoked with NULL URI")
             return
 
-        if self.current_track:
-            # Send stop event for previous track
-            self.client.spotify.api.send_track_event(
-                self.current_track.track.getID(),
-                'stop',
-                self.current_track.track.getDuration()
-            )
-
         track = self.client.get(uri)
 
-        return Redirect(self.get_track_url(track))
-
-    def get_track_url(self, track):
-        if not track:
-            return None
-
-        self.track_lock.acquire()
-
-        Log.Debug(
-            'Acquired track_lock, current_track: %s',
-            repr(self.current_track)
-        )
-
-        if self.current_track and self.current_track.matches(track):
-            Log.Debug('Using existing track: %s', repr(self.current_track))
-            self.track_lock.release()
-
-            return self.current_track.url
-
-        # Reset current state
-        self.current_track = None
-
-        # First try get track url
-        self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
-        track_url = track.getFileURL(retries=1)
-
-        # If first request failed, trigger re-connection to spotify
-        retry_num = 0
-        while not track_url and retry_num < 2:
-            retry_num += 1
-
-            Log.Info('get_track_url failed, re-connecting to spotify...')
-            self.start()
-
-            # Update reference to spotify client (otherwise getFileURL request will fail)
-            track.spotify = self.client.spotify
-
-            Log.Info('Fetching track url...')
-            self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
-            track_url = track.getFileURL(retries=1)
-
-        # Finished
-        if track_url:
-            self.current_track = Track.create(track, track_url)
-            Log.Info('Current Track: %s', repr(self.current_track))
-        else:
-            self.current_track = None
-            Log.Warn('Unable to fetch track URL (connection problem?)')
-
-        Log.Debug('Retrieved track_url: %s', repr(track_url))
-        self.track_lock.release()
-        return track_url
+        return Redirect(self.client.get_track_url(track))
 
     @staticmethod
     def select_image(images):
