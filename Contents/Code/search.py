@@ -8,7 +8,10 @@ import urllib
 class SpotifySearch(object):
     def __init__(self, plugin):
         self.plugin = plugin
-        self.client = self.plugin.client
+
+    @property
+    def client(self):
+        return self.plugin.client
 
     @staticmethod
     def use_placeholders():
