@@ -737,7 +737,7 @@ class SpotifyAPI():
             "na"
         ]
 
-        return self.wrap_request("sp/track_end", args, callback)
+        self.send_command("sp/track_end", args, callback)
 
     def send_track_event(self, lid, event, ms_where, callback=False):
         if event == "pause" or event == "stop":
@@ -747,7 +747,7 @@ class SpotifyAPI():
         else:
             return False
 
-        return self.wrap_request("sp/track_event", [lid, ev_n, int(ms_where)], callback)
+        self.send_command("sp/track_event", [lid, ev_n, int(ms_where)], callback)
 
     def send_track_progress(self, lid, ms_played, callback=False):
         source_start = "unknown"
@@ -770,7 +770,7 @@ class SpotifyAPI():
             referrer, referrer_version, referrer_vendor
         ]
 
-        return self.wrap_request("sp/track_progress", args, callback)
+        self.send_command("sp/track_progress", args, callback)
 
     def send_command(self, name, args=None, callback=None):
         if not args:
