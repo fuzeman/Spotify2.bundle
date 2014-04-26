@@ -39,6 +39,11 @@ def playlist(**kwargs):
     return plugin_callback(SpotifyPlugin.playlist, **kwargs)
 
 
+@route(ROUTEBASE + 'metadata/{track_uri}')
+def metadata(**kwargs):
+    return plugin_callback(SpotifyPlugin.metadata, **kwargs)
+
+
 @route(ROUTEBASE + 'playlists')
 def playlists(**kwargs):
     return plugin_callback(SpotifyPlugin.playlists, **kwargs)

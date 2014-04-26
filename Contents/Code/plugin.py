@@ -256,6 +256,16 @@ class SpotifyPlugin(object):
 
         return oc
 
+    def metadata(self, track_uri):
+        Log.Debug('fetching metadata for track_uri: "%s"', track_uri)
+
+        oc = ObjectContainer()
+
+        track = self.client.get(track_uri)
+        self.add_track_to_directory(track, oc)
+
+        return oc
+
     def main_menu(self):
         return ObjectContainer(
             objects=[
@@ -300,8 +310,8 @@ class SpotifyPlugin(object):
                 )
             ],
 
-            key=title,
-            rating_key=title,
+            key=route_path('metadata', track.getURI()),
+            rating_key=track.getURI(),
 
             title=title,
             album=track.getAlbum(nameOnly=True).decode("utf-8"),
