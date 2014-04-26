@@ -20,7 +20,7 @@ from .proto import mercury_pb2, metadata_pb2, playlist4changes_pb2,\
 
 base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-FLASH_KEY = [[19, 104], [16, 19], [0, 41], [3, 133], [10, 175], [1, 240], [5, 150], [17, 116], [7, 240], [13, 0]]
+FLASH_KEY = [[7, 203], [15, 15], [1, 96], [19, 93], [3, 165], [14, 130], [12, 16], [4, 6], [6, 225], [13, 37]]
 
 WORK_RUNNER = """
 var main = {
@@ -307,10 +307,7 @@ class SpotifyAPI():
         return True
 
     def populate_userdata_callback(self, sp, resp):
-        
-        # Send screen size
-        self.send_command("sp/log", [41, 1, 0, 0, 0, 0], None)
-        
+
         self.username = resp["user"]
         self.country = resp["country"]
         self.account_type = resp["catalogue"]
@@ -335,7 +332,10 @@ class SpotifyAPI():
         else:
             self.logged_in_marker.set()
 
-    def logged_in(self, sp, resp):
+    def logged_in(self):
+        # Send screen size
+        self.send_command("sp/log", [41, 1, 0, 0, 0, 0], None)
+
         self.user_info_request(self.populate_userdata_callback)
 
     def login(self):
@@ -344,7 +344,7 @@ class SpotifyAPI():
         credentials[2] = credentials[2].decode("string_escape")
         # credentials_enc = json.dumps(credentials, separators=(',',':'))
 
-        self.send_command("connect", credentials, self.logged_in)
+        self.send_command("connect", credentials)
 
     def do_login_callback(self, result):
         if self.login_callback:
@@ -870,6 +870,9 @@ class SpotifyAPI():
 
         if cmd == "ping_flash2":
             self.send_pong(payload)
+
+        if cmd == "login_complete":
+            self.logged_in()
 
     def handle_error(self, err):
         if len(err) < 2:
