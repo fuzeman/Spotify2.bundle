@@ -173,7 +173,7 @@ class SpotifyPlugin(object):
 
         oc = ObjectContainer(
             title2=artist.getName().decode("utf-8"),
-            view_group=ViewMode.Tracks
+            content=ContainerContent.Albums
         )
 
         for album in artist.getAlbums():
@@ -191,6 +191,7 @@ class SpotifyPlugin(object):
 
         oc = ObjectContainer(
             title2=album.getName().decode("utf-8"),
+            content=ContainerContent.Tracks,
             view_group=ViewMode.Tracks
         )
 
@@ -205,6 +206,7 @@ class SpotifyPlugin(object):
 
         oc = ObjectContainer(
             title2=L("MENU_PLAYLISTS"),
+            content=ContainerContent.Playlists,
             view_group=ViewMode.Playlists
         )
 
@@ -231,6 +233,7 @@ class SpotifyPlugin(object):
 
         oc = ObjectContainer(
             title2=pl.getName().decode("utf-8"),
+            content=ContainerContent.Tracks,
             view_group=ViewMode.Tracks
         )
 
@@ -246,6 +249,7 @@ class SpotifyPlugin(object):
 
         oc = ObjectContainer(
             title2=L("MENU_STARRED"),
+            content=ContainerContent.Tracks,
             view_group=ViewMode.Tracks
         )
 

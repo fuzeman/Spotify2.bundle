@@ -32,6 +32,22 @@ class SpotifySearch(object):
 
         return "Results"
 
+    @staticmethod
+    def get_content(type):
+        if type == "artists":
+            return ContainerContent.Artists
+
+        if type == "albums":
+            return ContainerContent.Albums
+
+        if type == "tracks":
+            return ContainerContent.Tracks
+
+        if type == "playlists":
+            return ContainerContent.Playlists
+
+        return ContainerContent.Mixed
+
     def run(self, query, type='all', limit=7, plain=False):
         query = urllib.unquote(query)
         limit = int(limit)
@@ -39,7 +55,10 @@ class SpotifySearch(object):
         Log('Search query: "%s", type: %s, limit: %s, plain: %s' % (query, type, limit, plain))
         result = self.client.search(query, type, max_results=limit)
 
-        oc = ObjectContainer(title2=self.get_title(type))
+        oc = ObjectContainer(
+            title2=self.get_title(type),
+            content=self.get_content(type)
+        )
 
         def media_append(title, func, type, key=None):
             if key is None:
