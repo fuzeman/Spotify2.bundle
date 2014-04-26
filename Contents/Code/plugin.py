@@ -95,7 +95,7 @@ class SpotifyPlugin(object):
 
         # If first request failed, trigger re-connection to spotify
         retry_num = 0
-        while not track_url and retry_num < 3:
+        while not track_url and retry_num < 2:
             retry_num += 1
 
             Log.Info('get_track_url failed, re-connecting to spotify...')
@@ -305,6 +305,7 @@ class SpotifyPlugin(object):
             items=[
                 MediaObject(
                     parts=[PartObject(key=function_path('play', uri=track.getURI(), ext='mp3'))],
+                    duration=int(track.getDuration()),
                     container=Container.MP3,
                     audio_codec=AudioCodec.MP3
                 )
