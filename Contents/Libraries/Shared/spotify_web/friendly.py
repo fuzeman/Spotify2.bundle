@@ -424,10 +424,24 @@ class Spotify():
     def getPlaylists(self, username=None):
         username = self.api.username if username is None else username
         playlist_uris = []
-        if username == self.api.username:
-            playlist_uris += ["spotify:user:"+username+":starred"]
 
-        playlist_uris += [playlist.uri for playlist in self.api.playlists_request(username).contents.items]
+        if username == self.api.username:
+            playlist_uris += ["spotify:user:" + username + ":starred"]
+
+        playlists = self.api.playlists_request(username)
+
+        for playlist in playlists.contents.items:
+            uri_parts = playlist.uri.split(':')
+
+            if len(uri_parts) < 2:
+                continue
+
+            # TODO support playlist folders properly
+            if uri_parts[1] in ['start-group', 'end-group']:
+                continue
+
+            playlist_uris.append(playlist.uri)
+
         return self.objectFromURI(playlist_uris, asArray=True)
 
     def newPlaylist(self, name):
