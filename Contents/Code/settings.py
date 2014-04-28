@@ -6,5 +6,5 @@ SERVER_PORT = 32420
 
 LOGGERS     = [
     'requests',
-    'server'
+    'spotify2'
 ]
