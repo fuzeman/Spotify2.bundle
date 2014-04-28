@@ -17,5 +17,11 @@
         "type": "bool",
         "label": "PREF_SHOWALBUMYEAR",
         "default": "false"
+    },
+    {
+        "id": "proxy_tracks",
+        "type": "bool",
+        "label": "PREF_PROXY_TRACKS",
+        "default": "true"
     }
 ]

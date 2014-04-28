@@ -3,6 +3,7 @@
     "PREF_PASSWORD"                 : "Password",
     "PREF_SORTPLAYLISTS"            : "Sort the playlists by name",
     "PREF_SHOWALBUMYEAR"            : "Show album release year",
+    "PREF_PROXY_TRACKS"              : "Proxy tracks (via PMS)",
 
     "MENU_PLAYLISTS"                : "Playlists",
     "MENU_SEARCH"                   : "Search",

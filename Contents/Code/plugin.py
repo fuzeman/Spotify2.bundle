@@ -1,11 +1,10 @@
 from client import SpotifyClient
 from routing import function_path, route_path
-from server import SpotifyServer
-from utils import localized_format, authenticated, ViewMode
+from spotify2.server import Server
+from utils import authenticated, ViewMode
 
 from cachecontrol import CacheControl
 from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
-import locale
 import requests
 
 
@@ -26,6 +25,10 @@ class SpotifyPlugin(object):
     def password(self):
         return Prefs["password"]
 
+    @property
+    def proxy_tracks(self):
+        return Prefs['proxy_tracks']
+
     def preferences_updated(self):
         """ Called when the user updates the plugin preferences"""
 
@@ -39,26 +42,31 @@ class SpotifyPlugin(object):
             return
 
         if not self.client:
-            self.client = SpotifyClient(self.username, self.password)
+            self.client = SpotifyClient()
 
-        self.client.start()
-
-        if not self.server:
-            self.server = SpotifyServer(self.client)
+        # Start server (if 'proxy_tracks' is enabled)
+        if not self.server and self.proxy_tracks:
+            self.server = Server(self.client)
             self.server.start()
+
+        # Stop server if 'proxy_tracks' has been disabled
+        if self.server and not self.proxy_tracks:
+            self.server.stop()
+            self.server = None
+
+        # Update reference on SpotifyClient
+        self.client.server = self.server
+
+        # Update preferences and start/restart the client
+        self.client.set_preferences(self.username, self.password, self.proxy_tracks)
+        self.client.start()
 
     @authenticated
     def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
         Log('play(%s)' % repr(uri))
 
-        if not uri:
-            Log("Play track callback invoked with NULL URI")
-            return
-
-        track = self.client.get(uri)
-
-        return Redirect(self.client.get_track_url(track))
+        return Redirect(self.client.play(uri))
 
     @staticmethod
     def select_image(images):
@@ -240,6 +248,12 @@ class SpotifyPlugin(object):
     # Create objects
     #
 
+    def get_track_location(self, track):
+        if self.client.proxy_tracks and self.server:
+            return self.server.get_track_url(track.getURI())
+
+        return function_path('play', uri=track.getURI(), ext='mp3')
+
     def create_track_object(self, track):
         title = track.getName().decode("utf-8")
 
@@ -248,7 +262,10 @@ class SpotifyPlugin(object):
         return TrackObject(
             items=[
                 MediaObject(
-                    parts=[PartObject(key=function_path('play', uri=track.getURI(), ext='mp3'))],
+                    parts=[PartObject(
+                        key=self.get_track_location(track),
+                        duration=int(track.getDuration())
+                    )],
                     duration=int(track.getDuration()),
                     container=Container.MP3,
                     audio_codec=AudioCodec.MP3

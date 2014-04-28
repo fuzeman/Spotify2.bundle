@@ -10,7 +10,7 @@ class SpotifyClient(object):
     audio_buffer_size = 50
     user_agent = PLUGIN_ID
 
-    def __init__(self, username, password):
+    def __init__(self):
         """ Initializer
 
         :param username:       The username to connect to spotify with.
@@ -23,22 +23,28 @@ class SpotifyClient(object):
         Logging.hook(1, Log.Warn)
         Logging.hook(0, Log.Error)
 
-        self.username = username
-        self.password = password
-
         self.current_track = None
         self.track_lock = Lock()
 
+        self.username = None
+        self.password = None
+
+        self.proxy_tracks = True
+        self.server = None
+
         self.spotify = None
+
+    def set_preferences(self, username, password, proxy_tracks):
+        self.username = username
+        self.password = password
+
+        self.proxy_tracks = proxy_tracks
 
     def start(self):
         if self.spotify:
             self.shutdown()
 
         self.spotify = Spotify(self.username, self.password, log_level=3)
-
-    def restart(self):
-        self.start()
 
     def shutdown(self):
         self.spotify.api.shutdown()
@@ -72,6 +78,20 @@ class SpotifyClient(object):
     def is_track_playable(self, track):
         """ Check if a track can be played by a client or not """
         return True
+
+    def play(self, uri):
+        if not uri:
+            Log.Warn('Unable to play track with invalid "uri"')
+            return
+
+        Log.Debug('play proxy_tracks: %s' % self.proxy_tracks)
+
+        # Return proxy URL (if enabled)
+        if self.proxy_tracks and self.server:
+            return self.server.get_track_url(uri)
+
+        # Get the track and return a direct stream URL
+        return self.get_track_url(self.get(uri))
 
     def get_track_url(self, track):
         if self.current_track:
@@ -111,7 +131,7 @@ class SpotifyClient(object):
             retry_num += 1
 
             Log.Info('get_track_url failed, re-connecting to spotify...')
-            self.restart()
+            self.start()  # (restarts the connection)
 
             # Update reference to spotify client (otherwise getFileURL request will fail)
             track.spotify = self.spotify
