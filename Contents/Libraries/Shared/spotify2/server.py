@@ -37,7 +37,7 @@ class Server(object):
     def track(self, uri):
         # Create new TrackReference (if one doesn't exist yet)
         if uri not in self.cache:
-            log.debug('Creating new TrackReference for "%s"' % uri)
+            log.debug('[%s] Creating new TrackReference' % uri)
 
             # Create new track reference
             self.cache[uri] = TrackReference(self.client, uri)
@@ -76,7 +76,7 @@ class Server(object):
                 chunk = tr.read(position, chunk_size)
 
                 if not chunk:
-                    log.debug('finished at %s bytes (content-length: %s)' % (position, tr.length))
+                    log.debug('[%s] Finished at %s bytes (content-length: %s)' % (tr.uri, position, tr.length))
                     break
 
                 position = position + len(chunk)
