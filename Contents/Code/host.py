@@ -76,16 +76,6 @@ class SpotifyHost(object):
 
         return Redirect(self.client.play(uri))
 
-    @staticmethod
-    def select_image(images):
-        if images.get('640'):
-            return images['640']
-        elif images.get('300'):
-            return images['300']
-
-        Log.Info('Unable to select image, available sizes: %s' % images.keys())
-        return None
-
     def get_uri_image(self, uri):
         obj = self.client.get(uri)
         images = None
@@ -234,40 +224,6 @@ class SpotifyHost(object):
             return self.server.get_track_url(track.getURI())
 
         return function_path('play', uri=track.getURI(), ext='mp3')
-
-    def create_track_object(self, track):
-        title = track.getName().decode("utf-8")
-
-        image_url = self.select_image(track.getAlbumCovers())
-
-        return TrackObject(
-            items=[
-                MediaObject(
-                    parts=[PartObject(
-                        key=self.get_track_location(track),
-                        duration=int(track.getDuration())
-                    )],
-                    duration=int(track.getDuration()),
-                    container=Container.MP3,
-                    audio_codec=AudioCodec.MP3
-                )
-            ],
-
-            key=route_path('metadata', track.getURI()),
-            rating_key=track.getURI(),
-
-            title=title,
-            album=track.getAlbum(nameOnly=True).decode("utf-8"),
-            artist=track.getArtists(nameOnly=True),
-
-            index=int(track.getNumber()),
-            duration=int(track.getDuration()),
-
-            source_title='Spotify',
-
-            art=function_path('image.png', uri=image_url),
-            thumb=function_path('image.png', uri=image_url)
-        )
 
     def create_album_object(self, album):
         """ Factory method for album objects """
