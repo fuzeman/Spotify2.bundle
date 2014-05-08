@@ -12,15 +12,30 @@
 
     "PROMPT_SEARCH"                 : "Search for music",
 
+
+    "MSG_CALLBACK_FAILURE_TITLE"    : "Callback failure",
+    "MSG_CALLBACK_FAILURE_BODY"     : "Callback returned an invalid result",
+
+    "MSG_CALLBACK_TIMEOUT_TITLE"    : "Callback timeout",
+    "MSG_CALLBACK_TIMEOUT_BODY"     : "Asynchronous callback timed out before returning a result",
+
+    "MSG_INITIALIZING_TITLE"        : "Client is still initializing",
+    "MSG_INITIALIZING_BODY"         : "Client isn't ready yet, please wait a few seconds...",
+
+    "MSG_LOGIN_ERROR_TITLE"         : "Unable to login",
+    "MSG_LOGIN_ERROR_BODY"          : "Client hasn't logged in after waiting 8 seconds",
+
     "MSG_TITLE_MISSING_LOGIN"       : "Authentication Details Missing",
+    "MSG_BODY_MISSING_LOGIN"        : "No username and password have been configured",
+
     "MSG_TITLE_LOGIN_IN_PROGRESS"   : "Login in Progress",
+    "MSG_BODY_LOGIN_IN_PROGRESS"    : "We're still trying to open a Spotify session...",
+
     "MSG_TITLE_LOGIN_FAILED"        : "Login Failed",
-    "MSG_TITLE_PLAYLIST_ERROR"      : "Error Retrieving Playlist",
     "MSG_TITLE_NO_RESULTS"          : "No results",
     "MSG_TITLE_UNKNOWN_PLAYLIST"    : "Unable to find playlist",
 
-    "MSG_BODY_MISSING_LOGIN"        : "No username and password have been configured",
-    "MSG_BODY_LOGIN_IN_PROGRESS"    : "We're still trying to open a Spotify session...",
+    "MSG_TITLE_PLAYLIST_ERROR"      : "Error Retrieving Playlist",
     "MSG_BODY_PLAYIST_ERROR"        : "The selected playlist details could not be found",
 
     "MSG_FMT_DID_YOU_MEAN"          : "Did you mean '%s'?",

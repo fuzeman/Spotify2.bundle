@@ -81,31 +81,25 @@ def authenticated(func):
             return func.func_name
 
         def __call__(self, *args, **kwargs):
-            plugin = args[0]
-            client = plugin.client
-            if not client or not client.is_logged_in():
-                return self.access_denied_message(plugin, client)
+            host = args[0]
+            client = host.client
+
+            Log.Debug('authenticated')
+
+            if not client or not client.constructed:
+                Log.Debug('authenticated - initializing')
+                return self.message('INITIALIZING')
+
+            if not client.ready:
+                Log.Debug('authenticated - login error')
+                return self.message('LOGIN_ERROR')
+
             return func(*args, **kwargs)
 
-        def access_denied_message(self, plugin, client):
-            if not client:
-                return MessageContainer(
-                    header=L("MSG_TITLE_MISSING_LOGIN"),
-                    message=L("MSG_BODY_MISSING_LOGIN")
-                )
-            elif not client.spotify.api.ws:
-                return MessageContainer(
-                    header=L("MSG_TITLE_LOGIN_IN_PROGRESS"),
-                    message=L("MSG_BODY_LOGIN_IN_PROGRESS")
-                )
-            else:
-                # Trigger a re-connect
-                Log.Warn('Connection failed, reconnecting...')
-                plugin.start()
-
-                return MessageContainer(
-                    header=L("MSG_TITLE_LOGIN_FAILED"),
-                    message=L("MSG_TITLE_LOGIN_FAILED")
-                )
+        def message(self, key):
+            return MessageContainer(
+                header=L("MSG_%s_TITLE" % key),
+                message=L("MSG_%s_BODY" % key)
+            )
 
     return decorator()

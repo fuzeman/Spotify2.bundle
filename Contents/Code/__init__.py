@@ -1,5 +1,6 @@
+from revent import REvent
 from logging_handler import PlexHandler
-from host import SpotifyPlugin
+from host import SpotifyHost
 from search import SpotifySearch
 from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
 from utils import ViewMode
@@ -23,51 +24,76 @@ def setup_logging():
 
 setup_logging()
 
-plugin = SpotifyPlugin()
-sp_search = SpotifySearch(plugin)
+host = SpotifyHost()
+sp_search = SpotifySearch(host)
 
 
-def plugin_callback(method, kwargs=None):
+def plugin_callback(method, kwargs=None, async=False):
     """ Invokes callbacks on the plugin instance
 
     :param method:     The method on the SpotifyPlugin class to call.
     :param kwargs:     A dictionary of keyward args to pass to the method.
     """
 
-    global plugin
-    callback = lambda kw: method(plugin, **kw)
+    Log.Debug('plugin_callback - method: %s, kwargs: %s, async: %s' % (method, kwargs, async))
 
-    return callback(kwargs or {})
+    kwargs = kwargs or {}
+    result = None
+
+    if async:
+        on_complete = REvent()
+
+        kwargs['callback'] = lambda result: on_complete.set(result)
+
+        method(host, **kwargs)
+
+        result = on_complete.wait(10)
+    else:
+        result = method(host, **kwargs)
+
+    if result is None:
+        if async:
+            return MessageContainer(
+                header=L("MSG_CALLBACK_TIMEOUT_TITLE"),
+                message=L("MSG_CALLBACK_TIMEOUT_BODY")
+            )
+
+        return MessageContainer(
+            header=L("MSG_CALLBACK_FAILURE_TITLE"),
+            message=L("MSG_CALLBACK_FAILURE_BODY")
+        )
+
+    return result
 
 
 @route(ROUTEBASE + 'artist/{uri}')
 def artist(**kwargs):
-    return plugin_callback(SpotifyPlugin.artist, kwargs)
+    return plugin_callback(SpotifyHost.artist, kwargs)
 
 
 @route(ROUTEBASE + 'album/{uri}')
 def album(**kwargs):
-    return plugin_callback(SpotifyPlugin.album, kwargs)
+    return plugin_callback(SpotifyHost.album, kwargs)
 
 
 @route(ROUTEBASE + 'playlist/{uri}')
 def playlist(**kwargs):
-    return plugin_callback(SpotifyPlugin.playlist, kwargs)
+    return plugin_callback(SpotifyHost.playlist, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'metadata/{track_uri}')
 def metadata(**kwargs):
-    return plugin_callback(SpotifyPlugin.metadata, kwargs)
+    return plugin_callback(SpotifyHost.metadata, kwargs)
 
 
 @route(ROUTEBASE + 'playlists')
 def playlists(**kwargs):
-    return plugin_callback(SpotifyPlugin.playlists, kwargs)
+    return plugin_callback(SpotifyHost.playlists, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'starred')
 def starred(**kwargs):
-    return plugin_callback(SpotifyPlugin.starred, kwargs)
+    return plugin_callback(SpotifyHost.starred, kwargs)
 
 
 @route(ROUTEBASE + 'search')
@@ -76,17 +102,17 @@ def search(**kwargs):
 
 
 def main_menu(**kwargs):
-    return plugin_callback(SpotifyPlugin.main_menu, kwargs)
+    return plugin_callback(SpotifyHost.main_menu, kwargs)
 
 
 @route(ROUTEBASE + 'play')
 def play(**kwargs):
-    return plugin_callback(SpotifyPlugin.play, kwargs)
+    return plugin_callback(SpotifyHost.play, kwargs)
 
 
 @route(ROUTEBASE + 'image')
 def image(**kwargs):
-    return plugin_callback(SpotifyPlugin.image, kwargs)
+    return plugin_callback(SpotifyHost.image, kwargs)
 
 
 def Start():
@@ -106,4 +132,4 @@ def Start():
 
 def ValidatePrefs():
     """ Called when the user's prefs are changed """
-    plugin_callback(SpotifyPlugin.preferences_updated)
+    plugin_callback(SpotifyHost.preferences_updated)

@@ -6,12 +6,12 @@ import urllib
 
 
 class SpotifySearch(object):
-    def __init__(self, plugin):
-        self.plugin = plugin
+    def __init__(self, host):
+        self.host = host
 
     @property
     def client(self):
-        return self.plugin.client
+        return self.host.client
 
     @staticmethod
     def use_placeholders():

@@ -2,7 +2,7 @@ from settings import PLUGIN_ID
 from utils import Track
 
 from spotify import Spotify
-from threading import Lock
+from threading import Lock, Event
 import traceback
 
 
@@ -28,6 +28,8 @@ class SpotifyClient(object):
 
         self.sp = None
 
+        self.on_login = Event()
+
     def set_preferences(self, username, password, proxy_tracks):
         self.username = username
         self.password = password
@@ -39,8 +41,20 @@ class SpotifyClient(object):
             self.shutdown()
 
         self.sp = Spotify()
+        self.on_login = Event()
 
-        self.sp.login(self.username, self.password)
+        self.sp.login(self.username, self.password, lambda: self.on_login.set())
+
+    @property
+    def constructed(self):
+        return self.sp and self.on_login
+
+    @property
+    def ready(self):
+        if not self.constructed:
+            return False
+
+        return self.on_login.wait(10)
 
     def shutdown(self):
         self.sp.api.shutdown()
@@ -49,9 +63,6 @@ class SpotifyClient(object):
     #
     # Public methods
     #
-
-    def is_logged_in(self):
-        return self.sp.logged_in()
 
     def search(self, query, query_type='all', max_results=50, offset=0):
         """ Execute a search
@@ -63,9 +74,6 @@ class SpotifyClient(object):
     #
     # Media
     #
-
-    def get(self, uri):
-        return self.sp.objectFromURI(uri)
 
     def is_album_playable(self, album):
         """ Check if an album can be played by a client or not """
@@ -147,15 +155,3 @@ class SpotifyClient(object):
         Log.Debug('Retrieved track_url: %s', repr(track_url))
         self.track_lock.release()
         return track_url
-
-    #
-    # Playlists
-    #
-
-    def get_playlists(self):
-        """ Return the user's playlists"""
-        return self.sp.getPlaylists()
-
-    def get_starred(self):
-        """ Return the user's starred tracks"""
-        return self.get('spotify:user:%s:starred' % self.username)

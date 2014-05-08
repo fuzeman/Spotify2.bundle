@@ -6,6 +6,7 @@ SERVER_PORT = 32420
 
 LOGGERS     = [
     'plugin',
+    'pyemitter',
     'requests',
     'spotify'
 ]

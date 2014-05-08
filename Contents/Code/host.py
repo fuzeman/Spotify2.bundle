@@ -1,14 +1,15 @@
 from client import SpotifyClient
+from containers import Containers
 from routing import function_path, route_path
 from plugin.server import Server
 from utils import authenticated, ViewMode
 
 from cachecontrol import CacheControl
-#from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
 import requests
+import time
 
 
-class SpotifyPlugin(object):
+class SpotifyHost(object):
     def __init__(self):
         self.client = None
         self.server = None
@@ -28,6 +29,13 @@ class SpotifyPlugin(object):
     @property
     def proxy_tracks(self):
         return Prefs['proxy_tracks']
+
+    @property
+    def sp(self):
+        if not self.client:
+            return None
+
+        return self.client.sp
 
     def preferences_updated(self):
         """ Called when the user updates the plugin preferences"""
@@ -149,46 +157,19 @@ class SpotifyPlugin(object):
         return oc
 
     @authenticated
-    def playlists(self):
-        Log("playlists")
-
-        oc = ObjectContainer(
-            title2=L("MENU_PLAYLISTS"),
-            content=ContainerContent.Playlists,
-            view_group=ViewMode.Playlists
-        )
-
-        playlists = self.client.get_playlists()
-
-        for playlist in playlists:
-            self.add_playlist_to_directory(playlist, oc)
-
-        return oc
+    def playlists(self, callback, **kwargs):
+        @self.sp.user.playlists()
+        def on_playlists(playlists):
+            callback(Containers.playlists(playlists, **kwargs))
 
     @authenticated
-    def playlist(self, uri):
-        pl = self.client.get(uri)
+    def playlist(self, uri, callback):
+        @self.sp.playlist(uri)
+        def on_playlist(playlist):
+            Log("Got playlist: %s", playlist.name)
+            Log.Debug('playlist truncated: %s', playlist.truncated)
 
-        if pl is None:
-            # Unable to find playlist
-            return MessageContainer(
-                header=L("MSG_TITLE_UNKNOWN_PLAYLIST"),
-                message='URI: %s' % uri
-            )
-
-        Log("Get playlist: %s", pl.getName().decode("utf-8"))
-        Log.Debug('playlist truncated: %s', pl.obj.contents.truncated)
-
-        oc = ObjectContainer(
-            title2=pl.getName().decode("utf-8"),
-            content=ContainerContent.Tracks,
-            view_group=ViewMode.Tracks
-        )
-
-        for track in pl.getTracks():
-            self.add_track_to_directory(track, oc)
-
-        return oc
+            callback(Containers.playlist(playlist))
 
     @authenticated
     def starred(self):
@@ -350,14 +331,5 @@ class SpotifyPlugin(object):
 
                 art=function_path('image.png', uri=image_url),
                 thumb=function_path('image.png', uri=image_url)
-            )
-        )
-
-    def add_playlist_to_directory(self, playlist, oc):
-        oc.add(
-            DirectoryObject(
-                key=route_path('playlist', playlist.getURI()),
-                title=playlist.getName().decode("utf-8"),
-                thumb=R("placeholder-playlist.png")
             )
         )
