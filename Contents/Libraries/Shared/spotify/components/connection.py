@@ -53,11 +53,15 @@ class Connection(Component, Emitter):
             self.send_connect()
 
     def on_message(self, message):
+        if message is None:
+            log.warn('empty messaged received')
+            return
+
         # Parse json message
         try:
-            data = json.loads(message.data)
-        except ValueError, e:
-            self.emit('error', 'Unable to decode message: %s' % e)
+            data = json.loads(message)
+        except Exception, e:
+            self.emit('error', 'Unable to decode message (%s): %s' % (e, message))
             return
 
         # Handle commands (do_work, ping_flash2, etc..)
@@ -153,6 +157,9 @@ class Connection(Component, Emitter):
 
 
 class Client(WebSocketClient, Emitter):
+    threading = True
+    threading_workers = 2
+
     def __init__(self, connection, *args, **kwargs):
         WebSocketClient.__init__(self, *args, **kwargs)
         self._connection = connection
@@ -163,7 +170,7 @@ class Client(WebSocketClient, Emitter):
         self.emit('open')
 
     def received_message(self, message):
-        self.emit('message', message=message)
+        self.emit('message', message=message.data)
 
     def closed(self, code, reason=None):
         self.emit('close', code=code, reason=reason)

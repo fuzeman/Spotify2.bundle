@@ -1,3 +1,4 @@
+from spotify.core.revent import REvent
 from spotify.core.uri import Uri
 from spotify.objects.base import Descriptor, PropertyProxy
 from spotify.proto import playlist4changes_pb2
@@ -27,7 +28,7 @@ class Playlist(Descriptor):
     items = PropertyProxy('contents.items', 'PlaylistItem')
     truncated = PropertyProxy('contents.truncated')
 
-    def fetch(self, group=None, flat=False):
+    def list(self, group=None, flat=False):
         if group:
             # Pull the code from a group URI
             parts = group.split(':')
@@ -77,6 +78,20 @@ class Playlist(Descriptor):
 
             # Return item
             yield item
+
+    def fetch(self, group=None, flat=False):
+        for item in self.list(group, flat):
+            # Return plain PlaylistItem for groups
+            if item.uri.startswith('spotify:group'):
+                yield item
+                continue
+
+            # Fetch playlist metadata (to find the name)
+            event = REvent()
+            self.sp.playlist(item.uri, count=0, callback=lambda pl: event.set(pl))
+
+            # Wait until result is available (to keep playlist order)
+            yield event.wait()
 
     @classmethod
     def from_dict(cls, sp, data, types):
