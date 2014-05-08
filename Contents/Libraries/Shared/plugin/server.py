@@ -1,5 +1,5 @@
-from spotify2.dispatcher import Dispatcher
-from spotify2.track_reference import TrackReference
+from plugin.dispatcher import Dispatcher
+from plugin.track_reference import TrackReference
 
 import cherrypy
 import logging
