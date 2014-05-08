@@ -13,7 +13,7 @@ class Objects(object):
 
     @staticmethod
     def playlist(item):
-        if item.uri.startswith('spotify:group'):
+        if item.uri and item.uri.startswith('spotify:group'):
             # (Playlist Folder)
             return DirectoryObject(
                 key=route_path('playlists', group=item.uri, name=item.name),
@@ -23,6 +23,6 @@ class Objects(object):
 
         return DirectoryObject(
             key=route_path('playlist', item.uri),
-            title=item.uri,  # TODO use the real name
+            title=item.name,
             thumb=R("placeholder-playlist.png")
         )
