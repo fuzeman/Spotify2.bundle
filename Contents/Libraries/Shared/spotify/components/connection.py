@@ -158,7 +158,7 @@ class Connection(Component, Emitter):
 
 class Client(WebSocketClient, Emitter):
     threading = True
-    threading_workers = 2
+    threading_workers = 4
 
     def __init__(self, connection, *args, **kwargs):
         WebSocketClient.__init__(self, *args, **kwargs)

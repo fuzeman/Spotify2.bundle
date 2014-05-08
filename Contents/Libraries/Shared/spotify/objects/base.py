@@ -119,6 +119,9 @@ class Descriptor(Component):
         self._cache = {}
 
     def dict_update(self, attributes):
+        if not attributes:
+            return self
+
         # Clear cache to ensure we don't use previous values
         self._cache = {}
 
@@ -179,11 +182,11 @@ class Descriptor(Component):
         return self.__repr__()
 
     @classmethod
-    def from_protobuf(cls, sp, data, types):
+    def from_protobuf(cls, sp, defaults, data, types):
         internal = cls.__protobuf__()
         internal.ParseFromString(data)
 
-        return cls(sp, internal, types)
+        return cls(sp, internal, types).dict_update(defaults)
 
     @classmethod
     def from_node(cls, sp, node, types):

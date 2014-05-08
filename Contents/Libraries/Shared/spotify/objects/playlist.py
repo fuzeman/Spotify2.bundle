@@ -8,17 +8,28 @@ from spotify.proto import playlist4content_pb2
 class PlaylistItem(Descriptor):
     __protobuf__ = playlist4content_pb2.Item
 
-    uri = PropertyProxy
+    uri = PropertyProxy(func=Uri.from_uri)
     name = PropertyProxy
 
     added_by = PropertyProxy('attributes.added_by')
+
+    def fetch(self, start=0, count=100, callback=None):
+        if callback:
+            return self.sp.playlist(self.uri, start,count, callback)
+
+        # Fetch full playlist detail
+        event = REvent()
+        self.sp.playlist(self.uri, start, count, callback=lambda pl: event.set(pl))
+
+        # Wait until result is available
+        return event.wait()
 
 
 class Playlist(Descriptor):
     __protobuf__ = playlist4changes_pb2.ListDump
     __node__ = 'playlist'
 
-    uri = PropertyProxy
+    uri = PropertyProxy(func=Uri.from_uri)
     name = PropertyProxy('attributes.name')
     image = PropertyProxy
 
@@ -37,30 +48,22 @@ class Playlist(Descriptor):
         path = []
 
         for item in self.items:
-            if item.uri.startswith('spotify:start-group'):
+            if item.uri.type == 'start-group':
                 # Ignore groups if we are returning a flat list
                 if flat:
                     continue
 
-                # Group start tag
-                parts = item.uri.split(':')
-
-                if len(parts) != 4:
-                    continue
-
-                code, title = parts[2:4]
-
                 # Only return placeholders on the root level
                 if (not group and not path) or (path and path[-1] == group):
-                    # Group placeholder
+                    # Return group placeholder
                     yield PlaylistItem(self.sp).dict_update({
-                        'uri': 'spotify:group:%s:%s' % (code, title),
-                        'name': title
+                        'uri': Uri.from_uri('spotify:group:%s:%s' % (item.uri.code, item.uri.title)),
+                        'name': item.uri.title
                     })
 
-                path.append(code)
+                path.append(item.uri.code)
                 continue
-            elif item.uri.startswith('spotify:end-group'):
+            elif item.uri.type == 'end-group':
                 # Group close tag
                 if path and path.pop() == group:
                     return
@@ -80,18 +83,30 @@ class Playlist(Descriptor):
             yield item
 
     def fetch(self, group=None, flat=False):
+        if self.uri.type == 'rootlist':
+            return self.fetch_playlists(group, flat)
+
+        if self.uri.type == 'playlist':
+            return self.fetch_tracks()
+
+        return None
+
+    def fetch_playlists(self, group=None, flat=False):
         for item in self.list(group, flat):
             # Return plain PlaylistItem for groups
-            if item.uri.startswith('spotify:group'):
+            if item.uri.type == 'group':
                 yield item
                 continue
 
-            # Fetch playlist metadata (to find the name)
-            event = REvent()
-            self.sp.playlist(item.uri, count=0, callback=lambda pl: event.set(pl))
+            yield item.fetch()
 
-            # Wait until result is available (to keep playlist order)
-            yield event.wait()
+    def fetch_tracks(self):
+        uris = [item.uri for item in self.items]
+
+        event = REvent()
+        self.sp.metadata(uris, callback=lambda items: event.set(items))
+
+        return event.wait()
 
     @classmethod
     def from_dict(cls, sp, data, types):

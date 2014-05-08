@@ -10,7 +10,8 @@ log = logging.getLogger(__name__)
 
 
 class ProtobufRequest(Request):
-    def __init__(self, sp, name, requests, schema_response, header=None, schema_payload=None):
+    def __init__(self, sp, name, requests, schema_response, header=None,
+                 defaults=None):
         """
         :type sp: spotify.client.Spotify
         :type name: str
@@ -18,11 +19,12 @@ class ProtobufRequest(Request):
         :type schema_response: dict or spotify.objects.base.Descriptor
 
         :type header: dict
+        :type defaults: dict
         """
         super(ProtobufRequest, self).__init__(sp, name, None)
 
         self.schema_response = schema_response
-        self.schema_payload = schema_payload
+        self.defaults = defaults
 
         self.request = None
         self.payload = None
@@ -123,7 +125,7 @@ class ProtobufRequest(Request):
             self.emit('error', 'Unrecognized metadata type: "%s"' % content_type)
             return
 
-        return parser_cls.from_protobuf(self.sp, data, NAME_MAP)
+        return parser_cls.from_protobuf(self.sp, self.defaults, data, NAME_MAP)
 
     def build(self, seq):
         self.args = [

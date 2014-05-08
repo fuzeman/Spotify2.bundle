@@ -16,7 +16,7 @@ class Track(Descriptor):
     uri = PropertyProxy('gid', func=lambda gid: Uri.from_gid('track', gid))
     name = PropertyProxy
 
-    albums = PropertyProxy('album', 'Album')
+    album = PropertyProxy('album', 'Album')
     artists = PropertyProxy('artist', 'Artist')
 
     number = PropertyProxy
@@ -233,19 +233,17 @@ class Track(Descriptor):
                 for artist in data.get('artist', [])
             ],
 
-            'album': [
-                {
-                    'id': data.get('album-id'),
-                    'name': data.get('album'),
+            'album': {
+                'id': data.get('album-id'),
+                'name': data.get('album'),
 
-                    'artist-id': data.get('album-artist-id'),
-                    'artist-name': data.get('album-artist'),
+                'artist-id': data.get('album-artist-id'),
+                'artist-name': data.get('album-artist'),
 
-                    'cover': data.get('cover'),
-                    'cover-small': data.get('cover-small'),
-                    'cover-large': data.get('cover-large'),
-                }
-            ],
+                'cover': data.get('cover'),
+                'cover-small': data.get('cover-small'),
+                'cover-large': data.get('cover-large'),
+            },
 
             # TODO year
             'number': int(data.get('track-number')),
