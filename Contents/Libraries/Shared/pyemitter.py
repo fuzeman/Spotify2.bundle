@@ -1,4 +1,4 @@
-from threading import Event
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import traceback
 
@@ -6,8 +6,13 @@ log = logging.getLogger(__name__)
 
 
 class Emitter(object):
+    threading = False
+    threading_workers = 2
+
     __constructed = False
+
     __callbacks = None
+    __threading_pool = None
 
     def ensure_constructed(self):
         if self.__constructed:
@@ -15,6 +20,9 @@ class Emitter(object):
 
         self.__callbacks = {}
         self.__constructed = True
+
+        if self.threading:
+            self.__threading_pool = ThreadPoolExecutor(max_workers = self.threading_workers)
 
     def __wrap(self, callback, *args, **kwargs):
         def wrap(func):
@@ -44,7 +52,7 @@ class Emitter(object):
 
         # Call 'on_bound' callback
         if on_bound:
-            call_wrapper(on_bound)
+            self.__call(on_bound)
 
         return self
 
@@ -94,7 +102,7 @@ class Emitter(object):
             return
 
         for callback in self.__callbacks[event]:
-            call_wrapper(callback, args, kwargs, event)
+            self.__call(callback, args, kwargs, event)
 
         return self
 
@@ -126,6 +134,28 @@ class Emitter(object):
 
         return self
 
+    def __call(self, callback, args=None, kwargs=None, event=None):
+        args = args or ()
+        kwargs = kwargs or {}
+
+        if self.threading:
+            self.__call_async(callback, args, kwargs, event)
+        else:
+            self.__call_sync(callback, args, kwargs, event)
+
+    @staticmethod
+    def __call_sync(callback, args=None, kwargs=None, event=None):
+        try:
+            callback(*args, **kwargs)
+
+            return True
+        except Exception, e:
+            log.warn('Exception raised in callback %s for event "%s" - %s', callback, event, traceback.format_exc())
+            return False
+
+    def __call_async(self, callback, args=None, kwargs=None, event=None):
+        self.__threading_pool.submit(self.__call_sync, callback, args, kwargs, event)
+
 
 def on(emitter, event, func=None):
     emitter.on(event, func)
@@ -145,12 +175,3 @@ def off(emitter, event, func=None):
 
 def emit(emitter, event, *args, **kwargs):
     return emitter.emit(event, *args, **kwargs)
-
-
-def call_wrapper(callback, args=None, kwargs=None, event=None):
-    try:
-        callback(*(args or ()), **(kwargs or {}))
-        return True
-    except Exception, e:
-        log.warn('Exception raised in callback %s for event "%s" - %s', callback, event, traceback.format_exc())
-        return False
