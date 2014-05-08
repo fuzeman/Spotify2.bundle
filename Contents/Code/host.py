@@ -1,10 +1,10 @@
 from client import SpotifyClient
 from routing import function_path, route_path
-from spotify2.server import Server
+from plugin.server import Server
 from utils import authenticated, ViewMode
 
 from cachecontrol import CacheControl
-from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
+#from spotify_web.friendly import SpotifyArtist, SpotifyAlbum, SpotifyTrack
 import requests
 
 

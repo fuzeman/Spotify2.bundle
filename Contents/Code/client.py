@@ -1,9 +1,9 @@
 from settings import PLUGIN_ID
 from utils import Track
 
-from spotify_web.friendly import Spotify
-from spotify_web.spotify import Logging
+from spotify import Spotify
 from threading import Lock
+import traceback
 
 
 class SpotifyClient(object):
@@ -17,12 +17,6 @@ class SpotifyClient(object):
         :param password:       The password to authenticate with.
         """
 
-        # Hook logging
-        Logging.hook(3, Log.Debug)
-        Logging.hook(2, Log.Info)
-        Logging.hook(1, Log.Warn)
-        Logging.hook(0, Log.Error)
-
         self.current_track = None
         self.track_lock = Lock()
 
@@ -32,7 +26,7 @@ class SpotifyClient(object):
         self.proxy_tracks = True
         self.server = None
 
-        self.spotify = None
+        self.sp = None
 
     def set_preferences(self, username, password, proxy_tracks):
         self.username = username
@@ -41,35 +35,37 @@ class SpotifyClient(object):
         self.proxy_tracks = proxy_tracks
 
     def start(self):
-        if self.spotify:
+        if self.sp:
             self.shutdown()
 
-        self.spotify = Spotify(self.username, self.password, log_level=3)
+        self.sp = Spotify()
+
+        self.sp.login(self.username, self.password)
 
     def shutdown(self):
-        self.spotify.api.shutdown()
-        self.spotify = None
+        self.sp.api.shutdown()
+        self.sp = None
 
     #
     # Public methods
     #
 
     def is_logged_in(self):
-        return self.spotify.logged_in()
+        return self.sp.logged_in()
 
     def search(self, query, query_type='all', max_results=50, offset=0):
         """ Execute a search
 
         :param query:          A query string.
         """
-        return self.spotify.search(query, query_type, max_results, offset)
+        return self.sp.search(query, query_type, max_results, offset)
 
     #
     # Media
     #
 
     def get(self, uri):
-        return self.spotify.objectFromURI(uri)
+        return self.sp.objectFromURI(uri)
 
     def is_album_playable(self, album):
         """ Check if an album can be played by a client or not """
@@ -96,7 +92,7 @@ class SpotifyClient(object):
     def get_track_url(self, track):
         if self.current_track:
             # Send stop event for previous track
-            self.spotify.api.send_track_event(
+            self.sp.api.send_track_event(
                 self.current_track.track.getID(),
                 'stop',
                 self.current_track.track.getDuration()
@@ -122,7 +118,7 @@ class SpotifyClient(object):
         self.current_track = None
 
         # First try get track url
-        self.spotify.api.send_track_event(track.getID(), 'play', 0)
+        self.sp.api.send_track_event(track.getID(), 'play', 0)
         track_url = track.getFileURL(retries=1)
 
         # If first request failed, trigger re-connection to spotify
@@ -134,10 +130,10 @@ class SpotifyClient(object):
             self.start()  # (restarts the connection)
 
             # Update reference to spotify client (otherwise getFileURL request will fail)
-            track.spotify = self.spotify
+            track.spotify = self.sp
 
             Log.Info('Fetching track url...')
-            self.spotify.api.send_track_event(track.getID(), 'play', 0)
+            self.sp.api.send_track_event(track.getID(), 'play', 0)
             track_url = track.getFileURL(retries=1)
 
         # Finished
@@ -158,7 +154,7 @@ class SpotifyClient(object):
 
     def get_playlists(self):
         """ Return the user's playlists"""
-        return self.spotify.getPlaylists()
+        return self.sp.getPlaylists()
 
     def get_starred(self):
         """ Return the user's starred tracks"""

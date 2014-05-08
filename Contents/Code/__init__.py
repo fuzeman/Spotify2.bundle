@@ -1,5 +1,5 @@
 from logging_handler import PlexHandler
-from plugin import SpotifyPlugin
+from host import SpotifyPlugin
 from search import SpotifySearch
 from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
 from utils import ViewMode

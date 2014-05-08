@@ -5,6 +5,7 @@ ROUTEBASE   = PREFIX + '/'
 SERVER_PORT = 32420
 
 LOGGERS     = [
+    'plugin',
     'requests',
-    'spotify2'
+    'spotify'
 ]
