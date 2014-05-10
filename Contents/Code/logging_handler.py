@@ -1,3 +1,5 @@
+from settings import LOGGERS
+
 import logging
 
 
@@ -14,3 +16,17 @@ class PlexHandler(logging.StreamHandler):
         func = self.level_funcs.get(record.levelno, Log.Debug)
 
         func('[%s] %s' % (record.name, self.format(record)))
+
+
+def setup():
+    Log.Debug(logging.Logger.manager.loggerDict)
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    for name in LOGGERS:
+        logger = logging.getLogger(name)
+
+        logger.setLevel(logging.DEBUG)
+        logger.handlers = [PlexHandler()]
+
+        Log.Debug('PlexHandler added to %s logger' % logger)

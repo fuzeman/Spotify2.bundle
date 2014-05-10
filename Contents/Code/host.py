@@ -1,12 +1,12 @@
 from client import SpotifyClient
 from containers import Containers
-from routing import function_path, route_path
 from plugin.server import Server
+from routing import route_path
+from search import SpotifySearch
 from utils import authenticated, ViewMode
 
 from cachecontrol import CacheControl
 import requests
-import time
 
 
 class SpotifyHost(object):
@@ -15,8 +15,12 @@ class SpotifyHost(object):
         self.server = None
         self.start()
 
+        self.search = SpotifySearch(self)
+
         self.session = requests.session()
         self.session_cached = CacheControl(self.session)
+
+        self.containers = Containers(self)
 
     @property
     def username(self):
@@ -38,13 +42,10 @@ class SpotifyHost(object):
         return self.client.sp
 
     def preferences_updated(self):
-        """ Called when the user updates the plugin preferences"""
-
         # Trigger a client restart
         self.start()
 
     def start(self):
-        """ Start the Spotify client and HTTP server """
         if not self.username or not self.password:
             Log("Username or password not set: not logging in")
             return
@@ -69,25 +70,16 @@ class SpotifyHost(object):
         self.client.set_preferences(self.username, self.password, self.proxy_tracks)
         self.client.start()
 
+    #
+    # Routes
+    #
+
     @authenticated
     def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
         Log('play(%s)' % repr(uri))
 
         return Redirect(self.client.play(uri))
-
-    def get_uri_image(self, uri):
-        obj = self.client.get(uri)
-        images = None
-
-        if isinstance(obj, SpotifyArtist):
-            images = obj.getPortraits()
-        elif isinstance(obj, SpotifyAlbum):
-            images = obj.getCovers()
-        elif isinstance(obj, SpotifyTrack):
-            images = obj.getAlbum().getCovers()
-
-        return self.select_image(images)
 
     @authenticated
     def image(self, uri):
@@ -96,12 +88,8 @@ class SpotifyHost(object):
             return Redirect(R('placeholder-artist.png'))
 
         if uri.startswith('spotify:'):
-            # Fetch object for spotify URI and select image
-            image_url = self.get_uri_image(uri)
-
-            if not image_url:
-                # TODO media specific placeholders
-                return Redirect(R('placeholder-artist.png'))
+            # TODO image for URI
+            raise NotImplementedError()
         else:
             # pre-selected image provided
             Log.Debug('Using pre-selected image URL: "%s"' % uri)
@@ -150,7 +138,7 @@ class SpotifyHost(object):
     def playlists(self, callback, **kwargs):
         @self.sp.user.playlists()
         def on_playlists(playlists):
-            callback(Containers.playlists(playlists, **kwargs))
+            callback(self.containers.playlists(playlists, **kwargs))
 
     @authenticated
     def playlist(self, uri, callback):
@@ -159,35 +147,23 @@ class SpotifyHost(object):
             Log("Got playlist: %s", playlist.name)
             Log.Debug('playlist truncated: %s', playlist.truncated)
 
-            callback(Containers.playlist(playlist))
+            callback(self.containers.playlist(playlist))
 
     @authenticated
-    def starred(self):
-        """ Return a directory containing the user's starred tracks"""
-        Log("starred")
+    def starred(self, callback):
+        return SpotifyHost.playlist(self, 'spotify:user:%s:starred' % self.sp.username, callback)
 
-        oc = ObjectContainer(
-            title2=L("MENU_STARRED"),
-            content=ContainerContent.Tracks,
-            view_group=ViewMode.Tracks
-        )
+    @authenticated
+    def metadata(self, uri, callback):
+        Log.Debug('fetching metadata for uri: "%s"', uri)
 
-        starred = self.client.get_starred()
+        @self.sp.metadata(uri)
+        def on_track(track):
+            callback(self.containers.metadata(track))
 
-        for track in starred.getTracks():
-            self.add_track_to_directory(track, oc)
-
-        return oc
-
-    def metadata(self, track_uri):
-        Log.Debug('fetching metadata for track_uri: "%s"', track_uri)
-
-        oc = ObjectContainer()
-
-        track = self.client.get(track_uri)
-        self.add_track_to_directory(track, oc)
-
-        return oc
+    @authenticated
+    def search(self, query, callback, type='all', count=7, plain=False):
+        self.search.run(query, callback, type, count, plain)
 
     def main_menu(self):
         return ObjectContainer(
@@ -213,79 +189,4 @@ class SpotifyHost(object):
                     thumb=R("icon-default.png")
                 )
             ],
-        )
-
-    #
-    # Create objects
-    #
-
-    def get_track_location(self, track):
-        if self.client.proxy_tracks and self.server:
-            return self.server.get_track_url(track.getURI())
-
-        return function_path('play', uri=track.getURI(), ext='mp3')
-
-    def create_album_object(self, album):
-        """ Factory method for album objects """
-        title = album.getName().decode("utf-8")
-
-        if Prefs["displayAlbumYear"] and album.getYear() != 0:
-            title = "%s (%s)" % (title, album.getYear())
-
-        image_url = self.select_image(album.getCovers())
-
-        return AlbumObject(
-            key=route_path('album', album.getURI()),
-            rating_key=album.getURI(),
-
-            title=title,
-            artist=album.getArtists(nameOnly=True),
-
-            track_count=album.getNumTracks(),
-            source_title='Spotify',
-
-            art=function_path('image.png', uri=image_url),
-            thumb=function_path('image.png', uri=image_url),
-        )
-
-    #
-    # Insert objects into container
-    #
-
-    def add_section_header(self, title, oc):
-        oc.add(
-            DirectoryObject(
-                key='',
-                title=title
-            )
-        )
-
-    def add_track_to_directory(self, track, oc):
-        if not self.client.is_track_playable(track):
-            Log("Ignoring unplayable track: %s" % track.name())
-            return
-
-        oc.add(self.create_track_object(track))
-
-    def add_album_to_directory(self, album, oc):
-        if not self.client.is_album_playable(album):
-            Log("Ignoring unplayable album: %s" % album.name())
-            return
-
-        oc.add(self.create_album_object(album))
-
-    def add_artist_to_directory(self, artist, oc):
-        image_url = self.select_image(artist.getPortraits())
-
-        oc.add(
-            ArtistObject(
-                key=route_path('artist', artist.getURI()),
-                rating_key=artist.getURI(),
-
-                title=artist.getName().decode("utf-8"),
-                source_title='Spotify',
-
-                art=function_path('image.png', uri=image_url),
-                thumb=function_path('image.png', uri=image_url)
-            )
         )

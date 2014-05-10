@@ -1,31 +1,14 @@
 from revent import REvent
-from logging_handler import PlexHandler
 from host import SpotifyHost
-from search import SpotifySearch
-from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
+from settings import PREFIX, VERSION, ROUTEBASE
 from utils import ViewMode
+import logging_handler
 
 import locale
-import logging
 
-
-def setup_logging():
-    Log.Debug(logging.Logger.manager.loggerDict)
-
-    logging.basicConfig(level=logging.DEBUG)
-
-    for name in LOGGERS:
-        logger = logging.getLogger(name)
-
-        logger.setLevel(logging.DEBUG)
-        logger.handlers = [PlexHandler()]
-
-        Log.Debug('PlexHandler added to %s logger' % logger)
-
-setup_logging()
+logging_handler.setup()
 
 host = SpotifyHost()
-sp_search = SpotifySearch(host)
 
 
 def plugin_callback(method, kwargs=None, async=False):
@@ -66,6 +49,16 @@ def plugin_callback(method, kwargs=None, async=False):
     return result
 
 
+@route(ROUTEBASE + 'play')
+def play(**kwargs):
+    return plugin_callback(SpotifyHost.play, kwargs)
+
+
+@route(ROUTEBASE + 'image')
+def image(**kwargs):
+    return plugin_callback(SpotifyHost.image, kwargs)
+
+
 @route(ROUTEBASE + 'artist/{uri}')
 def artist(**kwargs):
     return plugin_callback(SpotifyHost.artist, kwargs)
@@ -76,43 +69,33 @@ def album(**kwargs):
     return plugin_callback(SpotifyHost.album, kwargs)
 
 
-@route(ROUTEBASE + 'playlist/{uri}')
-def playlist(**kwargs):
-    return plugin_callback(SpotifyHost.playlist, kwargs, async=True)
-
-
-@route(ROUTEBASE + 'metadata/{track_uri}')
-def metadata(**kwargs):
-    return plugin_callback(SpotifyHost.metadata, kwargs)
-
-
 @route(ROUTEBASE + 'playlists')
 def playlists(**kwargs):
     return plugin_callback(SpotifyHost.playlists, kwargs, async=True)
 
 
+@route(ROUTEBASE + 'playlist/{uri}')
+def playlist(**kwargs):
+    return plugin_callback(SpotifyHost.playlist, kwargs, async=True)
+
+
 @route(ROUTEBASE + 'starred')
 def starred(**kwargs):
-    return plugin_callback(SpotifyHost.starred, kwargs)
+    return plugin_callback(SpotifyHost.starred, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'metadata/{track_uri}')
+def metadata(**kwargs):
+    return plugin_callback(SpotifyHost.metadata, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'search')
 def search(**kwargs):
-    return sp_search.run(**kwargs)
+    return plugin_callback(SpotifyHost.search, kwargs, async=True)
 
 
 def main_menu(**kwargs):
     return plugin_callback(SpotifyHost.main_menu, kwargs)
-
-
-@route(ROUTEBASE + 'play')
-def play(**kwargs):
-    return plugin_callback(SpotifyHost.play, kwargs)
-
-
-@route(ROUTEBASE + 'image')
-def image(**kwargs):
-    return plugin_callback(SpotifyHost.image, kwargs)
 
 
 def Start():
