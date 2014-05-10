@@ -11,18 +11,16 @@ class Uri(object):
         self.username = username
         self.title = title
 
-    def to_id(self):
+    def to_id(self, size=32):
         v = 0
 
         for c in self.code:
             v = v * 62 + base62.index(c)
 
-        return hex(v)[2:-1].rjust(32, "0")
+        return hex(v)[2:-1].rjust(size, '0')
 
-    def to_gid(self):
-        id = self.to_id().rstrip('0')
-
-        return binascii.unhexlify(id)
+    def to_gid(self, size=32):
+        return binascii.unhexlify(self.to_id(size=size))
 
     def __str__(self):
         parts = []

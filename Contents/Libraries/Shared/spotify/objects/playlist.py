@@ -86,7 +86,7 @@ class Playlist(Descriptor):
         if self.uri.type == 'rootlist':
             return self.fetch_playlists(group, flat)
 
-        if self.uri.type == 'playlist':
+        if self.uri.type in ['playlist', 'starred']:
             return self.fetch_tracks()
 
         return None

@@ -1,3 +1,4 @@
+from spotify.core.helpers import convert
 from spotify.objects import NODE_MAP, NAME_MAP
 
 from lxml import etree
@@ -40,7 +41,7 @@ class SearchResponse(object):
 
     def media_update(self, sp, xml, key):
         # total-<media>
-        setattr(self, '%s_total' % key, xml.find('total-%s' % key).text)
+        setattr(self, '%s_total' % key, convert(xml.find('total-%s' % key).text, int))
 
         # <media>
         items = getattr(self, key)

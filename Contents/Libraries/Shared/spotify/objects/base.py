@@ -89,6 +89,9 @@ class PropertyProxy(object):
         return self.construct(obj.sp, value, types)
 
     def construct(self, sp, value, types):
+        if value is None:
+            return None
+
         if isinstance(value, etree._Element):
             return self.type.from_node(sp, value, types)
 
