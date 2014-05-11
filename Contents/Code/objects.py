@@ -124,7 +124,6 @@ class Objects(object):
         if covers:
             # TODO might want to sort by 'size' (to ensure this is correct in all cases)
             # Pick largest cover
-            Log.Debug('image covers: %s' % covers)
             return covers[-1].file_url
 
         Log.Info('Unable to select image, available covers: %s' % covers)
