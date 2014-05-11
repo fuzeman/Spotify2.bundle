@@ -3,27 +3,32 @@ import re
 
 
 class Dispatcher(cherrypy.dispatch.Dispatcher):
-    re_track = re.compile(r"/track/(.*?)\.mp3", re.IGNORECASE)
+    routes = {
+        '/track': (re.compile(r"/track/(.*?)\.mp3", re.IGNORECASE), 'track')
+    }
 
     def __init__(self, server):
         super(Dispatcher, self).__init__()
         self.server = server
 
     def __call__(self, path_info):
-        if not path_info.startswith('/track'):
+        matching_routes = [name for name in self.routes.keys() if path_info.startswith(name)]
+
+        if not matching_routes:
             return super(Dispatcher, self).__call__(path_info)
 
-        ma_track = self.re_track.match(path_info)
+        r_regex, r_func = self.routes[matching_routes[0]]
 
-        if not ma_track:
+        match = r_regex.match(path_info)
+
+        if not match:
             return super(Dispatcher, self).__call__(path_info)
 
-        func = self.server.track
+        func = getattr(self.server, r_func)
 
         request = cherrypy.serving.request
-        uri = ma_track.group(1)
 
         request.config = cherrypy.config.copy()
         request.config.update(getattr(func, '_cp_config', {}))
 
-        request.handler = cherrypy.dispatch.LateParamPageHandler(func, uri)
+        request.handler = cherrypy.dispatch.LateParamPageHandler(func, *match.groups())

@@ -55,7 +55,7 @@ class SpotifyHost(object):
 
         # Start server (if 'proxy_tracks' is enabled)
         if not self.server and self.proxy_tracks:
-            self.server = Server(self.client)
+            self.server = Server(self)
             self.server.start()
 
         # Stop server if 'proxy_tracks' has been disabled

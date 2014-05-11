@@ -1,5 +1,6 @@
-from plugin.dispatcher import Dispatcher
-from plugin.track_reference import TrackReference
+from dispatcher import Dispatcher
+from track_reference import TrackReference
+from util import log_progress
 
 import cherrypy
 import logging
@@ -9,13 +10,21 @@ log = logging.getLogger(__name__)
 
 
 class Server(object):
-    def __init__(self, client=None, port=32444):
-        self.client = client
+    def __init__(self, plugin_host, port=12555):
+        self.plugin_host = plugin_host
+
         self.port = port
 
         self.cache = {}
 
+        self.current = None
+
+    @property
+    def sp(self):
+        return self.plugin_host.sp
+
     def start(self):
+        # CherryPy
         cherrypy.config.update({
             'server.socket_host': '0.0.0.0',
             'server.socket_port': self.port
@@ -29,18 +38,20 @@ class Server(object):
 
         cherrypy.engine.start()
 
-    def get_track_url(self, uri):
-        return "http://%s:%d/track/%s.mp3" % (
-            socket.gethostname(), self.port, uri
-        )
-
     def track(self, uri):
+        # Update current
+        if self.current:
+            # Track changed, call finish()
+            if uri != self.current.uri:
+                log.debug('Changing tracks, calling finish() on previous track')
+                self.current.finish()
+
         # Create new TrackReference (if one doesn't exist yet)
         if uri not in self.cache:
             log.debug('[%s] Creating new TrackReference' % uri)
 
             # Create new track reference
-            self.cache[uri] = TrackReference(self.client, uri)
+            self.cache[uri] = TrackReference(self, uri)
 
         # Get track reference from cache
         tr = self.cache[uri]
@@ -48,68 +59,108 @@ class Server(object):
         # Start download
         tr.fetch()
 
-        cherrypy.response.headers['Content-Type'] = tr.info.getheader('Content-Type')
-        cherrypy.response.headers['Content-Length'] = tr.info.getheader('Content-Length')
+        # Wait until track is ready
+        tr.on_opened.wait(10)
 
-        # Progressively read the stream
-        def stream():
-            position = 0
+        if not tr.success:
+            self.current = None
+            cherrypy.response.status = 500
+            return
 
-            chunk_size_min = 6 * 1024
-            chunk_size_max = 10 * 1024
+        # Update current
+        self.current = tr
 
-            chunk_scale = 0
-            chunk_size = chunk_size_min
+        r_start, r_end = self.handle_range(tr)
 
-            last_progress = None
+        # Update headers
+        cherrypy.response.headers['Accept-Ranges'] = 'bytes'
+        cherrypy.response.headers['Content-Type'] = tr.response_headers.getheader('Content-Type')
+        cherrypy.response.headers['Content-Length'] = r_end - r_start
 
-            while True:
-                # Adjust chunk_size
-                if chunk_scale < 1:
-                    chunk_scale = 2 * (float(position) / tr.length)
-                    chunk_size = int(chunk_size_min + (chunk_size_max * chunk_scale))
-
-                    if chunk_scale > 1:
-                        chunk_scale = 1
-
-                # Read chunk
-                chunk = tr.read(position, chunk_size)
-
-                if not chunk:
-                    log.debug('[%s] Finished at %s bytes (content-length: %s)' % (tr.uri, position, tr.length))
-                    break
-
-                position = position + len(chunk)
-
-                # Write chunk
-                yield chunk
-
-                last_progress = self.update_progress(tr, position, last_progress)
-
-        return stream()
+        # Progressively return track from buffer
+        return self.stream(tr, r_start, r_end)
 
     track._cp_config = {'response.stream': True}
 
     @staticmethod
-    def update_progress(tr, position, last_progress):
-        percent = float(position) / tr.length
-        value = int(percent * 20)
+    def stream(tr, r_start, r_end):
+        position = r_start
 
-        if value == last_progress:
-            return value
+        chunk_size_min = 6 * 1024
+        chunk_size_max = 10 * 1024
 
-        log.debug('[%s] Downloading [%s|%s] %03d%%' % (
-            tr.uri,
-            (' ' * value),
-            (' ' * (20 - value)),
-            int(percent * 100)
-        ))
+        chunk_scale = 0
+        chunk_size = chunk_size_min
 
-        return value
+        last_progress = None
 
+        while True:
+            # Adjust chunk_size
+            if chunk_scale < 1:
+                chunk_scale = 2 * (float(position) / tr.stream_length)
+                chunk_size = int(chunk_size_min + (chunk_size_max * chunk_scale))
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+                if chunk_scale > 1:
+                    chunk_scale = 1
 
-    server = Server()
-    server.start()
+            if position + chunk_size > r_end:
+                chunk_size = r_end - position
+
+            # Read chunk
+            chunk = tr.read(position, chunk_size)
+
+            if not chunk:
+                log.debug('[%s] Finished at %s bytes (content-length: %s)' % (tr.uri, position, tr.stream_length))
+                break
+
+            last_progress = log_progress(tr, '  Streaming', position, last_progress)
+
+            position = position + len(chunk)
+
+            # Write chunk
+            yield chunk
+
+        log.debug('[%s] Stream Complete', tr.uri)
+
+    def handle_range(self, tr):
+        r_start, r_end = self.parse_range(cherrypy.request.headers.get('Range'))
+
+        if not r_start and not r_end:
+            return 0, tr.stream_length - 1
+
+        if r_end is None or r_end >= tr.stream_length:
+            r_end = tr.stream_length - 1
+
+        log.debug('[%s] Range: %s - %s', tr.uri, r_start, r_end)
+
+        cherrypy.response.headers['Content-Range'] = 'bytes %s-%s/%s' % (r_start, r_end, tr.stream_length)
+        cherrypy.response.status = 206
+
+        return r_start, r_end
+
+    @staticmethod
+    def parse_range(value):
+        if not value:
+            return 0, None
+
+        value = value.split('=')
+
+        if len(value) != 2:
+            return 0, None
+
+        range_type, range = value
+
+        if range_type != 'bytes':
+            return 0, None
+
+        range = range.split('-')
+
+        if len(range) != 2:
+            return 0, None
+
+        return int(range[0] or 0), int(range[1]) if range[1] else None
+
+    def get_track_url(self, uri):
+        return "http://%s:%d/track/%s.mp3" % (
+            socket.gethostname(), self.port, uri
+        )
