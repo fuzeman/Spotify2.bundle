@@ -98,41 +98,16 @@ class SpotifyHost(object):
         return self.session_cached.get(image_url).content
 
     @authenticated
-    def artist(self, uri):
-        """ Browse an artist.
-
-        :param uri:            The Spotify URI of the artist to browse.
-        """
-        artist = self.client.get(uri)
-
-        oc = ObjectContainer(
-            title2=artist.getName().decode("utf-8"),
-            content=ContainerContent.Albums
-        )
-
-        for album in artist.getAlbums():
-            self.add_album_to_directory(album, oc)
-
-        return oc
+    def artist(self, uri, callback):
+        @self.sp.metadata(uri)
+        def on_artist(artist):
+            self.containers.artist(artist, callback)
 
     @authenticated
-    def album(self, uri):
-        """ Browse an album.
-
-        :param uri:            The Spotify URI of the album to browse.
-        """
-        album = self.client.get(uri)
-
-        oc = ObjectContainer(
-            title2=album.getName().decode("utf-8"),
-            content=ContainerContent.Tracks,
-            view_group=ViewMode.Tracks
-        )
-
-        for track in album.getTracks():
-            self.add_track_to_directory(track, oc)
-
-        return oc
+    def album(self, uri, callback):
+        @self.sp.metadata(uri)
+        def on_album(album):
+            self.containers.album(album, callback)
 
     @authenticated
     def playlists(self, callback, **kwargs):

@@ -8,6 +8,42 @@ class Containers(object):
 
         self.objects = Objects(host)
 
+    @property
+    def sp(self):
+        return self.host.sp
+
+    # TODO list singles?
+    def artist(self, artist, callback):
+        oc = ObjectContainer(
+            title2=artist.name,
+            content=ContainerContent.Albums
+        )
+
+        album_uris = [al.uri for al in artist.albums if al is not None]
+
+        @self.sp.metadata(album_uris)
+        def on_albums(albums):
+            for album in albums:
+                oc.add(self.objects.album(album))
+
+            callback(oc)
+
+    def album(self, album, callback):
+        oc = ObjectContainer(
+            title2=album.name,
+            content=ContainerContent.Tracks,
+            view_group=ViewMode.Tracks
+        )
+
+        track_uris = [tr.uri for tr in album.tracks]
+
+        @self.sp.metadata(track_uris)
+        def on_tracks(tracks):
+            for track in tracks:
+                oc.add(self.objects.track(track))
+
+            callback(oc)
+
     def playlists(self, playlists, group=None, name=None):
         oc = ObjectContainer(
             title2=name or L("MENU_PLAYLISTS"),

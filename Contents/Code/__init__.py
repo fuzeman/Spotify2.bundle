@@ -61,12 +61,12 @@ def image(**kwargs):
 
 @route(ROUTEBASE + 'artist/{uri}')
 def artist(**kwargs):
-    return plugin_callback(SpotifyHost.artist, kwargs)
+    return plugin_callback(SpotifyHost.artist, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'album/{uri}')
 def album(**kwargs):
-    return plugin_callback(SpotifyHost.album, kwargs)
+    return plugin_callback(SpotifyHost.album, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'playlists')
