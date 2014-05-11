@@ -17,10 +17,10 @@ class Artist(Descriptor):
     popularity = PropertyProxy
     top_track = PropertyProxy
 
-    album_group = PropertyProxy
-    single_group = PropertyProxy
-    compilation_group = PropertyProxy
-    appears_on_group = PropertyProxy
+    albums = PropertyProxy('album_group', 'AlbumGroup')
+    singles = PropertyProxy('single_group', 'AlbumGroup')
+    compilations = PropertyProxy('compilation_group', 'AlbumGroup')
+    appears_on = PropertyProxy('appears_on_group', 'AlbumGroup')
 
     genres = PropertyProxy('genre')
     external_ids = PropertyProxy('external_id', 'ExternalId')

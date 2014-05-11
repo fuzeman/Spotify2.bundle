@@ -125,7 +125,10 @@ class ProtobufRequest(Request):
             self.emit('error', 'Unrecognized metadata type: "%s"' % content_type)
             return
 
-        return parser_cls.from_protobuf(self.sp, self.defaults, data, NAME_MAP)
+        internal = parser_cls.__protobuf__()
+        internal.ParseFromString(data)
+
+        return parser_cls.from_protobuf(self.sp, internal, NAME_MAP, self.defaults)
 
     def build(self, seq):
         self.args = [

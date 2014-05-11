@@ -3,6 +3,10 @@ from spotify.core.uri import Uri
 from spotify.objects.base import Descriptor, PropertyProxy
 from spotify.proto import metadata_pb2
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 class Album(Descriptor):
     __protobuf__ = metadata_pb2.Album
@@ -30,6 +34,26 @@ class Album(Descriptor):
     # related - []
     # sale_period - []
     cover_group = PropertyProxy('cover_group', 'ImageGroup')
+
+    def is_available(self):
+        message = ''
+
+        for restriction in self.restrictions:
+            success, message = restriction.check()
+
+            if success:
+                return True
+
+        log.debug('Album "%s" not available (%s)', self.uri, message)
+        return False
+
+    @property
+    def tracks(self):
+        # Iterate through each disc and return a flat track list
+        for disc in self.discs:
+
+            for track in disc.tracks:
+                yield track
 
     @classmethod
     def from_dict(cls, sp, data, types):

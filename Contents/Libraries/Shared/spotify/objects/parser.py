@@ -1,4 +1,5 @@
 from spotify.objects.album import Album
+from spotify.objects.album_group import AlbumGroup
 from spotify.objects.artist import Artist
 from spotify.objects.audio_file import AudioFile
 from spotify.objects.copyright import Copyright
@@ -16,6 +17,7 @@ import sys
 
 ALL = [
     'Album',
+    'AlbumGroup',
     'Artist',
     'AudioFile',
     'Copyright',
