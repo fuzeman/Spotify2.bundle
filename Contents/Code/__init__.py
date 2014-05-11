@@ -84,7 +84,7 @@ def starred(**kwargs):
     return plugin_callback(SpotifyHost.starred, kwargs, async=True)
 
 
-@route(ROUTEBASE + 'metadata/{track_uri}')
+@route(ROUTEBASE + 'metadata/{uri}')
 def metadata(**kwargs):
     return plugin_callback(SpotifyHost.metadata, kwargs, async=True)
 
