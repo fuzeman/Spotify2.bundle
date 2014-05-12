@@ -17,12 +17,13 @@ class SpotifySearch(object):
 
     def run(self, query, callback, type='all', count=7, plain=False):
         Log('Search query: "%s", type: %s, count: %s, plain: %s' % (query, type, count, plain))
+        placeholders = self.use_placeholders()
 
         @self.sp.search(query, type, count=count)
         def on_search(result):
-            callback(self.build(result, query, type, count, plain))
+            callback(self.build(result, query, type, count, plain, placeholders))
 
-    def build(self, result, query, type, count, plain):
+    def build(self, result, query, type, count, plain, placeholders=False):
         oc = ObjectContainer(
             title2=self.get_title(type),
             content=self.get_content(type)
@@ -31,7 +32,7 @@ class SpotifySearch(object):
         if result:
             # Fill with results for each media type
             for type in result.media_types:
-                self.fill(result, oc, query, count, plain, type)
+                self.fill(result, oc, query, count, plain, placeholders, type)
 
             if len(oc):
                 return oc
@@ -41,7 +42,7 @@ class SpotifySearch(object):
             message=localized_format("MSG_FMT_NO_RESULTS", query)
         )
 
-    def fill(self, result, oc, query, count, plain, type):
+    def fill(self, result, oc, query, count, plain, placeholders, type):
         items = getattr(result, type)
         total = getattr(result, '%s_total' % type)
 
@@ -57,7 +58,7 @@ class SpotifySearch(object):
         for x in range(count):
             if x < len(items):
                 oc.add(self.objects.get(items[x]))
-            elif not plain and self.use_placeholders():
+            elif not plain and placeholders:
                 # Add a placeholder to fix alignment on PHT
                 self.append_header(oc, '')
 
