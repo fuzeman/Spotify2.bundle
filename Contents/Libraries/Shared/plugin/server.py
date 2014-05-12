@@ -72,6 +72,8 @@ class Server(object):
 
         r_start, r_end = self.handle_range(tr)
 
+        log.debug('Streaming range: %s - %s', r_start, r_end)
+
         # Update headers
         cherrypy.response.headers['Accept-Ranges'] = 'bytes'
         cherrypy.response.headers['Content-Type'] = tr.response_headers.getheader('Content-Type')
@@ -126,6 +128,10 @@ class Server(object):
         r_start, r_end = self.parse_range(cherrypy.request.headers.get('Range'))
 
         if not r_start and not r_end:
+            return 0, tr.stream_length - 1
+
+        if tr.stream_length - r_start < 1024 * 1024:
+            log.debug('[%s] Rejected final bytes request', tr.uri)
             return 0, tr.stream_length - 1
 
         if r_end is None or r_end >= tr.stream_length:
