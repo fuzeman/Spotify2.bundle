@@ -53,7 +53,7 @@ class SpotifySearch(object):
 
         if not plain:
             self.append_header(
-                oc, '%s (%s)' % (self.get_title(type), locale.format('%d', total, grouping=True)),
+                oc, '%s (%s)' % (self.get_title(type, placeholders), locale.format('%d', total, grouping=True)),
                 route_path('search', query=query, type=type, count=50, plain=True)
             )
 
@@ -75,18 +75,22 @@ class SpotifySearch(object):
         ]
 
     @staticmethod
-    def get_title(type):
+    def get_title(type, plain=False):
+        title = ""
+
         if type == 'artists':
-            return "Results - Artists"
+            title = " Artists"
+        elif type == 'albums':
+            title = "Albums"
+        elif type == 'tracks':
+            title = "Tracks"
+        elif type == 'playlists':
+            title = "Playlists"
 
-        if type == 'albums':
-            return "Results - Albums"
-
-        if type == 'tracks':
-            return "Results - Tracks"
-
-        if type == 'playlists':
-            return "Results - Playlists"
+        if title and plain:
+            return title
+        elif title:
+            return "Results - %s" % title
 
         return "Results"
 
