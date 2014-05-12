@@ -38,13 +38,24 @@ class Server(object):
 
         cherrypy.engine.start()
 
+    def finish(self, track):
+        # Send track completion events
+        log.debug('[%s] Sending completion events', track.uri)
+        track.finish()
+
+        # Cleanup resources
+        if track.uri not in self.cache:
+            return
+
+        log.debug('[%s] Releasing resources', track.uri)
+        del self.cache[track.uri]
+
     def track(self, uri):
-        # Update current
-        if self.current:
-            # Track changed, call finish()
-            if uri != self.current.uri:
-                log.debug('Changing tracks, calling finish() on previous track')
-                self.current.finish()
+        log.debug('Received track request for "%s"', uri)
+
+        # Call finish() if track has changed
+        if self.current and uri != self.current.uri:
+            self.finish(self.current)
 
         # Create new TrackReference (if one doesn't exist yet)
         if uri not in self.cache:
