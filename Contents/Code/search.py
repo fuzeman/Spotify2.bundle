@@ -16,6 +16,8 @@ class SpotifySearch(object):
         return self.host.sp
 
     def run(self, query, callback, type='all', count=7, plain=False):
+        count = int(count)
+
         Log('Search query: "%s", type: %s, count: %s, plain: %s' % (query, type, count, plain))
         placeholders = self.use_placeholders()
 
