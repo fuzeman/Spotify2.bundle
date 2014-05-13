@@ -30,7 +30,7 @@ def plugin_callback(method, kwargs=None, async=False):
 
         method(host, **kwargs)
 
-        result = on_complete.wait(10)
+        result = on_complete.wait(30)
     else:
         result = method(host, **kwargs)
 
