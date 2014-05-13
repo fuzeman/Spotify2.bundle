@@ -113,6 +113,11 @@ class Spotify(Component, Emitter):
         self.user_info = message['result']
         self.user = User(self, self.username)
 
+        if self.user_info.get('catalogue') != 'premium':
+            self.emit('error', 'Please upgrade to premium')
+            self.components.connection.disconnect()
+            return
+
         self.emit('login')
 
     # Messaging

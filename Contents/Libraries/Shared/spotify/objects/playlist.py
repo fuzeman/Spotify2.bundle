@@ -100,13 +100,53 @@ class Playlist(Descriptor):
 
             yield item.fetch()
 
-    def fetch_tracks(self):
-        uris = [item.uri for item in self.items]
+    def fetch_tracks(self, batch_size=100):
+        position = 0
+
+        while position < self.length:
+            if position >= len(self.items):
+                # Can we extend the playlist?
+                if not self.extend(position, batch_size):
+                    break
+
+            # Get URI for each item
+            uris = [item.uri for item in self.items[position:position + batch_size]]
+
+            # Request full track metadata
+            event = REvent()
+            self.sp.metadata(uris, callback=lambda items: event.set(items))
+
+            tracks = event.wait(5)
+
+            # Check if there was a request timeout
+            if tracks is None:
+                break
+
+            # Yield each track
+            for track in tracks:
+                yield track
+
+            position += len(uris)
+
+    def extend(self, start, count=100):
+        # Can only extend truncated playlists
+        if not self.truncated:
+            return False
 
         event = REvent()
-        self.sp.metadata(uris, callback=lambda items: event.set(items))
+        self.sp.playlist(self.uri, start, count, callback=lambda pl: event.set(pl))
 
-        return event.wait()
+        playlist = event.wait(5)
+
+        # Check if there was a request timeout
+        if playlist is None:
+            return False
+
+        # Extend our 'items' collection
+        self.items.extend(playlist.items)
+
+        return True
+
 
     @classmethod
     def from_dict(cls, sp, data, types):

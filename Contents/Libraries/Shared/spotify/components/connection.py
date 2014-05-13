@@ -44,7 +44,11 @@ class Connection(Component, Emitter):
         self.client.connect()
 
     def disconnect(self):
-        raise NotImplementedError()
+        if self.client:
+            self.client.close()
+            self.client = None
+
+        self.connected = False
 
     def on_open(self):
         log.debug('WebSocket "open" event')
