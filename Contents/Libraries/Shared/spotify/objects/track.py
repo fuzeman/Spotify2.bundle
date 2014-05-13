@@ -62,7 +62,7 @@ class Track(Descriptor):
             return False
 
         # Update our object with new attributes
-        self.protobuf_update(alternative, 'gid', 'restrictions', 'files')
+        self.protobuf_update(alternative, 'uri', 'gid', 'restrictions', 'files')
 
         log.debug('Found alternative track "%s"', self.uri)
 
