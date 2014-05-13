@@ -3,7 +3,6 @@ from utils import Track
 
 from spotify import Spotify
 from threading import Lock, Event
-import traceback
 
 
 class SpotifyClient(object):
@@ -42,6 +41,8 @@ class SpotifyClient(object):
 
         self.sp = Spotify()
         self.on_login = Event()
+
+        self.sp.on('error', lambda message: Log.Error(message))
 
         self.sp.login(self.username, self.password, lambda: self.on_login.set())
 
