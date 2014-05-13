@@ -100,6 +100,9 @@ class Connection(Component, Emitter):
         # Build message
         message = request.build(self.seq)
 
+        if not message:
+            return None
+
         # Store request (to trigger callback on response)
         self.requests[self.seq] = request
         self.seq += 1
