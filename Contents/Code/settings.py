@@ -1,5 +1,5 @@
 PLUGIN_ID   = "com.plexapp.plugins.spotify2"
-VERSION     = '0.4.3'
+VERSION     = '0.5.0-beta'
 PREFIX      = "/music/spotify"
 ROUTEBASE   = PREFIX + '/'
 SERVER_PORT = 32420
