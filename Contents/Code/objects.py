@@ -1,4 +1,5 @@
 from routing import route_path, function_path
+from utils import normalize
 
 
 class Objects(object):
@@ -30,7 +31,7 @@ class Objects(object):
             key=route_path('artist', artist.uri),
             rating_key=artist.uri,
 
-            title=artist.name,
+            title=normalize(artist.name),
             source_title='Spotify',
 
             art=image_url,
@@ -38,7 +39,7 @@ class Objects(object):
         )
 
     def album(self, album):
-        title = album.name
+        title = normalize(album.name)
 
         # TODO album years
         #if Prefs["displayAlbumYear"] and album.getYear() != 0:
@@ -56,7 +57,7 @@ class Objects(object):
             rating_key=album.uri,
 
             title=title,
-            artist=', '.join([ar.name for ar in album.artists]),
+            artist=', '.join([normalize(ar.name) for ar in album.artists]),
 
             track_count=track_count,
             source_title='Spotify',
@@ -84,9 +85,9 @@ class Objects(object):
             key=route_path('metadata', str(track.uri)),
             rating_key=str(track.uri),
 
-            title=track.name,
-            album=track.album.name,
-            artist=', '.join([ar.name for ar in track.artists]),
+            title=normalize(track.name),
+            album=normalize(track.album.name),
+            artist=', '.join([normalize(ar.name) for ar in track.artists]),
 
             index=int(track.number),
             duration=int(track.duration),
@@ -108,14 +109,14 @@ class Objects(object):
         if item.uri and item.uri.type == 'group':
             # (Playlist Folder)
             return DirectoryObject(
-                key=route_path('playlists', group=item.uri, name=item.name),
-                title=item.name,
+                key=route_path('playlists', group=item.uri, name=normalize(item.name)),
+                title=normalize(item.name),
                 thumb=R("placeholder-playlist.png")
             )
 
         return DirectoryObject(
             key=route_path('playlist', item.uri),
-            title=item.name,
+            title=normalize(item.name),
             thumb=R("placeholder-playlist.png")
         )
 
