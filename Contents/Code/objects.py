@@ -102,7 +102,7 @@ class Objects(object):
         if self.host.proxy_tracks and self.host.server:
             return self.host.server.get_track_url(track.uri)
 
-        return function_path('play', uri=track.uri, ext='mp3')
+        return function_path('play', uri=str(track.uri), ext='mp3')
 
     @staticmethod
     def playlist(item):

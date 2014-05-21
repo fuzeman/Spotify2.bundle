@@ -97,6 +97,9 @@ class SpotifyClient(object):
             return self.server.get_track_url(uri)
 
         # Get the track and return a direct stream URL
+        Log.Error('Direct streaming is not supported yet (enable "Proxy tracks (via PMS)" to resolve this)')
+        raise NotImplementedError()
+
         return self.get_track_url(self.get(uri))
 
     def get_track_url(self, track):
