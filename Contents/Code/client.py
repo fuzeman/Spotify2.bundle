@@ -37,7 +37,8 @@ class SpotifyClient(object):
 
     def start(self):
         if self.sp:
-            self.shutdown()
+            # TODO stop current Spotify client
+            pass
 
         self.sp = Spotify()
         self.on_login = Event()

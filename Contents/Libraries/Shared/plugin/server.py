@@ -38,6 +38,9 @@ class Server(object):
 
         cherrypy.engine.start()
 
+    def stop(self):
+        cherrypy.engine.stop()
+
     def finish(self, track):
         # Send track completion events
         log.debug('[%s] Sending completion events', track.uri)
