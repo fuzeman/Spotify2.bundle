@@ -1,4 +1,5 @@
 from spotify.commands.base import Command
+from spotify.commands.flash_key import FLASH_KEY
 
 import logging
 
@@ -6,20 +7,17 @@ log = logging.getLogger(__name__)
 
 
 class PingFlash2(Command):
-    key = [[7, 203], [15, 15], [1, 96], [19, 93], [3, 165], [14, 130], [12, 16], [4, 6], [6, 225], [13, 37]]
-
     def process(self, ping):
-        parts = ping.split(' ')
+        ping = ping.split(' ')
         pong = "undefined 0"
 
-        if len(parts) >= 20:
+        if len(ping) >= 20:
             result = []
 
-            for x in range(len(self.key)):
-                idx = self.key[x][0]
-                xor = self.key[x][1]
+            for idx, code in FLASH_KEY:
+                val = int(ping[idx])
 
-                result.append(str(int(parts[idx]) ^ xor))
+                result.append(str(val ^ code if type(code) is int else code[val]))
 
             pong = ' '.join(result)
 

@@ -37,7 +37,8 @@ class SpotifyClient(object):
 
     def start(self):
         if self.sp:
-            self.shutdown()
+            # TODO stop current Spotify client
+            pass
 
         self.sp = Spotify()
         self.on_login = Event()
@@ -96,6 +97,9 @@ class SpotifyClient(object):
             return self.server.get_track_url(uri)
 
         # Get the track and return a direct stream URL
+        Log.Error('Direct streaming is not supported yet (enable "Proxy tracks (via PMS)" to resolve this)')
+        raise NotImplementedError()
+
         return self.get_track_url(self.get(uri))
 
     def get_track_url(self, track):

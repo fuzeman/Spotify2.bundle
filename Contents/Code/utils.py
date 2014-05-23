@@ -1,5 +1,6 @@
 from urlparse import urlparse, parse_qs
 import time
+import unicodedata
 
 
 def localized_format(key, args):
@@ -103,3 +104,10 @@ def authenticated(func):
             )
 
     return decorator()
+
+
+def normalize(text):
+    if type(text) is unicode:
+        text = unicodedata.normalize('NFKD', text)
+
+    return text.encode('ascii', 'ignore')
