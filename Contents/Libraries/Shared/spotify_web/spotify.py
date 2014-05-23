@@ -11,6 +11,7 @@ from threading import Thread, Event, Lock
 import requests
 from ws4py.client.threadedclient import WebSocketClient
 
+from .flash_key import FLASH_KEY
 from .proto import mercury_pb2, metadata_pb2, playlist4changes_pb2,\
     playlist4ops_pb2, playlist4service_pb2, toplist_pb2
 
@@ -19,8 +20,6 @@ from .proto import mercury_pb2, metadata_pb2, playlist4changes_pb2,\
 
 
 base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-FLASH_KEY = [[7, 203], [15, 15], [1, 96], [19, 93], [3, 165], [14, 130], [12, 16], [4, 6], [6, 225], [13, 37]]
 
 WORK_RUNNER = """
 var main = {
@@ -847,11 +846,10 @@ class SpotifyAPI():
         if len(ping_parts) >= 20:
             result = []
 
-            for x in range(len(FLASH_KEY)):
-                idx = FLASH_KEY[x][0]
-                xor = FLASH_KEY[x][1]
+            for idx, code in FLASH_KEY:
+                val = int(ping_parts[idx])
 
-                result.append(str(int(ping_parts[idx]) ^ xor))
+                result.append(str(val ^ code if type(code) is int else code[val]))
 
             pong = ' '.join(result)
 
