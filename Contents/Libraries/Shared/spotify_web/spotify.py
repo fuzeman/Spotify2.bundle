@@ -15,8 +15,7 @@ from .flash_key import FLASH_KEY
 from .proto import mercury_pb2, metadata_pb2, playlist4changes_pb2,\
     playlist4ops_pb2, playlist4service_pb2, toplist_pb2
 
-# from .proto import playlist4meta_pb2, playlist4issues_pb2,
-# playlist4content_pb2
+#### from .proto import playlist4meta_pb2, playlist4issues_pb2, playlist4content_pb2
 
 
 base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -191,7 +190,6 @@ class SpotifyUtil():
     def is_local(uri):
         return SpotifyUtil.get_uri_type(uri) == "local"
 
-
 class SpotifyAPI():
     def __init__(self, login_callback_func=False, log_level=1):
         Logging.log_level = log_level
@@ -333,7 +331,7 @@ class SpotifyAPI():
 
     def logged_in(self):
         # Send screen size
-        self.send_command("sp/log", [41, 1, 0, 0, 0, 0], None)
+        self.send_command("sp/log", [41, 1, 0, 0, 0, 0], self.log_callback)
 
         self.user_info_request(self.populate_userdata_callback)
 
@@ -351,10 +349,19 @@ class SpotifyAPI():
         else:
             self.logged_in_marker.set()
 
+    def log_callback(self, sp, res):
+        return # Nothing to do
+
+    def echo_callback(self, sp, res):
+        if res != 'h':
+            Logging.notice("Something is not right, echo received: %s" % res)
+        return # Nothing to do
+
     def track_uri(self, track, callback=False, retries=3):
         track = self.recurse_alternatives(track)
         if not track:
             return False
+        
         args = ["mp3160", SpotifyUtil.gid2id(track.gid)]
         return self.wrap_request("sp/track_uri", args, callback, retries=retries)
 
@@ -412,6 +419,10 @@ class SpotifyAPI():
 
         self.chain_callback(sp, obj, callback_data)
 
+    def parse_my_music(self, sp, resp, callback_data):
+        collection = json.loads(base64.decodestring(resp[1]));
+        self.chain_callback(sp, collection, callback_data)
+    
     def chain_callback(self, sp, data, callback_data):
         if len(callback_data) > 1:
             callback_data[0](self, data, callback_data[1:])
@@ -591,6 +602,22 @@ class SpotifyAPI():
 
         return self.wrap_request("sp/hm_b64", args, callback, self.parse_playlist)
 
+    def my_music_request(self, type="albums", callback=False):
+        if type == "albums":
+            action = "albumscoverlist"
+        else:
+            return []
+        
+        mercury_request = mercury_pb2.MercuryRequest()
+        mercury_request.body = "GET"
+        mercury_request.uri = "hm://collection-web/v1/" + self.username + "/" + action 
+        #?orderby=&lang=en\x1A\x03GE"
+
+        req = base64.encodestring(mercury_request.SerializeToString())
+        args = [0, req]
+
+        return self.wrap_request("sp/hm_b64", args, callback, self.parse_my_music)
+
     def playlist_op_track(self, playlist_uri, track_uri, op, callback=None):
         playlist = playlist_uri.split(":")
 
@@ -700,7 +727,7 @@ class SpotifyAPI():
         return self.wrap_request("sp/user_info", [], callback)
 
     def heartbeat(self):
-        self.send_command("sp/echo", "h", callback=False)
+        self.send_command("sp/echo", ["h"], self.echo_callback)
 
     def send_track_end(self, lid, track_uri, ms_played, callback=False):
         ms_played = int(ms_played)
@@ -791,7 +818,7 @@ class SpotifyAPI():
             return
 
         msg_enc = json.dumps(msg, separators=(',', ':'))
-        Logging.debug("sent " + msg_enc)
+        Logging.debug("sent " + msg_enc)        
         try:
             with self.ws_lock:
                 self.ws.send(msg_enc)

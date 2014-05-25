@@ -123,7 +123,7 @@ class SpotifyTrack(SpotifyMetadataObject):
 
     def getDuration(self):
         return self.obj.duration
-
+    
     def getFileURL(self, urlOnly=True, retries=3):
         resp = self.spotify.api.track_uri(self.obj, retries=retries)
 
@@ -421,6 +421,15 @@ class Spotify():
         self.api.disconnect()
 
     @Cache
+    def getMyMusic(self, type="albums"):
+        uris = []
+        collection = self.api.my_music_request(type)
+        for item in collection:
+            uris.append(item['uri'])
+        print uris
+        return self.objectFromURI(uris, asArray=True)
+
+    @Cache
     def getPlaylists(self, username=None):
         username = self.api.username if username is None else username
         playlist_uris = []
@@ -486,12 +495,13 @@ class Spotify():
     def objectFromURI(self, uris, asArray=False):
         if not self.logged_in():
             return False
-
+        
         uris = [uris] if type(uris) != list else uris
         if len(uris) == 0:
             return [] if asArray else None
 
         uri_type = SpotifyUtil.get_uri_type(uris[0])
+        
         if not uri_type:
             return [] if asArray else None
         elif uri_type == "playlist":
@@ -511,22 +521,33 @@ class Spotify():
                 results = [v for k, v in thread_results.items()]
 
         elif uri_type in ["track", "album", "artist"]:
-            uris = [uri for uri in uris if not SpotifyUtil.is_local(uri)]
-            objs = self.api.metadata_request(uris)
-            objs = [objs] if type(objs) != list else objs
+            results = []
+            uris = [uri for uri in uris if not SpotifyUtil.is_local(uri)]           
+            start  = 0
+            finish = 100            
+            uris_to_ask = uris[start:finish]
+            while len(uris_to_ask) > 0:
+                
+                objs = self.api.metadata_request(uris_to_ask)
+                objs = [objs] if type(objs) != list else objs
 
-            failed_requests = len([obj for obj in objs if False == obj])
-            if failed_requests > 0:
-                print failed_requests, "metadata requests failed"
+                failed_requests = len([obj for obj in objs if False == obj])
+                if failed_requests > 0:
+                    print failed_requests, "metadata requests failed"
 
-            objs = [obj for obj in objs if False != obj]
-            if uri_type == "track":
-                tracks = [SpotifyTrack(self, obj=obj) for obj in objs]
-                results = [track for track in tracks if False == self.AUTOREPLACE_TRACKS or track.isAvailable()]
-            elif uri_type == "album":
-                results = [SpotifyAlbum(self, obj=obj) for obj in objs]
-            elif uri_type == "artist":
-                results = [SpotifyArtist(self, obj=obj) for obj in objs]
+                objs = [obj for obj in objs if False != obj]
+                if uri_type == "track":
+                    tracks = [SpotifyTrack(self, obj=obj) for obj in objs]
+                    results.extend([track for track in tracks if False == self.AUTOREPLACE_TRACKS or track.isAvailable()])
+                elif uri_type == "album":
+                    results.extend([SpotifyAlbum(self, obj=obj) for obj in objs])
+                elif uri_type == "artist":
+                    results.extend([SpotifyArtist(self, obj=obj) for obj in objs])
+            
+                start  = finish
+                finish = finish + 100
+                uris_to_ask = uris[start:finish]
+
         else:
             return [] if asArray else None
 

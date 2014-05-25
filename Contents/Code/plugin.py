@@ -65,9 +65,12 @@ class SpotifyPlugin(object):
                 self.current_track.track.getDuration()
             )
 
-        track = self.client.get(uri)
+        track_url = self.get_track_url(uri)
+        if track_url == False:
+            Log("Play track couldn't be obtained :-(")
+            return None
 
-        return Redirect(self.get_track_url(track))
+        return Redirect(track_url)
 
     def get_track_url(self, track):
         if not track:
@@ -218,6 +221,23 @@ class SpotifyPlugin(object):
         return oc
 
     @authenticated
+    def albums(self):
+        Log("albums")
+
+        oc = ObjectContainer(
+            title2=L("MENU_ALBUMS"),
+            content=ContainerContent.Albums,
+            view_group=ViewMode.Albums
+        )
+        
+        albums = self.client.get_my_albums()
+
+        for album in albums:
+            self.add_album_to_directory(album, oc)
+
+        return oc
+
+    @authenticated
     def playlist(self, uri):
         pl = self.client.get(uri)
 
@@ -277,6 +297,11 @@ class SpotifyPlugin(object):
                     key=route_path('search'),
                     prompt=L("PROMPT_SEARCH"),
                     title=L("MENU_SEARCH"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('albums'),
+                    title=L("MENU_ALBUMS"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(

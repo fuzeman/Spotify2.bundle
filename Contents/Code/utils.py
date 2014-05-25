@@ -10,11 +10,13 @@ def localized_format(key, args):
 class ViewMode(object):
     Tracks = "Tracks"
     Playlists = "Playlists"
+    Albums = "Albums"
 
     @classmethod
     def AddModes(cls, plugin):
         plugin.AddViewGroup(cls.Tracks, "List", "songs")
         plugin.AddViewGroup(cls.Playlists, "List", "items")
+        plugin.AddViewGroup(cls.Albums, "List", "items")
 
 
 class Track(object):

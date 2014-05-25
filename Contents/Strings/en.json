@@ -7,6 +7,7 @@
     "MENU_PLAYLISTS"                : "Playlists",
     "MENU_SEARCH"                   : "Search",
     "MENU_STARRED"                  : "Starred",
+    "MENU_ALBUMS"                   : "My Albums",
     "MENU_PREFS"                    : "Preferences",
 
     "PROMPT_SEARCH"                 : "Search for music",
