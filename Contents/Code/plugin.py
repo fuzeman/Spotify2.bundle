@@ -172,6 +172,26 @@ class SpotifyPlugin(object):
 
         :param uri:            The Spotify URI of the artist to browse.
         """
+        return ObjectContainer(
+            objects=[
+                DirectoryObject(
+                    key  =Callback(self.artist_top_tracks, uri=uri),
+                    title=L("MENU_TOP_TRACKS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key  =Callback(self.artist_albums, uri=uri),
+                    title=L("MENU_ALBUMS"),
+                    thumb=R("icon-default.png")
+                )
+            ],
+        )
+
+    @authenticated
+    def artist_albums(self, uri):
+        """ Browse an artist.
+        :param uri:            The Spotify URI of the artist to browse.
+        """
         artist = self.client.get(uri)
 
         oc = ObjectContainer(
@@ -183,6 +203,23 @@ class SpotifyPlugin(object):
             self.add_album_to_directory(album, oc)
 
         return oc
+    
+    @authenticated
+    def artist_top_tracks(self, uri):
+        """ Browse an artist.
+        :param uri:            The Spotify URI of the artist to browse.
+        """
+        artist = self.client.get(uri)        
+        oc = ObjectContainer(
+            title2=artist.getName().decode("utf-8"),
+            content=ContainerContent.Tracks,
+            view_group=ViewMode.Tracks
+        )
+
+        for track in artist.getTracks():
+            self.add_track_to_directory(track, oc)
+
+        return oc        
 
     @authenticated
     def album(self, uri):

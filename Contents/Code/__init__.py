@@ -60,6 +60,14 @@ def albums(**kwargs):
 def artists(**kwargs):
     return plugin_callback(SpotifyPlugin.artists, kwargs)
 
+@route(ROUTEBASE + 'artists/{uri}/top_tracks')
+def artist_top_tracks(**kwargs):
+    return plugin_callback(SpotifyPlugin.artist_top_tracks, kwargs)
+
+@route(ROUTEBASE + 'artists/{uri}/albums')
+def artist_albums(**kwargs):
+    return plugin_callback(SpotifyPlugin.artist_albums, kwargs)
+
 
 @route(ROUTEBASE + 'search')
 def search(**kwargs):

@@ -168,19 +168,19 @@ class SpotifyArtist(SpotifyMetadataObject):
 
     @Cache
     def getTracks(self, objOnly=False):
-        top_tracks = []
+        track_objs = []
 
         for obj in self.obj.top_track:
             if obj.country == self.spotify.api.country:
-                top_tracks = obj
+                track_objs += obj.track
 
         if objOnly:
-            return top_tracks.track
+            return track_objs
 
-        if len(top_tracks.track) == 0:
+        if len(track_objs) == 0:
             return None
 
-        return self.spotify.objectFromInternalObj("track", top_tracks.track)
+        return self.spotify.objectFromInternalObj("track", track_objs)
 
     @Cache
     def getAlbumGroup(self, name):

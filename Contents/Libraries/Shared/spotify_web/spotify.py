@@ -422,7 +422,7 @@ class SpotifyAPI():
     def parse_my_music(self, sp, resp, callback_data):
         collection = json.loads(base64.decodestring(resp[1]));
         self.chain_callback(sp, collection, callback_data)
-    
+
     def chain_callback(self, sp, data, callback_data):
         if len(callback_data) > 1:
             callback_data[0](self, data, callback_data[1:])
