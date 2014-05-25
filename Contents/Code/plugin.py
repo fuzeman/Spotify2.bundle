@@ -77,8 +77,8 @@ class SpotifyPlugin(object):
 
         return Redirect(track_url)
 
-    def get_track_url(self, track):
-        if not track:
+    def get_track_url(self, uri):
+        if not uri:
             return None
 
         self.track_lock.acquire()
@@ -88,10 +88,26 @@ class SpotifyPlugin(object):
             repr(self.current_track)
         )
 
+        #If first request failed, trigger re-connection to spotify
+        track = self.client.get(uri)
+        retry_num = 0
+        while not track and retry_num < 2:
+            retry_num += 1
+            Log.Info('client.get failed, re-connecting to spotify...')
+            self.start()
+            Log.Info('Fetching track...')
+            track = self.client.get(uri)
+        
+        if not track:
+            self.current_track = None
+            Log.Warn('Unable to fetch track URL (connection problem?)')
+            self.track_lock.release()
+            return None
+
+
         if self.current_track and self.current_track.matches(track):
             Log.Debug('Using existing track: %s', repr(self.current_track))
             self.track_lock.release()
-
             return self.current_track.url
 
         # Reset current state
@@ -116,6 +132,8 @@ class SpotifyPlugin(object):
 
         # Finished
         if track_url:
+            self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
+            #self.client.spotify.api.send_track_progress(track.getID(), track.getDuration())
             self.current_track = Track.create(track, track_url)
             Log.Info('Current Track: %s', repr(self.current_track))
         else:
@@ -484,21 +502,15 @@ class SpotifyPlugin(object):
 
     def metadata(self, track_uri):
         Log.Debug('fetching metadata for track_uri: "%s"', track_uri)
-
+        
         oc = ObjectContainer()
         
-        #track_url = self.get_track_url(track_uri)
-        #if track_url == False:
-        #    Log("MT1: Play track couldn't be obtained :-(")
-        #    return None
-
         track = self.client.get(track_uri)
         if track == False:
-            Log("MT2: Play track couldn't be obtained :-(")
+            Log("Play track couldn't be obtained :-(")
             return oc
         
         self.add_track_to_directory(track, oc)
-
         return oc
 
     #
@@ -553,7 +565,7 @@ class SpotifyPlugin(object):
         return TrackObject(
             items=[
                 MediaObject(
-                    parts=[PartObject(key=function_path('play', uri=track.getURI(), ext='mp3'))],
+                    parts=[PartObject(key=Callback(self.play, uri=track.getURI()))],
                     duration=int(track.getDuration()),
                     container=Container.MP3,
                     audio_codec=AudioCodec.MP3
