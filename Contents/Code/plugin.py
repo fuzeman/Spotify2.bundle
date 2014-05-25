@@ -93,7 +93,6 @@ class SpotifyPlugin(object):
         self.current_track = None
 
         # First try get track url
-        self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
         track_url = track.getFileURL(retries=1)
 
         # If first request failed, trigger re-connection to spotify
@@ -108,7 +107,6 @@ class SpotifyPlugin(object):
             track.spotify = self.client.spotify
 
             Log.Info('Fetching track url...')
-            self.client.spotify.api.send_track_event(track.getID(), 'play', 0)
             track_url = track.getFileURL(retries=1)
 
         # Finished
@@ -129,7 +127,9 @@ class SpotifyPlugin(object):
             return images['640']
         elif images.get('300'):
             return images['300']
-
+        elif len(images.keys()) > 0:
+            return images[images.keys()[0]]
+        
         Log.Info('Unable to select image, available sizes: %s' % images.keys())
         return None
 
@@ -238,6 +238,23 @@ class SpotifyPlugin(object):
         return oc
 
     @authenticated
+    def artists(self):
+        Log("artists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_ARTISTS"),
+            content=ContainerContent.Artists,
+            view_group=ViewMode.Artists
+        )
+        
+        artists = self.client.get_my_artists()
+
+        for artist in artists:
+            self.add_artist_to_directory(artist, oc)
+
+        return oc
+
+    @authenticated
     def playlist(self, uri):
         pl = self.client.get(uri)
 
@@ -300,15 +317,20 @@ class SpotifyPlugin(object):
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
+                    key=route_path('playlists'),
+                    title=L("MENU_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
                     key=route_path('albums'),
                     title=L("MENU_ALBUMS"),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=route_path('playlists'),
-                    title=L("MENU_PLAYLISTS"),
+                    key=route_path('artists'),
+                    title=L("MENU_ARTISTS"),
                     thumb=R("icon-default.png")
-                ),
+                ),                
                 DirectoryObject(
                     key=route_path('starred'),
                     title=L("MENU_STARRED"),

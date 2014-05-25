@@ -56,6 +56,10 @@ def starred(**kwargs):
 def albums(**kwargs):
     return plugin_callback(SpotifyPlugin.albums, kwargs)
 
+@route(ROUTEBASE + 'artists')
+def artists(**kwargs):
+    return plugin_callback(SpotifyPlugin.artists, kwargs)
+
 
 @route(ROUTEBASE + 'search')
 def search(**kwargs):

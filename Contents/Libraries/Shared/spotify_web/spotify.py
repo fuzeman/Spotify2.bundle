@@ -605,14 +605,17 @@ class SpotifyAPI():
     def my_music_request(self, type="albums", callback=False):
         if type == "albums":
             action = "albumscoverlist"
+            extras = ""
+        elif type == "artists":
+            action = "artistscoverlist"
+            extras = "?includefollowedartists=true"
         else:
             return []
         
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = "GET"
-        mercury_request.uri = "hm://collection-web/v1/" + self.username + "/" + action 
-        #?orderby=&lang=en\x1A\x03GE"
-
+        mercury_request.uri = "hm://collection-web/v1/" + self.username + "/" + action + extras
+                
         req = base64.encodestring(mercury_request.SerializeToString())
         args = [0, req]
 

@@ -8,6 +8,7 @@
     "MENU_SEARCH"                   : "Buscar",
     "MENU_STARRED"                  : "Favoritas",
     "MENU_ALBUMS"                   : "Mis Albumes",
+    "MENU_ARTISTS"                  : "Mis Artistas",
     "MENU_PREFS"                    : "Opciones",
 
     "PROMPT_SEARCH"                 : "Buscar musica",
