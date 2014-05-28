@@ -3,6 +3,7 @@ from utils import Track
 
 from spotify import Spotify
 from threading import Lock, Event
+import time
 
 
 class SpotifyClient(object):
@@ -26,6 +27,7 @@ class SpotifyClient(object):
         self.server = None
 
         self.sp = None
+        self.last_reconnect = None
 
         self.on_login = Event()
 
@@ -43,9 +45,30 @@ class SpotifyClient(object):
         self.sp = Spotify()
         self.on_login = Event()
 
-        self.sp.on('error', lambda message: Log.Error(message))
+        self.sp.on('error', lambda message: Log.Error(message))\
+               .on('close', self.on_close)
 
         self.sp.login(self.username, self.password, lambda: self.on_login.set())
+
+    def on_close(self, code, reason=None):
+        # Rate-limit re-connections
+        if self.last_reconnect:
+            span = time.time() - self.last_reconnect
+            Log.Debug('Last reconnection attempt was %s seconds ago', span)
+
+            # Stop reconnecting
+            if span < 120:
+                Log.Info('Connection closed, re-connections ended (rate-limited)')
+                return
+
+        Log.Info('Connection closed, re-connecting...')
+        self.last_reconnect = time.time()
+
+        # Hold requests while we re-connect
+        self.on_login = Event()
+
+        # Start connecting...
+        self.sp.connect()
 
     @property
     def constructed(self):
