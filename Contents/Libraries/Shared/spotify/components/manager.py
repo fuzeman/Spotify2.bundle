@@ -10,7 +10,7 @@ class ComponentManager(object):
         self.sp = sp
 
         self.connection = Connection(self.sp)\
-            .pipe(['error', 'connect'], self.sp)\
+            .pipe(['connect', 'error', 'close'], self.sp)\
             .on('command', self.sp.on_command)
 
         self.authentication = Authentication(self.sp)\

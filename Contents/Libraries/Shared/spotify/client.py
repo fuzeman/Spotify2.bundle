@@ -22,6 +22,7 @@ class Spotify(Component, Emitter):
         self.components = ComponentManager(self)
 
         # Session data
+        self.authenticated = False
         self.config = None
 
         self.user_info = None
@@ -50,7 +51,16 @@ class Spotify(Component, Emitter):
         return self.on('login', callback)
 
     def on_authenticated(self, config):
+        self.authenticated = True
         self.config = config
+
+        self.connect()
+
+    def connect(self):
+        if not self.authenticated:
+            raise Exception('Account has not been authenticated')
+
+        log.info('Connecting to Spotify...')
         self._resolve_ap()
 
     # Resolve AP
