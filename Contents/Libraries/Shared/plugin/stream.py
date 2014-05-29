@@ -32,7 +32,8 @@ class Stream(object):
         self.reading = False
 
     def log(self, message, *args, **kwargs):
-        log.info(('[%s] ' % self.num) + message, *args, **kwargs)
+        header = '[%s] [%s] ' % (self.track.uri, self.num)
+        log.info(header + str(message), *args, **kwargs)
 
     def prepare(self):
         headers = {}
@@ -56,11 +57,10 @@ class Stream(object):
 
         self.headers = self.response.info()
 
-        self.log('Opened "%s"', self.track.info['uri'])
-        self.log('Info: %s', self.headers)
+        self.log('Opened')
 
         self.length = int(self.headers.getheader('Content-Length'))
-        self.log('Length: %s', self.length)
+        self.log('Content-Length: %s', self.length)
 
         if self.headers.getheader('Content-Type') == 'text/xml':
             # Error, log response
@@ -85,7 +85,7 @@ class Stream(object):
 
         self.reading = True
 
-        self.log('Reading from stream...')
+        self.log('Reading...')
 
         while True:
             chunk = self.response.read(chunk_size)
@@ -95,7 +95,7 @@ class Stream(object):
             if not chunk:
                 break
 
-            last_progress = log_progress(self, '[%s] Reading' % self.num, len(self.buffer), last_progress)
+            last_progress = log_progress(self, '[%s]   Reading' % self.num, len(self.buffer), last_progress)
 
         self.reading = False
-        self.log('[%s] Read finished', self.track.uri)
+        self.log('Read finished')

@@ -41,24 +41,12 @@ class Server(object):
     def stop(self):
         cherrypy.engine.stop()
 
-    def finish(self, track):
-        # Send track completion events
-        log.debug('[%s] Sending completion events', track.uri)
-        track.finish()
-
-        # Cleanup resources
-        if track.uri not in self.cache:
-            return
-
-        log.debug('[%s] Releasing resources', track.uri)
-        del self.cache[track.uri]
-
     def track(self, uri):
         log.debug('Received track request for "%s"', uri)
 
         # Call finish() if track has changed
         if self.current and uri != self.current.uri:
-            self.current.finish()
+            self.track_end(self.current)
 
         # Create new TrackReference (if one doesn't exist yet)
         if uri not in self.cache:
@@ -79,11 +67,9 @@ class Server(object):
         sr = tr.stream(r_start, r_end)
         sr.open()
 
-        log.debug('Streaming range: %s - %s', r_start, r_end)
-
         # Update headers
         cherrypy.response.headers['Accept-Ranges'] = 'bytes'
-        cherrypy.response.headers['Content-Type'] = 'audio/mpeg'
+        cherrypy.response.headers['Content-Type'] = sr.headers['Content-Type']
         cherrypy.response.headers['Content-Length'] = sr.length
 
         if r_start or r_end:
@@ -94,6 +80,17 @@ class Server(object):
         return self.stream(sr)
 
     track._cp_config = {'response.stream': True}
+
+    def track_end(self, track):
+        # Send "track_end" event
+        self.current.end()
+
+        # Cleanup resources
+        if track.uri not in self.cache:
+            return
+
+        log.debug('[%s] Releasing resources', track.uri)
+        del self.cache[track.uri]
 
     @staticmethod
     def stream(sr):
@@ -125,17 +122,17 @@ class Server(object):
             chunk = sr.read(position, chunk_size)
 
             if not chunk:
-                log.debug('[%s] Finished at %s bytes (content-length: %s)' % (tr.uri, position, sr.length))
+                log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (tr.uri, sr.num, position, sr.length))
                 break
 
-            last_progress = log_progress(sr, '  Streaming', position, last_progress)
+            last_progress = log_progress(sr, '[%s] Streaming' % sr.num, position, last_progress)
 
             position = position + len(chunk)
 
             # Write chunk
             yield chunk
 
-        log.debug('[%s] Stream Complete', tr.uri)
+        log.info('[%s] [%s] Complete', tr.uri, sr.num)
 
     def get_track_url(self, uri):
         return "http://%s:%d/track/%s.mp3" % (

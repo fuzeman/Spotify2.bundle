@@ -25,7 +25,7 @@ class Track(object):
         self.reading_start = None
 
         self.playing = False
-        self.finished = False
+        self.ended = False
 
     def on_metadata(self, metadata):
         self.metadata = metadata
@@ -47,6 +47,7 @@ class Track(object):
     def stream(self, start, end):
         sr_range = start, end
 
+        # Check for existing stream (with same range)
         if sr_range in self.streams:
             log.debug('Returning existing stream (start: %s, end: %s)', start, end)
             return self.streams[sr_range]
@@ -54,16 +55,20 @@ class Track(object):
         log.debug('Building stream for track (start: %s, end: %s)', start, end)
 
         if self.metadata is None:
+            # Fetch metadata
             self.server.sp.metadata(self.uri, self.on_metadata)
             self.metadata_ev.wait()
 
         if self.info is None:
+            # Fetch stream info
             self.metadata.track_uri(self.on_track_uri)
             self.info_ev.wait()
 
+        # Validate stream info
         if not self.info or 'uri' not in self.info:
             return None
 
+        # Create new stream
         stream = Stream(self, len(self.streams), start, end)
 
         self.streams[sr_range] = stream
@@ -78,22 +83,29 @@ class Track(object):
         self.reading_start = time.time()
         self.playing = True
 
-    def finish(self):
-        if self.finished:
-            return
+    @property
+    def position(self):
+        """Get estimated player position for track
 
-        self.finished = True
-
+        :returns: Position (in milliseconds)
+        :rtype: int
+        """
         position = 0
 
         if self.reading_start:
-            position = time.time() - self.reading_start
+            position = int((time.time() - self.reading_start) * 1000)
 
-        position_ms = int(position * 1000)
+        if position > self.metadata.duration:
+            return self.metadata.duration
 
-        if position_ms > self.metadata.duration:
-            position_ms = self.metadata.duration
+        return position
 
-        log.debug('position_ms: %s, duration: %s', position_ms, self.metadata.duration)
+    def end(self):
+        """Send track end/completion events"""
+        if self.ended:
+            return
 
-        self.metadata.track_end(self.info['lid'], position_ms)
+        log.debug('[%s] Sending "track_end" event (position: %s)', self.uri, self.position)
+
+        self.metadata.track_end(self.info['lid'], self.position)
+        self.ended = True

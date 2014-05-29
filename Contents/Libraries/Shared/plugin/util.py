@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ def func_catch(func, *args, **kwargs):
         func(*args, **kwargs)
     except Exception, ex:
         log.error(ex)
+        log.error(traceback.format_exc())
 
 
 def parse_range(value):
