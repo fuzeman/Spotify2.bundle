@@ -118,12 +118,6 @@ class SpotifyHost(object):
             self.containers.album(album, callback)
 
     @authenticated
-    def playlists(self, callback, **kwargs):
-        @self.sp.user.playlists()
-        def on_playlists(playlists):
-            callback(self.containers.playlists(playlists, **kwargs))
-
-    @authenticated
     def playlist(self, uri, callback):
         @self.sp.playlist(uri)
         def on_playlist(playlist):
@@ -131,10 +125,6 @@ class SpotifyHost(object):
             Log.Debug('playlist truncated: %s', playlist.truncated)
 
             callback(self.containers.playlist(playlist))
-
-    @authenticated
-    def starred(self, callback):
-        return SpotifyHost.playlist(self, 'spotify:user:%s:starred' % self.sp.username, callback)
 
     @authenticated
     def metadata(self, uri, callback):
@@ -148,6 +138,19 @@ class SpotifyHost(object):
     def search(self, query, callback, type='all', count=7, plain=False):
         self.search.run(query, callback, type, count, plain)
 
+    @authenticated
+    def playlist(self, uri, callback):
+        @self.sp.playlist(uri)
+        def on_playlist(playlist):
+            Log("Got playlist: %s", playlist.name)
+            Log.Debug('playlist truncated: %s', playlist.truncated)
+
+            callback(self.containers.playlist(playlist))
+
+    #
+    # MAIN MENU
+    #
+
     def main_menu(self):
         return ObjectContainer(
             objects=[
@@ -158,13 +161,23 @@ class SpotifyHost(object):
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=route_path('playlists'),
-                    title=L("MENU_PLAYLISTS"),
+                    key=route_path('explore'),
+                    title=L("MENU_EXPLORE"),
                     thumb=R("icon-default.png")
                 ),
+                #DirectoryObject(
+                #    key=route_path('discover'),
+                #    title=L("MENU_DISCOVER"),
+                #    thumb=R("icon-default.png")
+                #),
+                #DirectoryObject(
+                #    key=route_path('radio'),
+                #    title=L("MENU_RADIO"),
+                #    thumb=R("icon-default.png")
+                #),
                 DirectoryObject(
-                    key=route_path('starred'),
-                    title=L("MENU_STARRED"),
+                    key=route_path('your_music'),
+                    title=L("MENU_YOUR_MUSIC"),
                     thumb=R("icon-default.png")
                 ),
                 PrefsObject(
@@ -173,3 +186,114 @@ class SpotifyHost(object):
                 )
             ],
         )
+
+    #
+    # SECOND_LEVEL_MENU
+    #
+
+    @authenticated
+    def explore(self):
+        """ Explore shared music"""
+        return ObjectContainer(
+            title2=L("MENU_EXPLORE"),
+            objects=[
+                DirectoryObject(
+                    key=route_path('explore/featured_playlists'),
+                    title=L("MENU_FEATURED_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('explore/top_playlists'),
+                    title=L("MENU_TOP_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('explore/new_releases'),
+                    title=L("MENU_NEW_RELEASES"),
+                    thumb=R("icon-default.png")
+                )
+            ],
+        )
+
+    @authenticated
+    def your_music(self):
+        """ Explore your music"""
+        return ObjectContainer(
+            title2=L("MENU_YOUR_MUSIC"),
+            objects=[
+                DirectoryObject(
+                    key=route_path('your_music/playlists'),
+                    title=L("MENU_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('your_music/starred'),
+                    title=L("MENU_STARRED"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('your_music/albums'),
+                    title=L("MENU_ALBUMS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('your_music/artists'),
+                    title=L("MENU_ARTISTS"),
+                    thumb=R("icon-default.png")
+                ),
+            ],
+        )
+
+    #
+    # EXPLORE
+    #
+
+    # TODO Explore menus
+
+    #
+    # YOUR_MUSIC
+    #
+
+    @authenticated
+    def playlists(self, callback, **kwargs):
+        @self.sp.user.playlists()
+        def on_playlists(playlists):
+            callback(self.containers.playlists(playlists, **kwargs))
+
+    @authenticated
+    def starred(self, callback):
+        return SpotifyHost.playlist(self, 'spotify:user:%s:starred' % self.sp.username, callback)
+
+    @authenticated
+    def albums(self):
+        Log("albums")
+
+        oc = ObjectContainer(
+            title2=L("MENU_ALBUMS"),
+            content=ContainerContent.Albums,
+            view_group=ViewMode.Albums
+        )
+
+        albums = self.client.get_my_albums()
+
+        for album in albums:
+            self.add_album_to_directory(album, oc)
+
+        return oc
+
+    @authenticated
+    def artists(self):
+        Log("artists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_ARTISTS"),
+            content=ContainerContent.Artists,
+            view_group=ViewMode.Artists
+        )
+
+        artists = self.client.get_my_artists()
+
+        for artist in artists:
+            self.add_artist_to_directory(artist, oc)
+
+        return oc
