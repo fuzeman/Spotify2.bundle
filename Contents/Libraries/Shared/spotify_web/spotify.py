@@ -195,18 +195,17 @@ class SpotifyUtil():
 class SpotifyAPI():
     def __init__(self, login_callback_func=False, log_level=1):
         Logging.log_level = log_level
+        self.start(login_callback_func)
 
+    def start(self, login_callback_func):
         self.auth_server = "play.spotify.com"
-
         self.logged_in_marker = Event()
         self.heartbeat_marker = Event()
         self.username = None
         self.password = None
         self.account_type = None
         self.country = None
-
         self.settings = None
-
         self.disconnecting = False
         self.ws = None
         self.ws_lock = Lock()
