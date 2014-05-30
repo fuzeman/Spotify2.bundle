@@ -1,5 +1,5 @@
 from objects import Objects
-from utils import ViewMode
+from utils import ViewMode, normalize
 
 
 class Containers(object):
@@ -15,7 +15,7 @@ class Containers(object):
     # TODO list singles?
     def artist(self, artist, callback):
         oc = ObjectContainer(
-            title2=artist.name,
+            title2=normalize(artist.name),
             content=ContainerContent.Albums
         )
 
@@ -30,7 +30,7 @@ class Containers(object):
 
     def album(self, album, callback):
         oc = ObjectContainer(
-            title2=album.name,
+            title2=normalize(album.name),
             content=ContainerContent.Tracks,
             view_group=ViewMode.Tracks
         )
@@ -46,7 +46,7 @@ class Containers(object):
 
     def playlists(self, playlists, group=None, name=None):
         oc = ObjectContainer(
-            title2=name or L("MENU_PLAYLISTS"),
+            title2=normalize(name) or L("MENU_PLAYLISTS"),
             content=ContainerContent.Playlists,
             view_group=ViewMode.Playlists
         )
@@ -57,7 +57,7 @@ class Containers(object):
         return oc
 
     def playlist(self, playlist):
-        name = playlist.name
+        name = normalize(playlist.name)
 
         if playlist.uri.type == 'starred':
             name = L("MENU_STARRED")

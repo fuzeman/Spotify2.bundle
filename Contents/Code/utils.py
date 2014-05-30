@@ -107,6 +107,9 @@ def authenticated(func):
 
 
 def normalize(text):
+    if text is None:
+        return None
+
     if type(text) is unicode:
         text = unicodedata.normalize('NFKD', text)
 

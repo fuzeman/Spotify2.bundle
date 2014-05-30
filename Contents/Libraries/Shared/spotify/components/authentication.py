@@ -54,6 +54,9 @@ class Authentication(Component, Emitter):
         ).add_done_callback(self.on_landing)
 
     def on_landing(self, future):
+        if not self.validate(future):
+            return
+
         res = future.result()
 
         if res.status_code != 200:
@@ -98,6 +101,9 @@ class Authentication(Component, Emitter):
         ).add_done_callback(self.on_auth)
 
     def on_auth(self, future):
+        if not self.validate(future):
+            return
+
         res = future.result()
 
         if res.status_code != 200:
@@ -122,3 +128,15 @@ class Authentication(Component, Emitter):
             return
 
         self.emit('authenticated', data['config'])
+
+    def validate(self, future):
+        ex = future.exception()
+
+        if not ex:
+            return True
+
+        if ex.args:
+            ex = ex.args[0].reason
+
+        self.emit('close', *ex)
+        return False
