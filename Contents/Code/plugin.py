@@ -611,8 +611,8 @@ class SpotifyPlugin(object):
             key=route_path('playlist', uri),
             rating_key=uri,
             
-            title=username,
-            artist=name,
+            title=name,
+            artist=username,
             source_title='Spotify',
             
             art=function_path('image.png', uri=image_url) if image_url != None else R("placeholder-playlist.png"),
