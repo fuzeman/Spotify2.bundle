@@ -1,21 +1,22 @@
-[
-    {
-        "id": "username",
-        "type": "text",
-        "label": "PREF_USERNAME",
-        "default": ""
-    },
-    {
-        "id": "password",
-        "type": "text",
-        "option": "hidden",
-        "label": "PREF_PASSWORD",
-        "default": ""
-    },
-    {
-        "id": "displayAlbumYear",
-        "type": "bool",
-        "label": "PREF_SHOWALBUMYEAR",
-        "default": "false"
-    }
-]
+[{
+    "id": "username",
+    "type": "text",
+    "label": "PREF_USERNAME",
+    "default": ""
+}, {
+    "id": "password",
+    "type": "text",
+    "option": "hidden",
+    "label": "PREF_PASSWORD",
+    "default": ""
+}, {
+    "id": "region",
+    "type": "text",
+    "label": "PREF_REGION",
+    "default": "ar"
+}, {
+    "id": "displayAlbumYear",
+    "type": "bool",
+    "label": "PREF_SHOWALBUMYEAR",
+    "default": "false"
+}]

@@ -31,6 +31,10 @@ class SpotifyPlugin(object):
     def password(self):
         return Prefs["password"]
 
+    @property
+    def region(self):
+        return Prefs["region"]
+
     def preferences_updated(self):
         """ Called when the user updates the plugin preferences"""
 
@@ -47,7 +51,7 @@ class SpotifyPlugin(object):
         if self.client:
             self.client.shutdown()
 
-        self.client = SpotifyClient(self.username, self.password)
+        self.client = SpotifyClient(self.username, self.password, self.region)
 
     @authenticated
     def play(self, uri):
@@ -174,13 +178,171 @@ class SpotifyPlugin(object):
 
         return self.session_cached.get(image_url).content
 
+    #
+    # SECOND_LEVEL_MENU
+    #
+
+    @authenticated
+    def explore(self):
+        """ Explore shared music
+        """
+        return ObjectContainer(
+            objects=[
+                DirectoryObject(
+                    key=route_path('explore/featured_playlists'),
+                    title=L("MENU_FEATURED_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                #DirectoryObject(
+                #    key=route_path('top_playlists'),
+                #    title=L("MENU_TOP_PLAYLISTS"),
+                #    thumb=R("icon-default.png")
+                #),
+                #DirectoryObject(
+                #    key=route_path('new_releases'),
+                #    title=L("MENU_NEW_PLAYLISTS"),
+                #    thumb=R("icon-default.png")
+                #)                
+            ],
+        )
+    
+    @authenticated
+    def your_music(self):
+        """ Explore your music
+        """
+        return ObjectContainer(
+            objects=[
+                DirectoryObject(
+                    key=route_path('your_music/playlists'),
+                    title=L("MENU_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('your_music/starred'),
+                    title=L("MENU_STARRED"),
+                    thumb=R("icon-default.png")
+                ),                  
+                DirectoryObject(
+                    key=route_path('your_music/albums'),
+                    title=L("MENU_ALBUMS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('your_music/artists'),
+                    title=L("MENU_ARTISTS"),
+                    thumb=R("icon-default.png")
+                ),            
+            ],
+        )
+
+    #
+    # EXPLORE
+    #
+
+    @authenticated
+    def featured_playlists(self):
+        Log("featured playlists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_FEATURED_PLAYLISTS"),
+            content=ContainerContent.Playlists,
+            view_group=ViewMode.FeaturedPlaylists
+        )
+
+        playlists = self.client.get_featured_playlists()
+
+        for playlist in playlists:
+            self.add_playlist_to_directory(playlist, oc)
+
+        return oc
+    
+    #
+    # YOUR_MUSIC
+    #
+
+    @authenticated
+    def playlists(self):
+        Log("playlists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_PLAYLISTS"),
+            content=ContainerContent.Playlists,
+            view_group=ViewMode.Playlists
+        )
+
+        playlists = self.client.get_playlists()
+
+        for playlist in playlists:
+            self.add_playlist_to_directory(playlist, oc)
+
+        return oc
+
+    @authenticated
+    def starred(self):
+        """ Return a directory containing the user's starred tracks"""
+        Log("starred")
+
+        oc = ObjectContainer(
+            title2=L("MENU_STARRED"),
+            content=ContainerContent.Tracks,
+            view_group=ViewMode.Tracks
+        )
+
+        starred = self.client.get_starred()
+
+        for track in starred.getTracks():
+            self.add_track_to_directory(track, oc)
+
+        return oc
+
+    @authenticated
+    def albums(self):
+        Log("albums")
+
+        oc = ObjectContainer(
+            title2=L("MENU_ALBUMS"),
+            content=ContainerContent.Albums,
+            view_group=ViewMode.Albums
+        )
+        
+        albums = self.client.get_my_albums()
+
+        for album in albums:
+            self.add_album_to_directory(album, oc)
+
+        return oc
+
+    @authenticated
+    def artists(self):
+        Log("artists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_ARTISTS"),
+            content=ContainerContent.Artists,
+            view_group=ViewMode.Artists
+        )
+        
+        artists = self.client.get_my_artists()
+
+        for artist in artists:
+            self.add_artist_to_directory(artist, oc)
+
+        return oc
+
+    #
+    # ARTIST DETAIL
+    #
+
     @authenticated
     def artist(self, uri):
         """ Browse an artist.
 
         :param uri:            The Spotify URI of the artist to browse.
         """
+        artist = self.client.get(uri)
         return ObjectContainer(
+            title2=artist.getName().decode("utf-8"),
+
             objects=[
                 DirectoryObject(
                     key  =Callback(self.artist_top_tracks, uri=uri),
@@ -188,9 +350,9 @@ class SpotifyPlugin(object):
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key  =Callback(self.artist_albums, uri=uri),
-                    title=L("MENU_ALBUMS"),
-                    thumb=R("icon-default.png")
+                    key   =Callback(self.artist_albums, uri=uri),
+                    title =L("MENU_ALBUMS"),
+                    thumb =R("icon-default.png")
                 )
             ],
         )
@@ -229,6 +391,10 @@ class SpotifyPlugin(object):
 
         return oc        
 
+    #
+    # ALBUM DETAIL
+    #
+
     @authenticated
     def album(self, uri):
         """ Browse an album.
@@ -248,73 +414,9 @@ class SpotifyPlugin(object):
 
         return oc
 
-    @authenticated
-    def featured_playlists(self):
-        Log("featured playlists")
-
-        oc = ObjectContainer(
-            title2=L("MENU_FEATURED_PLAYLISTS"),
-            content=ContainerContent.Playlists,
-            view_group=ViewMode.FeaturedPlaylists
-        )
-
-        playlists = self.client.get_featured_playlists()
-
-        for playlist in playlists:
-            self.add_playlist_to_directory(playlist, oc)
-
-        return oc
-
-    @authenticated
-    def playlists(self):
-        Log("playlists")
-
-        oc = ObjectContainer(
-            title2=L("MENU_PLAYLISTS"),
-            content=ContainerContent.Playlists,
-            view_group=ViewMode.Playlists
-        )
-
-        playlists = self.client.get_playlists()
-
-        for playlist in playlists:
-            self.add_playlist_to_directory(playlist, oc)
-
-        return oc
-
-    @authenticated
-    def albums(self):
-        Log("albums")
-
-        oc = ObjectContainer(
-            title2=L("MENU_ALBUMS"),
-            content=ContainerContent.Albums,
-            view_group=ViewMode.Albums
-        )
-        
-        albums = self.client.get_my_albums()
-
-        for album in albums:
-            self.add_album_to_directory(album, oc)
-
-        return oc
-
-    @authenticated
-    def artists(self):
-        Log("artists")
-
-        oc = ObjectContainer(
-            title2=L("MENU_ARTISTS"),
-            content=ContainerContent.Artists,
-            view_group=ViewMode.Artists
-        )
-        
-        artists = self.client.get_my_artists()
-
-        for artist in artists:
-            self.add_artist_to_directory(artist, oc)
-
-        return oc
+    #
+    # PLAYLIST DETAIL
+    #
 
     @authenticated
     def playlist(self, uri):
@@ -342,23 +444,9 @@ class SpotifyPlugin(object):
 
         return oc
 
-    @authenticated
-    def starred(self):
-        """ Return a directory containing the user's starred tracks"""
-        Log("starred")
-
-        oc = ObjectContainer(
-            title2=L("MENU_STARRED"),
-            content=ContainerContent.Tracks,
-            view_group=ViewMode.Tracks
-        )
-
-        starred = self.client.get_starred()
-
-        for track in starred.getTracks():
-            self.add_track_to_directory(track, oc)
-
-        return oc
+    #
+    # TRACK DETAIL
+    #
 
     def metadata(self, track_uri):
         Log.Debug('fetching metadata for track_uri: "%s"', track_uri)
@@ -379,6 +467,10 @@ class SpotifyPlugin(object):
 
         return oc
 
+    #
+    # MAIN MENU
+    #
+
     def main_menu(self):
         return ObjectContainer(
             objects=[
@@ -389,28 +481,23 @@ class SpotifyPlugin(object):
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
-                    key=route_path('featured_playlists'),
-                    title=L("MENU_FEATURED_PLAYLISTS"),
+                    key=route_path('explore'),
+                    title=L("MENU_EXPLORE"),
                     thumb=R("icon-default.png")
                 ),
+                #DirectoryObject(
+                #    key=route_path('discover'),
+                #    title=L("MENU_DISCOVER"),
+                #    thumb=R("icon-default.png")
+                #),
+                #DirectoryObject(
+                #    key=route_path('radio'),
+                #    title=L("MENU_RADIO"),
+                #    thumb=R("icon-default.png")
+                #),
                 DirectoryObject(
-                    key=route_path('playlists'),
-                    title=L("MENU_PLAYLISTS"),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('albums'),
-                    title=L("MENU_ALBUMS"),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('artists'),
-                    title=L("MENU_ARTISTS"),
-                    thumb=R("icon-default.png")
-                ),                
-                DirectoryObject(
-                    key=route_path('starred'),
-                    title=L("MENU_STARRED"),
+                    key=route_path('your_music'),
+                    title=L("MENU_YOUR_MUSIC"),
                     thumb=R("icon-default.png")
                 ),
                 PrefsObject(

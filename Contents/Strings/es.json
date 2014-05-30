@@ -3,7 +3,10 @@
     "PREF_PASSWORD": "Contraseña",
     "PREF_SORTPLAYLISTS": "Ordena las listas por nombre",
     "PREF_SHOWALBUMYEAR": "Mostrar el año de lanzamiento del album",
+    "PREF_REGION": "Region (codigo de dos letras del país)",
 
+    "MENU_EXPLORE": "Explorar",
+    "MENU_YOUR_MUSIC": "Tu Musica",
     "MENU_FEATURED_PLAYLISTS": "Listas Recomendadas",
     "MENU_PLAYLISTS": "Listas",
     "MENU_SEARCH": "Buscar",

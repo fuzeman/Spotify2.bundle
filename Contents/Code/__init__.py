@@ -24,54 +24,61 @@ def plugin_callback(method, kwargs=None):
     return callback(kwargs or {})
 
 
+@route(ROUTEBASE + 'artist/{uri}/top_tracks')
+def artist_top_tracks(**kwargs):
+    return plugin_callback(SpotifyPlugin.artist_top_tracks, kwargs)
+
+@route(ROUTEBASE + 'artist/{uri}/albums')
+def artist_albums(**kwargs):
+    return plugin_callback(SpotifyPlugin.artist_albums, kwargs)
+
 @route(ROUTEBASE + 'artist/{uri}')
 def artist(**kwargs):
     return plugin_callback(SpotifyPlugin.artist, kwargs)
-
 
 @route(ROUTEBASE + 'album/{uri}')
 def album(**kwargs):
     return plugin_callback(SpotifyPlugin.album, kwargs)
 
-
 @route(ROUTEBASE + 'playlist/{uri}')
 def playlist(**kwargs):
     return plugin_callback(SpotifyPlugin.playlist, kwargs)
-
 
 @route(ROUTEBASE + 'metadata/{track_uri}')
 def metadata(**kwargs):
     return plugin_callback(SpotifyPlugin.metadata, kwargs)
 
 
-@route(ROUTEBASE + 'featured_playlists')
+
+@route(ROUTEBASE + 'explore/featured_playlists')
 def featured_playlists(**kwargs):
     return plugin_callback(SpotifyPlugin.featured_playlists, kwargs)
 
-@route(ROUTEBASE + 'playlists')
+
+@route(ROUTEBASE + 'your_music/playlists')
 def playlists(**kwargs):
     return plugin_callback(SpotifyPlugin.playlists, kwargs)
 
-@route(ROUTEBASE + 'starred')
+@route(ROUTEBASE + 'your_music/starred')
 def starred(**kwargs):
     return plugin_callback(SpotifyPlugin.starred, kwargs)
 
-@route(ROUTEBASE + 'albums')
+@route(ROUTEBASE + 'your_music/albums')
 def albums(**kwargs):
     return plugin_callback(SpotifyPlugin.albums, kwargs)
 
-@route(ROUTEBASE + 'artists')
+@route(ROUTEBASE + 'your_music/artists')
 def artists(**kwargs):
     return plugin_callback(SpotifyPlugin.artists, kwargs)
 
-@route(ROUTEBASE + 'artists/{uri}/top_tracks')
-def artist_top_tracks(**kwargs):
-    return plugin_callback(SpotifyPlugin.artist_top_tracks, kwargs)
 
-@route(ROUTEBASE + 'artists/{uri}/albums')
-def artist_albums(**kwargs):
-    return plugin_callback(SpotifyPlugin.artist_albums, kwargs)
+@route(ROUTEBASE + 'your_music')
+def your_music(**kwargs):
+    return plugin_callback(SpotifyPlugin.your_music, kwargs)
 
+@route(ROUTEBASE + 'explore')
+def explore(**kwargs):
+    return plugin_callback(SpotifyPlugin.explore, kwargs)
 
 @route(ROUTEBASE + 'search')
 def search(**kwargs):
