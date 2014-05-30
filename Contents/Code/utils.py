@@ -8,17 +8,25 @@ def localized_format(key, args):
 
 
 class ViewMode(object):
-    Tracks = "Tracks"
-    Playlists = "Playlists"
-    Albums = "Albums"
-    Artists = "Artists"
+    Tracks              = "Tracks"
+    FeaturedPlaylists   = "FeaturedPlaylists"
+    Playlists           = "Playlists"
+    Albums              = "Albums"
+    Artists             = "Artists"
 
     @classmethod
     def AddModes(cls, plugin):
-        plugin.AddViewGroup(cls.Tracks, "List", "songs")
-        plugin.AddViewGroup(cls.Playlists, "List", "items")
-        plugin.AddViewGroup(cls.Albums, "List", "items")
-        plugin.AddViewGroup(cls.Artists, "List", "items")
+        plugin.AddViewGroup(cls.Tracks,             "List",     "songs")
+        plugin.AddViewGroup(cls.Playlists,          "List",     "items")
+        plugin.AddViewGroup(cls.FeaturedPlaylists,  "List",     "items")
+        plugin.AddViewGroup(cls.Albums,             "Albums",   "items")
+        plugin.AddViewGroup(cls.Artists,            "List",     "items")
+        #ViewModes 
+        # "List"
+        # "InfoList", "MediaPreview", "Showcase", 
+        # "Coverflow", "PanelStream", "WallStream", 
+        # "Songs", "Albums", "ImageStream"
+        # "Seasons", "Pictures", "Episodes"
 
 
 class Track(object):
@@ -38,10 +46,7 @@ class Track(object):
         return self.expires > current
 
     def matches(self, other_track):
-        if not self.valid():
-            return False
-
-        return self.track.getURI() == other_track.getURI()
+        return False #self.track.getURI() == other_track.getURI() and self.valid()
 
     @classmethod
     def create(cls, track, url):

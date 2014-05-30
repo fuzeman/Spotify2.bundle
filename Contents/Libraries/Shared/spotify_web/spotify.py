@@ -1,10 +1,12 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 import re
 import json
 import operator
 import binascii
 import base64
 import execjs
+import urllib
 from ssl import SSLError
 from threading import Thread, Event, Lock
 
@@ -414,7 +416,8 @@ class SpotifyAPI():
         try:
             res = base64.decodestring(resp[1])
             obj.ParseFromString(res)
-        except:
+        except Exception, e:
+            Logging.error("There was a problem while parsing playlist. Message: " + str(e) + ". Resp: " + str(resp))
             obj = False
 
         self.chain_callback(sp, obj, callback_data)
@@ -590,13 +593,15 @@ class SpotifyAPI():
         return self.wrap_request("sp/hm_b64", args, callback, self.parse_playlist)
 
     def playlist_request(self, uri, fromnum=0, num=100, callback=False):
-        # mercury_requests = mercury_pb2.MercuryRequest()
+        if type(uri) == unicode:
+            uri = uri.encode('utf8')
+        uri = urllib.quote_plus(uri)
+        playlist = uri[10:].replace("%3A", "/")
 
-        playlist = uri[8:].replace(":", "/")
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = "GET"
         mercury_request.uri = "hm://playlist/" + playlist + "?from=" + str(fromnum) + "&length=" + str(num)
-
+        
         req = base64.encodestring(mercury_request.SerializeToString())
         args = [0, req]
 

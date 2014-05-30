@@ -1,31 +1,32 @@
 {
-    "PREF_USERNAME"                 : "Username",
-    "PREF_PASSWORD"                 : "Password",
-    "PREF_SORTPLAYLISTS"            : "Sort the playlists by name",
-    "PREF_SHOWALBUMYEAR"            : "Show album release year",
+    "PREF_USERNAME": "Username",
+    "PREF_PASSWORD": "Password",
+    "PREF_SORTPLAYLISTS": "Sort the playlists by name",
+    "PREF_SHOWALBUMYEAR": "Show album release year",
 
-    "MENU_PLAYLISTS"                : "Playlists",
-    "MENU_SEARCH"                   : "Search",
-    "MENU_STARRED"                  : "Starred",
-    "MENU_ALBUMS"                   : "Albums",
-    "MENU_ARTISTS"                  : "Artists",
-    "MENU_TOP_TRACKS"               : "Top Tracks",
+    "MENU_FEATURED_PLAYLISTS": "Featured Playlists",
+    "MENU_PLAYLISTS": "Playlists",
+    "MENU_SEARCH": "Search",
+    "MENU_STARRED": "Starred",
+    "MENU_ALBUMS": "Albums",
+    "MENU_ARTISTS": "Artists",
+    "MENU_TOP_TRACKS": "Top Tracks",
 
-    "MENU_PREFS"                    : "Preferences",
+    "MENU_PREFS": "Preferences",
 
-    "PROMPT_SEARCH"                 : "Search for music",
+    "PROMPT_SEARCH": "Search for music",
 
-    "MSG_TITLE_MISSING_LOGIN"       : "Authentication Details Missing",
-    "MSG_TITLE_LOGIN_IN_PROGRESS"   : "Login in Progress",
-    "MSG_TITLE_LOGIN_FAILED"        : "Login Failed",
-    "MSG_TITLE_PLAYLIST_ERROR"      : "Error Retrieving Playlist",
-    "MSG_TITLE_NO_RESULTS"          : "No results",
-    "MSG_TITLE_UNKNOWN_PLAYLIST"    : "Unable to find playlist",
+    "MSG_TITLE_MISSING_LOGIN": "Authentication Details Missing",
+    "MSG_TITLE_LOGIN_IN_PROGRESS": "Login in Progress",
+    "MSG_TITLE_LOGIN_FAILED": "Login Failed",
+    "MSG_TITLE_PLAYLIST_ERROR": "Error Retrieving Playlist",
+    "MSG_TITLE_NO_RESULTS": "No results",
+    "MSG_TITLE_UNKNOWN_PLAYLIST": "Unable to find playlist",
 
-    "MSG_BODY_MISSING_LOGIN"        : "No username and password have been configured",
-    "MSG_BODY_LOGIN_IN_PROGRESS"    : "We're still trying to open a Spotify session...",
-    "MSG_BODY_PLAYIST_ERROR"        : "The selected playlist details could not be found",
+    "MSG_BODY_MISSING_LOGIN": "No username and password have been configured",
+    "MSG_BODY_LOGIN_IN_PROGRESS": "We're still trying to open a Spotify session...",
+    "MSG_BODY_PLAYIST_ERROR": "The selected playlist details could not be found",
 
-    "MSG_FMT_DID_YOU_MEAN"          : "Did you mean '%s'?",
-    "MSG_FMT_NO_RESULTS"            : "No matches for search '%s'..."
+    "MSG_FMT_DID_YOU_MEAN": "Did you mean '%s'?",
+    "MSG_FMT_NO_RESULTS": "No matches for search '%s'..."
 }

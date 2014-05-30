@@ -2,6 +2,7 @@ from settings import PLUGIN_ID
 
 from spotify_web.friendly import Spotify
 from spotify_web.spotify import Logging
+from tunigoapi import Tunigo
 
 
 class SpotifyClient(object):
@@ -22,8 +23,10 @@ class SpotifyClient(object):
         Logging.hook(0, Log.Error)
 
         self.spotify = Spotify(username, password, log_level=3)
-
         self.username = username
+        
+        self.tunigo  = Tunigo(region='ar') # TODO see where should be read
+
 
     #
     # Public methods
@@ -60,6 +63,37 @@ class SpotifyClient(object):
     #
     # Playlists
     #
+    def get_featured_playlists(self):
+        """ Return the featured playlists"""
+        pl_json = self.tunigo.getFeaturedPlaylists()
+
+        playlist_uris  = []
+        playlist_descs = {}
+        playlist_imgs  = {}
+        for item_json in pl_json['items']:
+            playlist_uri  = item_json['playlist']['uri']
+            playlist_desc = item_json['playlist']['description']
+            playlist_img  = item_json['playlist']['image']
+            
+            uri_parts    = playlist_uri.split(':')
+            if len(uri_parts) < 2:
+                continue
+
+            # TODO support playlist folders properly
+            if uri_parts[1] in ['start-group', 'end-group']:
+                continue
+            
+            playlist_uris.append(playlist_uri)
+            playlist_descs[playlist_uri]= playlist_desc
+            playlist_imgs[playlist_uri]= playlist_img
+            
+        playlists = self.spotify.objectFromURI(playlist_uris, asArray=True)
+        
+        for pl in playlists:
+            pl.description   = playlist_descs[pl.getURI()]
+            pl.image_id = playlist_imgs[pl.getURI()]
+        
+        return playlists
 
     def get_playlists(self):
         """ Return the user's playlists"""
@@ -80,3 +114,4 @@ class SpotifyClient(object):
     def get_my_artists(self):
         """ Return the user's artists"""
         return self.spotify.getMyMusic(type="artists")
+

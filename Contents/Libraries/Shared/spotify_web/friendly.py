@@ -259,6 +259,8 @@ class SpotifyPlaylist(SpotifyObject):
         self.spotify = spotify
         self.obj = spotify.api.playlist_request(uri)
         self.uri = uri
+        self.description = self.getName()
+        self.image_id = None
         SpotifyPlaylist.refs.append(self)
 
     def __getitem__(self, index):
@@ -291,6 +293,14 @@ class SpotifyPlaylist(SpotifyObject):
 
     def getName(self):
         return "Starred" if self.getID() == "starred" else self.obj.attributes.name
+
+    def getDescription(self):
+        return self.description
+
+    def getImages(self):
+        if self.image_id != None:
+            return Spotify.imagesFromId(self.image_id, 300)
+        return None
 
     def rename(self, name):
         ret = self.spotify.api.rename_playlist(self.getURI(), name)
@@ -580,7 +590,13 @@ class Spotify():
     def imagesFromArray(image_objs):
         images = {}
         for image_obj in image_objs:
-            size = str(image_obj.width)
-            images[size] = "https://d3rt1990lpmkn.cloudfront.net/" + size + "/" + SpotifyUtil.gid2id(image_obj.file_id)
+            size     = str(image_obj.width)
+            image_id = SpotifyUtil.gid2id(image_obj.file_id)
+            images[size] = Spotify.imagesFromId(image_id, size)[size]
+        return images
 
+    @staticmethod
+    def imagesFromId(image_id, size):
+        images = {}
+        images[size] = "https://d3rt1990lpmkn.cloudfront.net/" + str(size) + "/" + str(image_id)
         return images
