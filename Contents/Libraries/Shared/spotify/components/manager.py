@@ -14,7 +14,7 @@ class ComponentManager(object):
             .on('command', self.sp.on_command)
 
         self.authentication = Authentication(self.sp)\
-            .pipe('error', self.sp)\
+            .pipe(['error', 'close'], self.sp)\
             .on('authenticated', self.sp.on_authenticated)
 
         self.metadata = Metadata(self.sp)
