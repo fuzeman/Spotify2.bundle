@@ -102,7 +102,7 @@ class SpotifyPlugin(object):
 
         # If first request failed, trigger re-connection to spotify
         retry_num = 0
-        while not track_url and retry_num < 2:
+        while not track_url and retry_num < 3:
             retry_num += 1
 
             Log.Info('get_track_url failed, re-connecting to spotify...')
@@ -193,16 +193,16 @@ class SpotifyPlugin(object):
                     title=L("MENU_FEATURED_PLAYLISTS"),
                     thumb=R("icon-default.png")
                 ),
-                #DirectoryObject(
-                #    key=route_path('top_playlists'),
-                #    title=L("MENU_TOP_PLAYLISTS"),
-                #    thumb=R("icon-default.png")
-                #),
-                #DirectoryObject(
-                #    key=route_path('new_releases'),
-                #    title=L("MENU_NEW_PLAYLISTS"),
-                #    thumb=R("icon-default.png")
-                #)                
+                DirectoryObject(
+                    key=route_path('explore/top_playlists'),
+                    title=L("MENU_TOP_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('explore/new_releases'),
+                    title=L("MENU_NEW_RELEASES"),
+                    thumb=R("icon-default.png")
+                )                
             ],
         )
     
@@ -253,6 +253,40 @@ class SpotifyPlugin(object):
 
         for playlist in playlists:
             self.add_playlist_to_directory(playlist, oc)
+
+        return oc
+
+    @authenticated
+    def top_playlists(self):
+        Log("top playlists")
+
+        oc = ObjectContainer(
+            title2=L("MENU_TOP_PLAYLISTS"),
+            content=ContainerContent.Playlists,
+            view_group=ViewMode.FeaturedPlaylists
+        )
+
+        playlists = self.client.get_top_playlists()
+
+        for playlist in playlists:
+            self.add_playlist_to_directory(playlist, oc)
+
+        return oc
+
+    @authenticated
+    def new_releases(self):
+        Log("new releases")
+
+        oc = ObjectContainer(
+            title2=L("MENU_NEW_RELEASES"),
+            content=ContainerContent.Albums,
+            view_group=ViewMode.Albums
+        )
+
+        albums = self.client.get_new_releases()
+
+        for album in albums:
+            self.add_album_to_directory(album, oc)
 
         return oc
     

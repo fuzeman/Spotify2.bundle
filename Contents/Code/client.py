@@ -75,7 +75,7 @@ class SpotifyClient(object):
             playlist_desc = item_json['playlist']['description']
             playlist_img  = item_json['playlist']['image']
             
-            uri_parts    = playlist_uri.split(':')
+            uri_parts = playlist_uri.split(':')
             if len(uri_parts) < 2:
                 continue
 
@@ -94,6 +94,48 @@ class SpotifyClient(object):
             pl.image_id = playlist_imgs[pl.getURI()]
         
         return playlists
+
+    def get_top_playlists(self):
+        """ Return the top playlists"""
+        pl_json = self.tunigo.getTopPlaylists()
+
+        playlist_uris  = []
+        playlist_descs = {}
+        playlist_imgs  = {}
+        for item_json in pl_json['items']:
+            playlist_uri  = item_json['playlist']['uri']
+            playlist_desc = item_json['playlist']['description']
+            playlist_img  = item_json['playlist']['image']
+            
+            uri_parts = playlist_uri.split(':')
+            if len(uri_parts) < 2:
+                continue
+
+            # TODO support playlist folders properly
+            if uri_parts[1] in ['start-group', 'end-group']:
+                continue
+            
+            playlist_uris.append(playlist_uri)
+            playlist_descs[playlist_uri]= playlist_desc
+            playlist_imgs[playlist_uri]= playlist_img
+            
+        playlists = self.spotify.objectFromURI(playlist_uris, asArray=True)
+        
+        for pl in playlists:
+            pl.description   = playlist_descs[pl.getURI()]
+            pl.image_id = playlist_imgs[pl.getURI()]
+        
+        return playlists
+
+    def get_new_releases(self):
+        """ Return the top playlists"""
+        al_json = self.tunigo.getNewReleases()
+        album_uris  = []
+        for item_json in al_json['items']:
+            album_uris.append(item_json['release']['uri'])
+            
+        return self.spotify.objectFromURI(album_uris, asArray=True)
+
 
     def get_playlists(self):
         """ Return the user's playlists"""

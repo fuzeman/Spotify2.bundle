@@ -49,10 +49,17 @@ def metadata(**kwargs):
     return plugin_callback(SpotifyPlugin.metadata, kwargs)
 
 
-
 @route(ROUTEBASE + 'explore/featured_playlists')
 def featured_playlists(**kwargs):
     return plugin_callback(SpotifyPlugin.featured_playlists, kwargs)
+
+@route(ROUTEBASE + 'explore/top_playlists')
+def top_playlists(**kwargs):
+    return plugin_callback(SpotifyPlugin.top_playlists, kwargs)
+
+@route(ROUTEBASE + 'explore/new_releases')
+def new_releases(**kwargs):
+    return plugin_callback(SpotifyPlugin.new_releases, kwargs)
 
 
 @route(ROUTEBASE + 'your_music/playlists')
