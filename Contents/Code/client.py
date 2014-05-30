@@ -11,12 +11,6 @@ class SpotifyClient(object):
     user_agent = PLUGIN_ID
 
     def __init__(self):
-        """ Initializer
-
-        :param username:       The username to connect to spotify with.
-        :param password:       The password to authenticate with.
-        """
-
         self.current_track = None
         self.track_lock = Lock()
 

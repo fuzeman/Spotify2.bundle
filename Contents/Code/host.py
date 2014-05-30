@@ -6,6 +6,7 @@ from search import SpotifySearch
 from utils import authenticated, ViewMode
 
 from cachecontrol import CacheControl
+from tunigoapi import Tunigo
 import requests
 
 
@@ -16,6 +17,7 @@ class SpotifyHost(object):
         self.start()
 
         self.search = SpotifySearch(self)
+        self.tunigo  = None
 
         self.session = requests.session()
         self.session_cached = CacheControl(self.session)
@@ -29,6 +31,10 @@ class SpotifyHost(object):
     @property
     def password(self):
         return Prefs["password"]
+
+    @property
+    def region(self):
+        return Prefs["region"]
 
     @property
     def proxy_tracks(self):
@@ -69,6 +75,8 @@ class SpotifyHost(object):
         # Update preferences and start/restart the client
         self.client.set_preferences(self.username, self.password, self.proxy_tracks)
         self.client.start()
+
+        self.tunigo  = Tunigo(self.region)
 
     #
     # Routes
