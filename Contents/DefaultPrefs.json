@@ -16,7 +16,7 @@
         "id": "region",
         "type": "text",
         "label": "PREF_REGION",
-        "default": "ar"
+        "default": "us"
     },
     {
         "id": "displayAlbumYear",
