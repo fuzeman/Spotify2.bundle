@@ -35,8 +35,12 @@ class SpotifyClient(object):
     def is_logged_in(self):
         return self.spotify.logged_in()
 
+    def restart(self, username, password, region):
+        self.spotify.restart(username, password)
+        self.tunigo = Tunigo(region)
+
     def shutdown(self):
-        self.spotify.api.shutdown()
+        self.spotify.shutdown()
 
     def search(self, query, query_type='all', max_results=50, offset=0):
         """ Execute a search

@@ -133,7 +133,7 @@ class SpotifyClient(WebSocketClient):
         self.api_object.recv_packet(m)
 
     def closed(self, code, message):
-        self.api_object.shutdown()
+        self.api_object.restart()
 
 
 class SpotifyUtil():
@@ -946,9 +946,9 @@ class SpotifyAPI():
     def heartbeat_handler(self):
         while not self.disconnecting:
             self.heartbeat()
-            self.heartbeat_marker.wait(timeout=18)
+            self.heartbeat_marker.wait(timeout=40)
 
-    def connect(self, username, password, timeout=10):
+    def connect(self, username, password, timeout=20):
         if self.settings is None:
             if not self.auth(username, password):
                 return False
@@ -978,6 +978,12 @@ class SpotifyAPI():
     def shutdown(self):
         self.disconnecting = True
         self.heartbeat_marker.set()
+
+    def restart(self):
+        self.disconnecting = True
+        self.heartbeat_marker.set()
+        self.disconnect()
+        self.start(self.login_callback)
 
     def disconnect(self):
         if self.ws is not None:

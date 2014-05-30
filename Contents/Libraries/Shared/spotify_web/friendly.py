@@ -166,7 +166,7 @@ class SpotifyArtist(SpotifyMetadataObject):
     def getRelatedArtists(self, nameOnly=False):
         return self.spotify.objectFromInternalObj("artist", self.obj.related, nameOnly)
 
-    #@Cache
+    @Cache
     def getTracks(self, objOnly=False):
         track_objs = []
 
@@ -234,7 +234,7 @@ class SpotifyAlbum(SpotifyMetadataObject):
     def getNumTracks(self):
         return len(self.getTracks(objOnly=True))
 
-    #@Cache
+    @Cache
     def getTracks(self, disc_num=None, objOnly=False):
         track_objs = []
 
@@ -334,7 +334,7 @@ class SpotifyPlaylist(SpotifyObject):
         # we can't rely on the stated length, some might not be available
         return len(self.getTracks())
 
-    #@Cache
+    @Cache
     def getTracks(self):
         track_uris = [item.uri for item in self.obj.contents.items]
         tracks = self.spotify.objectFromURI(track_uris, asArray=True)
@@ -430,6 +430,13 @@ class Spotify():
     def logout(self):
         self.api.disconnect()
 
+    def restart(self, username, password):
+        self.api.restart()
+        self.api.connect(username, password)
+
+    def shutdown(self):
+        self.api.shutdown()
+
     @Cache
     def getMyMusic(self, type="albums"):
         uris = []
@@ -501,7 +508,7 @@ class Spotify():
 
         return self.objectFromURI(uris, asArray=True)
 
-    #@Cache
+    @Cache
     def objectFromURI(self, uris, asArray=False):
         if not self.logged_in():
             return False

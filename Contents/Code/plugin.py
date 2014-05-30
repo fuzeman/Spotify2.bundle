@@ -47,11 +47,16 @@ class SpotifyPlugin(object):
             Log("Username or password not set: not logging in")
             return
 
-        # Ensure previous client is shutdown
-        if self.client:
-            self.client.shutdown()
-
-        self.client = SpotifyClient(self.username, self.password, self.region)
+        # If we have a client, the is a restart
+        if self.client:            
+            self.client.restart(self.username, self.password, self.region)
+            if self.track_lock:
+                try:
+                    self.track_lock.release()
+                except: 
+                    pass
+        else:
+            self.client = SpotifyClient(self.username, self.password, self.region)
 
     @authenticated
     def play(self, uri):
@@ -87,9 +92,10 @@ class SpotifyPlugin(object):
             'Acquired track_lock, current_track: %s',
             repr(self.current_track)
         )
-
-        #If first request failed, trigger re-connection to spotify
+        
         track = self.client.get(uri)
+        
+        #If first request failed, trigger re-connection to spotify
         retry_num = 0
         while not track and retry_num < 2:
             retry_num += 1
@@ -101,13 +107,19 @@ class SpotifyPlugin(object):
         if not track:
             self.current_track = None
             Log.Warn('Unable to fetch track URL (connection problem?)')
-            self.track_lock.release()
+            try:
+                self.track_lock.release()
+            except: 
+                pass
             return None
 
 
         if self.current_track and self.current_track.matches(track):
             Log.Debug('Using existing track: %s', repr(self.current_track))
-            self.track_lock.release()
+            try:
+                self.track_lock.release()
+            except: 
+                pass
             return self.current_track.url
 
         # Reset current state
@@ -505,6 +517,11 @@ class SpotifyPlugin(object):
         
         oc = ObjectContainer()
         
+        track = self.client.get(track_uri)
+        if track == False:
+            Log.Info('get_track failed, re-connecting to spotify...')
+            self.start()
+
         track = self.client.get(track_uri)
         if track == False:
             Log("Play track couldn't be obtained :-(")
