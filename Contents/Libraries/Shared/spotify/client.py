@@ -58,11 +58,9 @@ class Spotify(Component, Emitter):
 
     def connect(self):
         if not self.authenticated:
-            log.info('Authenticating...')
-            self.components.authentication.connect()
-            return
+            raise Exception('Account has not been authenticated')
 
-        log.info('Connecting...')
+        log.info('Connecting to Spotify...')
         self._resolve_ap()
 
     # Resolve AP
@@ -156,6 +154,9 @@ class Spotify(Component, Emitter):
 
     def playlists(self, username, start=0, count=100, callback=None):
         return self.components.metadata.playlists(username, start, count, callback)
+
+    def collection(self, username, source, params=None, callback=None):
+        return self.components.metadata.collection(username, source, params, callback)
 
     # Search
     def search(self, query, query_type='all', start=0, count=50, callback=None):

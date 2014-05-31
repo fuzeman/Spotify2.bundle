@@ -96,9 +96,17 @@ class PropertyProxy(object):
             return self.type.from_node(sp, value, types)
 
         if type(value) is dict:
-            return self.type.from_dict(sp, value, types)
+            return self.construct_dict(sp, value, types)
 
         return self.type.from_protobuf(sp, value, types)
+
+    def construct_dict(self, sp, value, types):
+        source = value.get('$source')
+
+        if source == 'node':
+            return self.type.from_node_dict(sp, value, types)
+
+        return self.type.from_dict(sp, value, types)
 
     @staticmethod
     def parse_date(value):
@@ -195,11 +203,15 @@ class Descriptor(Component):
 
     @classmethod
     def from_node(cls, sp, node, types):
-        return cls.from_dict(sp, etree_convert(node), types)
+        return cls.from_node_dict(sp, etree_convert(node), types)
+
+    @classmethod
+    def from_node_dict(cls, sp, data, types):
+        raise NotImplementedError()
 
     @classmethod
     def from_dict(cls, sp, data, types):
-        raise NotImplementedError()
+        return cls.from_node_dict(sp, data, types)
 
     @classmethod
     def construct(cls, sp, **kwargs):

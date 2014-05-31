@@ -1,10 +1,10 @@
-import logging
-
 from spotify.components.base import Component
 from spotify.hermes.request import HermesRequest
 from spotify.core.uri import Uri
 from spotify.objects import Album, Track, Artist, Playlist
 
+import logging
+import urllib
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +68,22 @@ class Metadata(Component):
             'uri': 'hm://playlist/user/%s/rootlist?from=%s&length=%s' % (username, start, count)
         }, Playlist, defaults={
             'uri': Uri.from_uri('spotify:user:%s:rootlist' % username)
+        })
+
+        return self.request_wrapper(request, callback)
+
+    def collection(self, username, source, params=None, callback=None):
+        query = urllib.urlencode(params or {})
+
+        if query:
+            query = '?' + query
+
+        request = HermesRequest(self.sp, {
+            'method': 'GET',
+            'uri': 'hm://collection-web/v1/%s/%s%s' % (username, source, query)
+        }, {
+            'album': Album,
+            'artist': Artist
         })
 
         return self.request_wrapper(request, callback)

@@ -33,7 +33,7 @@ class Image(Descriptor):
         )
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         return cls(sp, {
             'file_id': Uri.from_id('image', data.get('file_id')).to_gid(size=40),
 

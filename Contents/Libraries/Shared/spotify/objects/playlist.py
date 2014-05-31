@@ -149,7 +149,7 @@ class Playlist(Descriptor):
 
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         uri = Uri.from_uri(data.get('uri'))
 
         return cls(sp, {
