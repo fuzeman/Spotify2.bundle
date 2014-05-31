@@ -12,6 +12,10 @@ class Containers(object):
     def sp(self):
         return self.host.sp
 
+    #
+    # Metadata
+    #
+
     # TODO list singles?
     def artist(self, artist, callback):
         oc = ObjectContainer(
@@ -44,6 +48,16 @@ class Containers(object):
 
             callback(oc)
 
+    def metadata(self, track):
+        oc = ObjectContainer()
+        oc.add(self.objects.track(track))
+
+        return oc
+
+    #
+    # Your Music
+    #
+
     def playlists(self, playlists, group=None, name=None):
         oc = ObjectContainer(
             title2=normalize(name) or L("MENU_PLAYLISTS"),
@@ -73,8 +87,24 @@ class Containers(object):
 
         return oc
 
-    def metadata(self, track):
-        oc = ObjectContainer()
-        oc.add(self.objects.track(track))
+    def artists(self, artists, callback):
+        oc = ObjectContainer(
+            title2=L("MENU_ARTISTS"),
+            content=ContainerContent.Artists
+        )
 
-        return oc
+        for artist in artists:
+            oc.add(self.objects.artist(artist))
+
+        callback(oc)
+
+    def albums(self, albums, callback):
+        oc = ObjectContainer(
+            title2=L("MENU_ALBUMS"),
+            content=ContainerContent.Albums
+        )
+
+        for album in albums:
+            oc.add(self.objects.album(album))
+
+        callback(oc)

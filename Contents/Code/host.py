@@ -79,76 +79,7 @@ class SpotifyHost(object):
         self.tunigo  = Tunigo(self.region)
 
     #
-    # Routes
-    #
-
-    @authenticated
-    def play(self, uri):
-        """ Play a spotify track: redirect the user to the actual stream """
-        Log('play(%s)' % repr(uri))
-
-        return Redirect(self.client.play(uri))
-
-    @authenticated
-    def image(self, uri):
-        if not uri:
-            # TODO media specific placeholders
-            return Redirect(R('placeholder-artist.png'))
-
-        if uri.startswith('spotify:'):
-            # TODO image for URI
-            raise NotImplementedError()
-        else:
-            # pre-selected image provided
-            Log.Debug('Using pre-selected image URL: "%s"' % uri)
-            image_url = uri
-
-        return self.session_cached.get(image_url).content
-
-    @authenticated
-    def artist(self, uri, callback):
-        @self.sp.metadata(uri)
-        def on_artist(artist):
-            self.containers.artist(artist, callback)
-
-    @authenticated
-    def album(self, uri, callback):
-        @self.sp.metadata(uri)
-        def on_album(album):
-            self.containers.album(album, callback)
-
-    @authenticated
-    def playlist(self, uri, callback):
-        @self.sp.playlist(uri)
-        def on_playlist(playlist):
-            Log("Got playlist: %s", playlist.name)
-            Log.Debug('playlist truncated: %s', playlist.truncated)
-
-            callback(self.containers.playlist(playlist))
-
-    @authenticated
-    def metadata(self, uri, callback):
-        Log.Debug('fetching metadata for uri: "%s"', uri)
-
-        @self.sp.metadata(uri)
-        def on_track(track):
-            callback(self.containers.metadata(track))
-
-    @authenticated
-    def search(self, query, callback, type='all', count=7, plain=False):
-        self.search.run(query, callback, type, count, plain)
-
-    @authenticated
-    def playlist(self, uri, callback):
-        @self.sp.playlist(uri)
-        def on_playlist(playlist):
-            Log("Got playlist: %s", playlist.name)
-            Log.Debug('playlist truncated: %s', playlist.truncated)
-
-            callback(self.containers.playlist(playlist))
-
-    #
-    # MAIN MENU
+    # Core
     #
 
     def main_menu(self):
@@ -187,33 +118,60 @@ class SpotifyHost(object):
             ],
         )
 
+    @authenticated
+    def search(self, query, callback, type='all', count=7, plain=False):
+        self.search.run(query, callback, type, count, plain)
+
+    @authenticated
+    def play(self, uri):
+        """ Play a spotify track: redirect the user to the actual stream """
+        Log('play(%s)' % repr(uri))
+
+        return Redirect(self.client.play(uri))
+
+    @authenticated
+    def image(self, uri):
+        if not uri:
+            # TODO media specific placeholders
+            return Redirect(R('placeholder-artist.png'))
+
+        if uri.startswith('spotify:'):
+            # TODO image for URI
+            raise NotImplementedError()
+        else:
+            # pre-selected image provided
+            Log.Debug('Using pre-selected image URL: "%s"' % uri)
+            image_url = uri
+
+        return self.session_cached.get(image_url).content
+
     #
-    # SECOND_LEVEL_MENU
+    # Metadata
     #
 
     @authenticated
-    def explore(self):
-        """ Explore shared music"""
-        return ObjectContainer(
-            title2=L("MENU_EXPLORE"),
-            objects=[
-                DirectoryObject(
-                    key=route_path('explore/featured_playlists'),
-                    title=L("MENU_FEATURED_PLAYLISTS"),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('explore/top_playlists'),
-                    title=L("MENU_TOP_PLAYLISTS"),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('explore/new_releases'),
-                    title=L("MENU_NEW_RELEASES"),
-                    thumb=R("icon-default.png")
-                )
-            ],
-        )
+    def artist(self, uri, callback):
+        @self.sp.metadata(uri)
+        def on_artist(artist):
+            self.containers.artist(artist, callback)
+
+    @authenticated
+    def album(self, uri, callback):
+        @self.sp.metadata(uri)
+        def on_album(album):
+            self.containers.album(album, callback)
+
+    @authenticated
+    def metadata(self, uri, callback):
+        Log.Debug('fetching metadata for uri: "%s"', uri)
+
+        @self.sp.metadata(uri)
+        def on_track(track):
+            callback(self.containers.metadata(track))
+
+    #
+    # Your Music
+    #
 
     @authenticated
     def your_music(self):
@@ -244,16 +202,6 @@ class SpotifyHost(object):
             ],
         )
 
-    #
-    # EXPLORE
-    #
-
-    # TODO Explore menus
-
-    #
-    # YOUR_MUSIC
-    #
-
     @authenticated
     def playlists(self, callback, **kwargs):
         @self.sp.user.playlists()
@@ -261,39 +209,56 @@ class SpotifyHost(object):
             callback(self.containers.playlists(playlists, **kwargs))
 
     @authenticated
+    def playlist(self, uri, callback):
+        @self.sp.playlist(uri)
+        def on_playlist(playlist):
+            Log("Got playlist: %s", playlist.name)
+            Log.Debug('playlist truncated: %s', playlist.truncated)
+
+            callback(self.containers.playlist(playlist))
+
+    @authenticated
     def starred(self, callback):
         return SpotifyHost.playlist(self, 'spotify:user:%s:starred' % self.sp.username, callback)
 
     @authenticated
-    def albums(self):
-        Log("albums")
+    def artists(self, callback):
+        params = {'includefollowedartists': 'true'}
 
-        oc = ObjectContainer(
-            title2=L("MENU_ALBUMS"),
-            content=ContainerContent.Albums,
-            view_group=ViewMode.Albums
-        )
-
-        albums = self.client.get_my_albums()
-
-        for album in albums:
-            self.add_album_to_directory(album, oc)
-
-        return oc
+        @self.sp.user.collection('artistscoverlist', params)
+        def on_artists(artists):
+            self.containers.artists(artists, callback)
 
     @authenticated
-    def artists(self):
-        Log("artists")
+    def albums(self, callback):
+        @self.sp.user.collection('albumscoverlist')
+        def on_albums(albums):
+            self.containers.albums(albums, callback)
 
-        oc = ObjectContainer(
-            title2=L("MENU_ARTISTS"),
-            content=ContainerContent.Artists,
-            view_group=ViewMode.Artists
+    #
+    # Explore
+    #
+
+    @authenticated
+    def explore(self):
+        """ Explore shared music"""
+        return ObjectContainer(
+            title2=L("MENU_EXPLORE"),
+            objects=[
+                DirectoryObject(
+                    key=route_path('explore/featured_playlists'),
+                    title=L("MENU_FEATURED_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('explore/top_playlists'),
+                    title=L("MENU_TOP_PLAYLISTS"),
+                    thumb=R("icon-default.png")
+                ),
+                DirectoryObject(
+                    key=route_path('explore/new_releases'),
+                    title=L("MENU_NEW_RELEASES"),
+                    thumb=R("icon-default.png")
+                )
+            ],
         )
-
-        artists = self.client.get_my_artists()
-
-        for artist in artists:
-            self.add_artist_to_directory(artist, oc)
-
-        return oc
