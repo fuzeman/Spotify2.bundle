@@ -1,4 +1,5 @@
 from objects import Objects
+from routing import route_path
 from utils import ViewMode, normalize
 
 
@@ -23,6 +24,26 @@ class Containers(object):
             content=ContainerContent.Albums
         )
 
+        oc.add(DirectoryObject(
+            key=route_path('artist', artist.uri, 'albums'),
+            title='Albums (%s)' % len(artist.albums)
+        ))
+
+        album_uris = [al.uri for al in artist.albums if al is not None]
+
+        @self.sp.metadata(album_uris[:7])
+        def on_albums(albums):
+            for album in albums:
+                oc.add(self.objects.album(album))
+
+            callback(oc)
+
+    def artist_albums(self, artist, callback):
+        oc = ObjectContainer(
+            title2='%s - %s' % (normalize(artist.name), 'Albums'),
+            content=ContainerContent.Albums
+        )
+
         album_uris = [al.uri for al in artist.albums if al is not None]
 
         @self.sp.metadata(album_uris)
@@ -31,6 +52,9 @@ class Containers(object):
                 oc.add(self.objects.album(album))
 
             callback(oc)
+
+    def artist_tracks(self, artist, callback):
+        pass
 
     def album(self, album, callback):
         oc = ObjectContainer(

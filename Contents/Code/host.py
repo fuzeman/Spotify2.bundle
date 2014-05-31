@@ -156,6 +156,18 @@ class SpotifyHost(object):
             self.containers.artist(artist, callback)
 
     @authenticated
+    def artist_albums(self, uri, callback):
+        @self.sp.metadata(uri)
+        def on_artist(artist):
+            self.containers.artist_albums(artist, callback)
+
+    @authenticated
+    def artist_tracks(self, uri, callback):
+        @self.sp.metadata(uri)
+        def on_artist(artist):
+            self.containers.artist_tracks(artist, callback)
+
+    @authenticated
     def album(self, uri, callback):
         @self.sp.metadata(uri)
         def on_album(album):
