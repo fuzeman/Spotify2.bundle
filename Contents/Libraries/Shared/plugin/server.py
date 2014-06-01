@@ -2,6 +2,7 @@ from plugin.dispatcher import Dispatcher
 from plugin.track import Track
 from plugin.util import log_progress, parse_range
 
+from threading import Lock
 import cherrypy
 import logging
 import socket
@@ -18,6 +19,9 @@ class Server(object):
         self.cache = {}
 
         self.current = None
+
+        self.lock_get = Lock()
+        self.lock_end = Lock()
 
     @property
     def sp(self):
@@ -44,19 +48,12 @@ class Server(object):
     def track(self, uri):
         log.debug('Received track request for "%s"', uri)
 
-        # Call finish() if track has changed
+        # Call end() if track has changed
         if self.current and uri != self.current.uri:
             self.track_end(self.current)
 
-        # Create new TrackReference (if one doesn't exist yet)
-        if uri not in self.cache:
-            log.debug('[%s] Creating new Track' % uri)
-
-            # Create new track reference
-            self.cache[uri] = Track(self, uri)
-
-        # Get track reference from cache
-        tr = self.cache[uri]
+        # Get or create track
+        tr = self.track_get(uri)
 
         # Update current
         self.current = tr
@@ -81,16 +78,36 @@ class Server(object):
 
     track._cp_config = {'response.stream': True}
 
+    def track_get(self, uri):
+        self.lock_get.acquire()
+
+        # Create new track (if one doesn't exist yet)
+        if uri not in self.cache:
+            log.debug('[%s] Creating new Track' % uri)
+
+            # Create new track reference
+            self.cache[uri] = Track(self, uri)
+
+        self.lock_get.release()
+
+        # Get track from cache
+        return self.cache[uri]
+
     def track_end(self, track):
+        self.lock_end.acquire()
+
         # Send "track_end" event
         self.current.end()
 
         # Cleanup resources
         if track.uri not in self.cache:
+            self.lock_end.release()
             return
 
         log.debug('[%s] Releasing resources', track.uri)
         del self.cache[track.uri]
+
+        self.lock_end.release()
 
     @staticmethod
     def stream(sr):
