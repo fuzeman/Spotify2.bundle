@@ -1,4 +1,5 @@
-from plugin.util import log_progress, func_catch, parse_content_range
+from plugin.range import ContentRange
+from plugin.util import log_progress, func_catch
 
 from threading import Thread
 from urllib2 import Request, urlopen
@@ -22,7 +23,10 @@ class Stream(object):
 
         self.response = None
         self.headers = None
+
+        self.content_range = None
         self.content_length = None
+        self.total_length = None
 
         self.thread = None
         self.buffer = bytearray()
@@ -61,28 +65,20 @@ class Stream(object):
         self.content_length = int(self.headers.getheader('Content-Length'))
         self.log('Content-Length: %s', self.content_length)
 
-        self.content_range = self.headers.getheader('Content-Range')
+        self.content_range = ContentRange.parse(self.headers.getheader('Content-Range'))
         self.log('Content-Range: %s', self.content_range)
 
-        c_range = parse_content_range(self.content_range)
-
-        if c_range:
-            # Expand range result
-            c_start, c_end, c_length = c_range
-
-            self.total_length = c_length
-
-            # Range
-            self.range_start = c_start
-            self.range_end = c_end
+        if self.content_range:
+            self.total_length = self.content_range.length
         else:
+            # Build dummy ContentRange
+            self.content_range = ContentRange(
+                start=0,
+                end=self.content_length,
+                length=self.content_length
+            )
+
             self.total_length = self.content_length
-
-            # Range
-            self.range_start = 0
-            self.range_end = self.content_length
-
-        self.log('Content-Range - parsed as %s - %s', self.range_start, self.range_end)
 
         self.log('Total-Length: %s', self.total_length)
 

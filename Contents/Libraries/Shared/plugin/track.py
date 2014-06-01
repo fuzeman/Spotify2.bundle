@@ -49,35 +49,40 @@ class Track(object):
 
         log.debug('track error: %s', error)
 
-    def stream(self, sr_range):
+    def stream(self, r_range):
         """
         :rtype: plugin.stream.Stream
         """
 
-        sr_start, sr_end = sr_range
+        if r_range:
+            r_range = r_range.start, r_range.end
+        else:
+            r_range = 0, None
+
+        r_start, r_end = r_range
 
         # Check for existing stream (with same range)
-        if sr_range in self.streams:
-            log.debug('Returning existing stream (sr_range: %s)', sr_range)
-            return self.streams[sr_range]
+        if r_range in self.streams:
+            log.debug('Returning existing stream (r_range: %s)', r_range)
+            return self.streams[r_range]
 
         for s_range in self.streams:
             s_start, s_end = s_range
 
-            if s_start > sr_start:
+            if s_start > r_start:
                 continue
 
-            if s_end != sr_end:
-                if sr_end is None or s_end is None:
+            if s_end != r_end:
+                if r_end is None or s_end is None:
                     continue
 
-                if s_end < sr_end:
+                if s_end < r_end:
                     continue
 
             log.debug('Returning existing stream with similar range (s_range: %s)', s_range)
             return self.streams[s_range]
 
-        log.debug('Building stream for track (sr_range: %s)', sr_range)
+        log.debug('Building stream for track (r_range: %s)', r_range)
 
         if self.metadata is None:
             # Fetch metadata
@@ -96,9 +101,9 @@ class Track(object):
             return None
 
         # Create new stream
-        stream = Stream(self, len(self.streams), sr_range)
+        stream = Stream(self, len(self.streams), r_range)
 
-        self.streams[sr_range] = stream
+        self.streams[r_range] = stream
         return stream
 
     def on_read(self):

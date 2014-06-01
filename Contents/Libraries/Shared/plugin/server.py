@@ -1,6 +1,7 @@
 from plugin.dispatcher import Dispatcher
+from plugin.range import Range
 from plugin.track import Track
-from plugin.util import log_progress, parse_range
+from plugin.util import log_progress
 
 from threading import Lock
 import cherrypy
@@ -67,18 +68,10 @@ class Server(object):
         # Update current
         self.current = tr
 
-        r_range = parse_range(cherrypy.request.headers.get('Range'))
-        log.debug('[%s] Range: %s', tr.uri, r_range)
+        r_range = Range.parse(cherrypy.request.headers.get('Range'))
+        log.debug('[%s] Range: %s ("%s")', tr.uri, r_range, cherrypy.request.headers.get('Range'))
 
-        c_range = (0, None)
-
-        if r_range and len(r_range) == 2:
-            c_range = (
-                r_range[0] or 0,
-                r_range[1] or None
-            )
-
-        sr = tr.stream(c_range)
+        sr = tr.stream(r_range)
 
         if not sr:
             log.info('Unable to build stream (region restrictions, etc..)')
@@ -87,23 +80,18 @@ class Server(object):
 
         sr.open()
 
-        c_range = (
-            c_range[0] or 0,
-            c_range[1] or (sr.content_length - 1)
-        )
+        c_range = r_range.content_range(sr.total_length) if r_range else None
 
         # Update headers
         cherrypy.response.headers['Accept-Ranges'] = 'bytes'
         cherrypy.response.headers['Content-Type'] = sr.headers['Content-Type']
-        cherrypy.response.headers['Content-Length'] = c_range[1] - c_range[0] + 1
+        cherrypy.response.headers['Content-Length'] = c_range.length if c_range else sr.total_length
 
-        if r_range:
-            cherrypy.response.headers['Content-Range'] = 'bytes %s-%s/%s' % (
-                c_range[0],        # range start
-                c_range[1],        # range end
-                sr.total_length    # total length
-            )
+        if c_range:
+            cherrypy.response.headers['Content-Range'] = str(c_range)
             cherrypy.response.status = 206
+
+        log.debug('response.headers: %s', cherrypy.response.headers)
 
         # Progressively return track from buffer
         return self.track_stream(sr, c_range)
@@ -140,7 +128,11 @@ class Server(object):
         self.lock_end.release()
 
     @staticmethod
-    def track_stream(sr, r_range):
+    def track_stream(sr, c_range):
+        """
+        :type sr: plugin.stream.Stream
+        :type c_range: plugin.range.ContentRange
+        """
         tr = sr.track
 
         position = 0
@@ -154,11 +146,10 @@ class Server(object):
 
         last_progress = None
 
-        if r_range and len(r_range) == 2:
-            r_start, r_end = r_range
-            log.debug('[%s] [%s] Streaming from %s to %s', tr.uri, sr.num, r_start, r_end)
+        if c_range:
+            log.debug('[%s] [%s] Streaming Content-Range: %s', tr.uri, sr.num, c_range)
 
-            position = r_start - sr.range_start
+            position = c_range.start - sr.content_range.start
             log.debug('[%s] [%s] Position: %s', tr.uri, sr.num, position)
 
         while True:
