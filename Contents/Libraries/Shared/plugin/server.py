@@ -62,6 +62,12 @@ class Server(object):
         log.debug('[%s] Range: %s - %s', tr.uri, r_start, r_end)
 
         sr = tr.stream(r_start, r_end)
+
+        if not sr:
+            log.info('Unable to build stream (region restrictions, etc..)')
+            cherrypy.response.status = 404
+            return
+
         sr.open()
 
         # Update headers

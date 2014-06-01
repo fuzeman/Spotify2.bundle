@@ -44,6 +44,11 @@ class Track(object):
 
         log.debug('received track info: %s', self.info)
 
+    def on_track_error(self, error):
+        self.info_ev.set()
+
+        log.debug('track error: %s', error)
+
     def stream(self, start, end):
         sr_range = start, end
 
@@ -61,8 +66,10 @@ class Track(object):
 
         if self.info is None:
             # Fetch stream info
-            self.metadata.track_uri(self.on_track_uri)
-            self.info_ev.wait()
+            self.metadata.track_uri(self.on_track_uri)\
+                         .on('error', self.on_track_error)
+
+            self.info_ev.wait(timeout=5)
 
         # Validate stream info
         if not self.info or 'uri' not in self.info:
@@ -102,7 +109,7 @@ class Track(object):
 
     def end(self):
         """Send track end/completion events"""
-        if self.ended:
+        if not self.playing or self.ended:
             return
 
         log.debug('[%s] Sending "track_end" event (position: %s)', self.uri, self.position)
