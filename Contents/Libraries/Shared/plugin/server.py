@@ -6,6 +6,7 @@ from threading import Lock
 import cherrypy
 import logging
 import socket
+import traceback
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +47,14 @@ class Server(object):
         cherrypy.engine.stop()
 
     def track(self, uri):
+        try:
+            return self.track_handle(uri)
+        except Exception, ex:
+            log.error('%s - %s', ex, traceback.format_exc())
+
+    track._cp_config = {'response.stream': True}
+
+    def track_handle(self, uri):
         log.debug('Received track request for "%s"', uri)
 
         # Call end() if track has changed
@@ -58,10 +67,18 @@ class Server(object):
         # Update current
         self.current = tr
 
-        r_start, r_end = parse_range(cherrypy.request.headers.get('Range'))
-        log.debug('[%s] Range: %s - %s', tr.uri, r_start, r_end)
+        r_range = parse_range(cherrypy.request.headers.get('Range'))
+        log.debug('[%s] Range: %s', tr.uri, r_range)
 
-        sr = tr.stream(r_start, r_end)
+        c_range = (0, None)
+
+        if r_range and len(r_range) == 2:
+            c_range = (
+                r_range[0] or 0,
+                r_range[1] or None
+            )
+
+        sr = tr.stream(c_range)
 
         if not sr:
             log.info('Unable to build stream (region restrictions, etc..)')
@@ -70,19 +87,26 @@ class Server(object):
 
         sr.open()
 
+        c_range = (
+            c_range[0] or 0,
+            c_range[1] or (sr.content_length - 1)
+        )
+
         # Update headers
         cherrypy.response.headers['Accept-Ranges'] = 'bytes'
         cherrypy.response.headers['Content-Type'] = sr.headers['Content-Type']
-        cherrypy.response.headers['Content-Length'] = sr.length
+        cherrypy.response.headers['Content-Length'] = c_range[1] - c_range[0] + 1
 
-        if r_start or r_end:
-            cherrypy.response.headers['Content-Range'] = sr.headers['Content-Range']
+        if r_range:
+            cherrypy.response.headers['Content-Range'] = 'bytes %s-%s/%s' % (
+                c_range[0],        # range start
+                c_range[1],        # range end
+                sr.total_length    # total length
+            )
             cherrypy.response.status = 206
 
         # Progressively return track from buffer
-        return self.stream(sr)
-
-    track._cp_config = {'response.stream': True}
+        return self.track_stream(sr, c_range)
 
     def track_get(self, uri):
         self.lock_get.acquire()
@@ -116,10 +140,11 @@ class Server(object):
         self.lock_end.release()
 
     @staticmethod
-    def stream(sr):
+    def track_stream(sr, r_range):
         tr = sr.track
 
         position = 0
+        end = None
 
         chunk_size_min = 6 * 1024
         chunk_size_max = 10 * 1024
@@ -129,23 +154,30 @@ class Server(object):
 
         last_progress = None
 
+        if r_range and len(r_range) == 2:
+            r_start, r_end = r_range
+            log.debug('[%s] [%s] Streaming from %s to %s', tr.uri, sr.num, r_start, r_end)
+
+            position = r_start - sr.range_start
+            log.debug('[%s] [%s] Position: %s', tr.uri, sr.num, position)
+
         while True:
             # Adjust chunk_size
             if chunk_scale < 1:
-                chunk_scale = 2 * (float(position) / sr.length)
+                chunk_scale = 2 * (float(position) / sr.content_length)
                 chunk_size = int(chunk_size_min + (chunk_size_max * chunk_scale))
 
                 if chunk_scale > 1:
                     chunk_scale = 1
 
-            if position + chunk_size > sr.length:
-                chunk_size = sr.length - position
+            if position + chunk_size > sr.content_length:
+                chunk_size = sr.content_length - position
 
             # Read chunk
             chunk = sr.read(position, chunk_size)
 
             if not chunk:
-                log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (tr.uri, sr.num, position, sr.length))
+                log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (tr.uri, sr.num, position, sr.content_length))
                 break
 
             last_progress = log_progress(sr, '[%s] Streaming' % sr.num, position, last_progress)

@@ -49,15 +49,35 @@ class Track(object):
 
         log.debug('track error: %s', error)
 
-    def stream(self, start, end):
-        sr_range = start, end
+    def stream(self, sr_range):
+        """
+        :rtype: plugin.stream.Stream
+        """
+
+        sr_start, sr_end = sr_range
 
         # Check for existing stream (with same range)
         if sr_range in self.streams:
-            log.debug('Returning existing stream (start: %s, end: %s)', start, end)
+            log.debug('Returning existing stream (sr_range: %s)', sr_range)
             return self.streams[sr_range]
 
-        log.debug('Building stream for track (start: %s, end: %s)', start, end)
+        for s_range in self.streams:
+            s_start, s_end = s_range
+
+            if s_start > sr_start:
+                continue
+
+            if s_end != sr_end:
+                if sr_end is None or s_end is None:
+                    continue
+
+                if s_end < sr_end:
+                    continue
+
+            log.debug('Returning existing stream with similar range (s_range: %s)', s_range)
+            return self.streams[s_range]
+
+        log.debug('Building stream for track (sr_range: %s)', sr_range)
 
         if self.metadata is None:
             # Fetch metadata
@@ -76,7 +96,7 @@ class Track(object):
             return None
 
         # Create new stream
-        stream = Stream(self, len(self.streams), start, end)
+        stream = Stream(self, len(self.streams), sr_range)
 
         self.streams[sr_range] = stream
         return stream

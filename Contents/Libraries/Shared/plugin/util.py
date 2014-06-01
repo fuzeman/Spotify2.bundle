@@ -8,7 +8,7 @@ def log_progress(stream, label, position, last):
     """
     :type track: TrackReference
     """
-    percent = float(position) / stream.length
+    percent = float(position) / stream.content_length
     value = int(percent * 20)
 
     if value == last:
@@ -35,21 +35,57 @@ def func_catch(func, *args, **kwargs):
 
 def parse_range(value):
     if not value:
-        return 0, None
+        return None
 
     value = value.split('=')
 
     if len(value) != 2:
-        return 0, None
+        return None
 
-    range_type, range = value
+    unit, value = value
 
-    if range_type != 'bytes':
-        return 0, None
+    if unit != 'bytes':
+        return None
 
-    range = range.split('-')
+    parts = value.split('-')
 
-    if len(range) != 2:
-        return 0, None
+    if len(parts) != 2:
+        return None
 
-    return int(range[0] or 0), int(range[1]) if range[1] else None
+    return int(parts[0] or 0), int(parts[1]) if parts[1] else None
+
+
+def parse_content_range(value):
+    if not value:
+        return None
+
+    # Get unit
+    value = value.split(' ')
+
+    if len(value) != 2:
+        return None
+
+    unit, value = value
+
+    # Validate unit
+    if unit != 'bytes':
+        return None
+
+    # Get Total-Length
+    parts = value.split('/')
+
+    if len(parts) != 2:
+        return None
+
+    value, length = parts
+
+    # Get Range
+    parts = value.split('-')
+
+    if len(parts) != 2:
+        return None
+
+    start, end = parts
+
+    # Return result
+    return int(start), int(end), int(length)
