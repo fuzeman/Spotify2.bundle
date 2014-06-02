@@ -1,7 +1,6 @@
 from plugin.dispatcher import Dispatcher
 from plugin.range import Range
 from plugin.track import Track
-from plugin.util import log_progress
 
 from threading import Lock
 import cherrypy
@@ -63,38 +62,38 @@ class Server(object):
             self.track_end(self.current)
 
         # Get or create track
-        tr = self.track_get(uri)
+        track = self.track_get(uri)
 
         # Update current
-        self.current = tr
+        self.current = track
 
         r_range = Range.parse(cherrypy.request.headers.get('Range'))
-        log.info('[%s] Range: %s', tr.uri, repr(r_range))
+        log.info('[%s] Range: %s', track.uri, repr(r_range))
 
-        sr = tr.stream(r_range)
+        stream = track.stream(r_range)
 
-        if not sr:
+        if not stream:
             log.warn('Unable to build stream (region restrictions, etc..)')
             cherrypy.response.status = 404
             return
 
-        sr.open()
+        stream.open()
 
-        c_range = r_range.content_range(sr.total_length) if r_range else None
+        c_range = r_range.content_range(stream.total_length) if r_range else None
 
         # Update headers
         cherrypy.response.headers['Accept-Ranges'] = 'bytes'
-        cherrypy.response.headers['Content-Type'] = sr.headers['Content-Type']
-        cherrypy.response.headers['Content-Length'] = c_range.length if c_range else sr.total_length
+        cherrypy.response.headers['Content-Type'] = stream.headers['Content-Type']
+        cherrypy.response.headers['Content-Length'] = c_range.length if c_range else stream.total_length
 
         if c_range:
-            log.info('[%s] Content-Range: %s', tr.uri, repr(c_range))
+            log.info('[%s] Content-Range: %s', track.uri, repr(c_range))
 
             cherrypy.response.headers['Content-Range'] = str(c_range)
             cherrypy.response.status = 206
 
-        # Progressively return track from buffer
-        return self.track_stream(sr, c_range)
+        # Stream response
+        return stream.iter(c_range)
 
     def track_get(self, uri):
         self.lock_get.acquire()
@@ -126,59 +125,6 @@ class Server(object):
         del self.cache[track.uri]
 
         self.lock_end.release()
-
-    @staticmethod
-    def track_stream(sr, c_range):
-        """
-        :type sr: plugin.stream.Stream
-        :type c_range: plugin.range.ContentRange
-        """
-        tr = sr.track
-
-        position = 0
-        end = None
-
-        chunk_size_min = 6 * 1024
-        chunk_size_max = 10 * 1024
-
-        chunk_scale = 0
-        chunk_size = chunk_size_min
-
-        last_progress = None
-
-        if c_range:
-            log.debug('[%s] [%s] Streaming Content-Range: %s', tr.uri, sr.num, c_range)
-
-            position = c_range.start - sr.content_range.start
-            log.debug('[%s] [%s] Position: %s', tr.uri, sr.num, position)
-
-        while True:
-            # Adjust chunk_size
-            if chunk_scale < 1:
-                chunk_scale = 2 * (float(position) / sr.content_length)
-                chunk_size = int(chunk_size_min + (chunk_size_max * chunk_scale))
-
-                if chunk_scale > 1:
-                    chunk_scale = 1
-
-            if position + chunk_size > sr.content_length:
-                chunk_size = sr.content_length - position
-
-            # Read chunk
-            chunk = sr.read(position, chunk_size)
-
-            if not chunk:
-                log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (tr.uri, sr.num, position, sr.content_length))
-                break
-
-            last_progress = log_progress(sr, '[%s] Streaming' % sr.num, position, last_progress)
-
-            position = position + len(chunk)
-
-            # Write chunk
-            yield chunk
-
-        log.info('[%s] [%s] Complete', tr.uri, sr.num)
 
     def get_track_url(self, uri):
         return "http://%s:%d/track/%s.mp3" % (
