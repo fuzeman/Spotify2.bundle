@@ -31,6 +31,8 @@ class Server(object):
     def start(self):
         # CherryPy
         cherrypy.config.update({
+            'engine.autoreload.on': False,
+
             'server.socket_host': '0.0.0.0',
             'server.socket_port': self.port
         })
