@@ -1,30 +1,70 @@
 class Range(object):
     def __init__(self, start=None, end=None, unit='bytes'):
         self.unit = unit
-        self.start = start
-        self.end = end
+        self._start = start
+        self._end = end
 
         self.original = None
 
+    @property
+    def start(self):
+        if self._start is None:
+            return ''
+
+        return self._start
+
+    @start.setter
+    def start(self, value):
+        self._start = value
+
+    @property
+    def end(self):
+        if self._end is None:
+            return ''
+
+        return self._end
+
+    @end.setter
+    def end(self, value):
+        self._end = value
+
     def content_range(self, length):
         o = ContentRange()
-        o.length = length
         o.unit = self.unit
 
-        if self.start is None and self.end is None:
+        if self._start is None and self._end is None:
             return None
 
-        if self.start is None:
+        if self._start is None:
             o.start = length - o.end
             o.end = length - 1
-        elif self.end is None:
-            o.start = self.start
+        elif self._end is None:
+            o.start = self._start
             o.end = length - 1
         else:
-            o.start = self.start
-            o.end = self.end
+            o.start = self._start
+            o.end = self._end
+
+        o.length = abs(o.end - o.start)
 
         return o
+
+    def tuple(self):
+        return (
+            self.start,
+            self.end
+        )
+
+    def __str__(self):
+        return '%s=%s-%s' % (
+            self.unit,
+
+            self.start,
+            self.end,
+        )
+
+    def __repr__(self):
+        return '<Range %s>' % str(self)
 
     @classmethod
     def parse(cls, value):
@@ -61,9 +101,13 @@ class ContentRange(Range):
         return '%s %s-%s/%s' % (
             self.unit,
 
-            self.start, self.end,
+            self.start,
+            self.end,
             self.length
         )
+
+    def __repr__(self):
+        return '<ContentRange %s>' % str(self)
 
     @classmethod
     def parse(cls, value):

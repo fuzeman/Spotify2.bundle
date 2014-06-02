@@ -56,7 +56,7 @@ class Server(object):
     track._cp_config = {'response.stream': True}
 
     def track_handle(self, uri):
-        log.debug('Received track request for "%s"', uri)
+        log.info('Received track request for "%s"', uri)
 
         # Call end() if track has changed
         if self.current and uri != self.current.uri:
@@ -69,12 +69,12 @@ class Server(object):
         self.current = tr
 
         r_range = Range.parse(cherrypy.request.headers.get('Range'))
-        log.debug('[%s] Range: %s ("%s")', tr.uri, r_range, cherrypy.request.headers.get('Range'))
+        log.info('[%s] Range: %s', tr.uri, repr(r_range))
 
         sr = tr.stream(r_range)
 
         if not sr:
-            log.info('Unable to build stream (region restrictions, etc..)')
+            log.warn('Unable to build stream (region restrictions, etc..)')
             cherrypy.response.status = 404
             return
 
@@ -88,10 +88,10 @@ class Server(object):
         cherrypy.response.headers['Content-Length'] = c_range.length if c_range else sr.total_length
 
         if c_range:
+            log.info('[%s] Content-Range: %s', tr.uri, repr(c_range))
+
             cherrypy.response.headers['Content-Range'] = str(c_range)
             cherrypy.response.status = 206
-
-        log.debug('response.headers: %s', cherrypy.response.headers)
 
         # Progressively return track from buffer
         return self.track_stream(sr, c_range)

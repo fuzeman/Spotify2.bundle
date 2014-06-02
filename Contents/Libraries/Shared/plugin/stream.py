@@ -13,11 +13,16 @@ class Stream(object):
     buffer_wait_ms = 100
     buffer_wait = buffer_wait_ms / 1000.0
 
-    def __init__(self, track, num, sr_range):
+    def __init__(self, track, num, r_range):
+        """
+        :type track: plugin.track.Track
+        :type num: int
+        :type r_range: plugin.range.Range
+        """
         self.track = track
         self.num = num
 
-        self.range = sr_range
+        self.range = r_range
 
         self.request = None
 
@@ -42,10 +47,7 @@ class Stream(object):
         headers = {}
 
         if self.range:
-            headers['Range'] = 'bytes=%s-%s' % (
-                self.range[0] or '0',  # range start
-                self.range[1] or '',  # range end
-            )
+            headers['Range'] = str(self.range)
 
         self.request = Request(self.track.info['uri'], headers=headers)
 

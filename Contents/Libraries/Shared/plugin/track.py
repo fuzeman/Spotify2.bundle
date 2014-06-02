@@ -1,3 +1,4 @@
+from plugin.range import Range
 from plugin.stream import Stream
 
 from threading import Event
@@ -51,38 +52,35 @@ class Track(object):
 
     def stream(self, r_range):
         """
+        :type r_range: plugin.range.Range
         :rtype: plugin.stream.Stream
         """
 
-        if r_range:
-            r_range = r_range.start, r_range.end
-        else:
-            r_range = 0, None
-
-        r_start, r_end = r_range
+        if r_range is None:
+            r_range = Range(0, None)
 
         # Check for existing stream (with same range)
-        if r_range in self.streams:
-            log.debug('Returning existing stream (r_range: %s)', r_range)
-            return self.streams[r_range]
+        if r_range.tuple() in self.streams:
+            log.debug('Returning existing stream (r_range: %s)', repr(r_range))
+            return self.streams[r_range.tuple()]
 
         for s_range in self.streams:
             s_start, s_end = s_range
 
-            if s_start > r_start:
+            if s_start > r_range.start:
                 continue
 
-            if s_end != r_end:
-                if r_end is None or s_end is None:
+            if s_end != r_range.end:
+                if r_range.end is None or s_end is None:
                     continue
 
-                if s_end < r_end:
+                if s_end < r_range.end:
                     continue
 
-            log.debug('Returning existing stream with similar range (s_range: %s)', s_range)
+            log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
             return self.streams[s_range]
 
-        log.debug('Building stream for track (r_range: %s)', r_range)
+        log.debug('Building stream for track (r_range: %s)', repr(r_range))
 
         if self.metadata is None:
             # Fetch metadata
@@ -103,7 +101,7 @@ class Track(object):
         # Create new stream
         stream = Stream(self, len(self.streams), r_range)
 
-        self.streams[r_range] = stream
+        self.streams[r_range.tuple()] = stream
         return stream
 
     def on_read(self):
