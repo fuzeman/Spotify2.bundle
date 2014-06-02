@@ -52,6 +52,10 @@ class SpotifyClient(object):
         self.sp.login(self.username, self.password, lambda: self.on_login.set())
 
     def on_close(self, code, reason=None):
+        # Force re-authentication
+        self.sp.authenticated = False
+
+        # Reconnect
         self.connect()
 
     def connect(self):
