@@ -5,6 +5,7 @@ ROUTEBASE   = PREFIX + '/'
 SERVER_PORT = 32420
 
 LOGGERS     = [
+    'cherrypy',
     'plugin',
     'pyemitter',
     'requests',
