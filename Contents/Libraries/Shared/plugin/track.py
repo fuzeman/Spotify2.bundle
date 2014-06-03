@@ -1,3 +1,4 @@
+from plugin.range import Range
 from plugin.stream import Stream
 
 from threading import Event
@@ -49,15 +50,37 @@ class Track(object):
 
         log.debug('track error: %s', error)
 
-    def stream(self, start, end):
-        sr_range = start, end
+    def stream(self, r_range):
+        """
+        :type r_range: plugin.range.Range
+        :rtype: plugin.stream.Stream
+        """
+
+        if r_range is None:
+            r_range = Range(0, None)
 
         # Check for existing stream (with same range)
-        if sr_range in self.streams:
-            log.debug('Returning existing stream (start: %s, end: %s)', start, end)
-            return self.streams[sr_range]
+        if r_range.tuple() in self.streams:
+            log.debug('Returning existing stream (r_range: %s)', repr(r_range))
+            return self.streams[r_range.tuple()]
 
-        log.debug('Building stream for track (start: %s, end: %s)', start, end)
+        for s_range in self.streams:
+            s_start, s_end = s_range
+
+            if s_start > r_range.start:
+                continue
+
+            if s_end != r_range.end:
+                if r_range.end is None or s_end is None:
+                    continue
+
+                if s_end < r_range.end:
+                    continue
+
+            log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
+            return self.streams[s_range]
+
+        log.debug('Building stream for track (r_range: %s)', repr(r_range))
 
         if self.metadata is None:
             # Fetch metadata
@@ -76,9 +99,9 @@ class Track(object):
             return None
 
         # Create new stream
-        stream = Stream(self, len(self.streams), start, end)
+        stream = Stream(self, len(self.streams), r_range)
 
-        self.streams[sr_range] = stream
+        self.streams[r_range.tuple()] = stream
         return stream
 
     def on_read(self):

@@ -1,3 +1,4 @@
+from plugin.range import ContentRange
 from plugin.util import log_progress, func_catch
 
 from threading import Thread
@@ -12,22 +13,35 @@ class Stream(object):
     buffer_wait_ms = 100
     buffer_wait = buffer_wait_ms / 1000.0
 
-    def __init__(self, track, num, start, end):
+    chunk_size_min = 6 * 1024
+    chunk_size_max = 10 * 1024
+
+    def __init__(self, track, num, r_range):
+        """
+        :type track: plugin.track.Track
+        :type num: int
+        :type r_range: plugin.range.Range
+        """
+        # Stream request
         self.track = track
         self.num = num
+        self.range = r_range
 
-        self.start = start
-        self.end = end
-
+        # HTTP request/response
         self.request = None
-
         self.response = None
         self.headers = None
-        self.length = None
 
+        # Content info
+        self.content_range = None
+        self.content_length = None
+        self.total_length = None
+
+        # Read buffer
         self.thread = None
         self.buffer = bytearray()
 
+        # State
         self.opened = False
         self.reading = False
 
@@ -38,11 +52,8 @@ class Stream(object):
     def prepare(self):
         headers = {}
 
-        if self.start or self.end:
-            headers['Range'] = 'bytes=%s-%s' % (
-                self.start or '',
-                self.end or ''
-            )
+        if self.range:
+            headers['Range'] = str(self.range)
 
         self.request = Request(self.track.info['uri'], headers=headers)
 
@@ -59,8 +70,25 @@ class Stream(object):
 
         self.log('Opened')
 
-        self.length = int(self.headers.getheader('Content-Length'))
-        self.log('Content-Length: %s', self.length)
+        self.content_length = int(self.headers.getheader('Content-Length'))
+        self.log('Content-Length: %s', self.content_length)
+
+        self.content_range = ContentRange.parse(self.headers.getheader('Content-Range'))
+        self.log('Content-Range: %s', self.content_range)
+
+        if self.content_range:
+            self.total_length = self.content_range.length
+        else:
+            # Build dummy ContentRange
+            self.content_range = ContentRange(
+                start=0,
+                end=self.content_length,
+                length=self.content_length
+            )
+
+            self.total_length = self.content_length
+
+        self.log('Total-Length: %s', self.total_length)
 
         if self.headers.getheader('Content-Type') == 'text/xml':
             # Error, log response
@@ -99,3 +127,49 @@ class Stream(object):
 
         self.reading = False
         self.log('Read finished')
+
+    def iter(self, c_range):
+        """
+        :type c_range: plugin.range.ContentRange
+        """
+        position = 0
+        end = None
+
+        chunk_scale = 0
+        chunk_size = self.chunk_size_min
+
+        last_progress = None
+
+        if c_range:
+            log.debug('[%s] [%s] Streaming Content-Range: %s', self.track.uri, self.num, c_range)
+
+            position = c_range.start - self.content_range.start
+            log.debug('[%s] [%s] Position: %s', self.track.uri, self.num, position)
+
+        while True:
+            # Adjust chunk_size
+            if chunk_scale < 1:
+                chunk_scale = 2 * (float(position) / self.content_length)
+                chunk_size = int(self.chunk_size_min + (self.chunk_size_max * chunk_scale))
+
+                if chunk_scale > 1:
+                    chunk_scale = 1
+
+            if position + chunk_size > self.content_length:
+                chunk_size = self.content_length - position
+
+            # Read chunk
+            chunk = self.read(position, chunk_size)
+
+            if not chunk:
+                log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (self.track.uri, self.num, position, self.content_length))
+                break
+
+            last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress)
+
+            position = position + len(chunk)
+
+            # Write chunk
+            yield chunk
+
+        log.info('[%s] [%s] Complete', self.track.uri, self.num)
