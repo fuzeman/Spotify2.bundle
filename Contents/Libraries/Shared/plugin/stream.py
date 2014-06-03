@@ -1,6 +1,7 @@
 from plugin.range import ContentRange
 from plugin.util import log_progress, func_catch
 
+from pyemitter import Emitter
 from threading import Thread
 from urllib2 import Request, urlopen
 import logging
@@ -9,7 +10,7 @@ import time
 log = logging.getLogger(__name__)
 
 
-class Stream(object):
+class Stream(Emitter):
     buffer_wait_ms = 100
     buffer_wait = buffer_wait_ms / 1000.0
 
@@ -37,8 +38,10 @@ class Stream(object):
         self.content_length = None
         self.total_length = None
 
-        # Read buffer
-        self.thread = None
+        # Data buffering
+        self.read_thread = None
+        self.read_sleep = None
+
         self.buffer = bytearray()
 
         # State
@@ -62,6 +65,7 @@ class Stream(object):
             return
 
         self.opened = True
+        self.emit('opened')
 
         self.prepare()
         self.response = urlopen(self.request)
@@ -95,13 +99,17 @@ class Stream(object):
             self.log(self.response.read())
             return
 
+        self.reading = True
+
         # Read back entire stream
-        self.thread = Thread(target=func_catch, args=(self.run,))
-        self.thread.start()
+        self.read_thread = Thread(target=func_catch, args=(self.run,))
+        self.read_thread.start()
 
     def read(self, position, chunk_size=1024):
+        # Fire 'on_read'
         self.track.on_read()
 
+        # Wait until range is buffered
         while self.reading and len(self.buffer) < position + 1:
             time.sleep(self.buffer_wait)
 
@@ -110,8 +118,6 @@ class Stream(object):
     def run(self):
         chunk_size = 1024
         last_progress = None
-
-        self.reading = True
 
         self.log('Reading...')
 
@@ -125,8 +131,14 @@ class Stream(object):
 
             last_progress = log_progress(self, '[%s]   Reading' % self.num, len(self.buffer), last_progress)
 
+            # Sleep between read calls (if enabled)
+            if self.read_sleep:
+                time.sleep(self.read_sleep)
+
         self.reading = False
         self.log('Read finished')
+
+        self.emit('buffered')
 
     def iter(self, c_range):
         """
