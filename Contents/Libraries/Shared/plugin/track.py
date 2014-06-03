@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class Track(object):
     reuse_distance = 1024 * 1024  # 1MB (in bytes)
+    final_distance = 128 * 1024   # 128kB (in bytes)
     limit_seconds = 5
 
     def __init__(self, server, uri):
@@ -86,13 +87,16 @@ class Track(object):
                 if s_end < r_range.end:
                     continue
 
-            # Check if the range has been buffered yet
-            # TODO - Spawn streams for final-bytes requests (otherwise multi-request clients will spawn new streams)
-            # TODO - Ensure stream-source isn't about to expire
+            # Check if we should open a new stream
             buf_distance = (r_range.start - s_start) - len(stream.buffer)
+            end_distance = stream.total_length - r_range.start
 
-            if buf_distance > self.reuse_distance:
-                log.debug("Stream is %s bytes away from buffering this range, ignoring it", buf_distance)
+            if buf_distance > self.reuse_distance and end_distance < self.final_distance:
+                # TODO - Ensure stream-source isn't about to expire
+                log.debug(
+                    "Buffer is %s bytes away and range is %s bytes from the end of the track - ignoring it",
+                    buf_distance, end_distance
+                )
                 continue
 
             log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
@@ -135,7 +139,6 @@ class Track(object):
             for r_range, stream in self.streams.items()
             if stream.reading
         ]
-        log.debug('%s streams, %s active', len(self.streams), len(streams_active))
 
         # Ignore if this is the first active stream
         if len(streams_active) < 1:
