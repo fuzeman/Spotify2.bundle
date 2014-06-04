@@ -114,10 +114,15 @@ class Objects(object):
                 thumb=R("placeholder-playlist.png")
             )
 
+        thumb = R("placeholder-playlist.png")
+
+        if item.image:
+            thumb = item.image.file_url
+
         return DirectoryObject(
             key=route_path('playlist', item.uri),
             title=normalize(item.name),
-            thumb=R("placeholder-playlist.png")
+            thumb=thumb
         )
 
     @staticmethod

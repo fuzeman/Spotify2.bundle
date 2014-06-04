@@ -46,7 +46,7 @@ class SpotifySearch(ViewBase):
 
         if not plain:
             self.append_header(
-                oc, '%s (%s)' % (self.get_title(type, placeholders), locale.format('%d', total, grouping=True)),
+                oc, '%s (%s)' % (self.get_title(type, True), locale.format('%d', total, grouping=True)),
                 route_path('search', query=query, type=type, count=50, plain=True)
             )
 
@@ -57,7 +57,7 @@ class SpotifySearch(ViewBase):
         title = ""
 
         if type == 'artists':
-            title = " Artists"
+            title = "Artists"
         elif type == 'albums':
             title = "Albums"
         elif type == 'tracks':
