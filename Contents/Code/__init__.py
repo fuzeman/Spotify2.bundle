@@ -81,14 +81,14 @@ def artist(**kwargs):
     return plugin_callback(SpotifyHost.artist, kwargs, async=True)
 
 
+@route(ROUTEBASE + 'artist/{uri}/top_tracks')
+def artist_top_tracks(**kwargs):
+    return plugin_callback(SpotifyHost.artist_top_tracks, kwargs, async=True)
+
+
 @route(ROUTEBASE + 'artist/{uri}/albums')
 def artist_albums(**kwargs):
     return plugin_callback(SpotifyHost.artist_albums, kwargs, async=True)
-
-
-@route(ROUTEBASE + 'artist/{uri}/top_tracks')
-def artist_top_tracks(**kwargs):
-    return plugin_callback(SpotifyHost.artist_tracks, kwargs)
 
 
 @route(ROUTEBASE + 'album/{uri}')

@@ -58,6 +58,20 @@ class Containers(ViewBase):
             tracks.extend(items)
             build()
 
+    def artist_top_tracks(self, artist, callback):
+        oc = ObjectContainer(
+            title2='%s - %s' % (normalize(artist.name), 'Top Tracks'),
+            content=ContainerContent.Albums
+        )
+
+        track_uris, _ = self.client.artist_uris(artist)
+
+        @self.sp.metadata(track_uris)
+        def on_albums(track):
+            for track in track:
+                oc.add(self.objects.get(track))
+
+            callback(oc)
 
     def artist_albums(self, artist, callback):
         oc = ObjectContainer(
@@ -65,17 +79,14 @@ class Containers(ViewBase):
             content=ContainerContent.Albums
         )
 
-        album_uris = [al.uri for al in artist.albums if al is not None]
+        _, album_uris = self.client.artist_uris(artist)
 
         @self.sp.metadata(album_uris)
         def on_albums(albums):
             for album in albums:
-                oc.add(self.objects.album(album))
+                oc.add(self.objects.get(album))
 
             callback(oc)
-
-    def artist_tracks(self, artist, callback):
-        pass
 
     def album(self, album, callback):
         oc = ObjectContainer(
