@@ -6,7 +6,6 @@ from search import SpotifySearch
 from utils import authenticated, ViewMode
 
 from cachecontrol import CacheControl
-from tunigoapi import Tunigo
 import requests
 
 
@@ -17,7 +16,6 @@ class SpotifyHost(object):
         self.start()
 
         self.search = SpotifySearch(self)
-        self.tunigo  = None
 
         self.session = requests.session()
         self.session_cached = CacheControl(self.session)
@@ -73,10 +71,8 @@ class SpotifyHost(object):
         self.client.server = self.server
 
         # Update preferences and start/restart the client
-        self.client.set_preferences(self.username, self.password, self.proxy_tracks)
+        self.client.set_preferences(self.username, self.password, self.proxy_tracks, self.region)
         self.client.start()
-
-        self.tunigo  = Tunigo(self.region)
 
     #
     # Core
@@ -274,3 +270,30 @@ class SpotifyHost(object):
                 )
             ],
         )
+
+    def featured_playlists(self, callback):
+        oc = ObjectContainer(
+            title2=L("MENU_FEATURED_PLAYLISTS"),
+            content=ContainerContent.Playlists,
+            view_group=ViewMode.FeaturedPlaylists
+        )
+
+        callback(oc)
+
+    def top_playlists(self, callback):
+        oc = ObjectContainer(
+            title2=L("MENU_TOP_PLAYLISTS"),
+            content=ContainerContent.Playlists,
+            view_group=ViewMode.FeaturedPlaylists
+        )
+
+        callback(oc)
+
+    def new_releases(self, callback):
+        uris = self.client.new_releases()
+
+        # TODO pull this info straight from the tunigo response
+
+        @self.sp.metadata(uris)
+        def on_albums(albums):
+            self.containers.albums(albums, callback, title=L("MENU_NEW_RELEASES"))

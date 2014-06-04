@@ -144,17 +144,17 @@ def explore(**kwargs):
 
 @route(ROUTEBASE + 'explore/featured_playlists')
 def featured_playlists(**kwargs):
-    return plugin_callback(SpotifyHost.featured_playlists, kwargs)
+    return plugin_callback(SpotifyHost.featured_playlists, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'explore/top_playlists')
 def top_playlists(**kwargs):
-    return plugin_callback(SpotifyHost.top_playlists, kwargs)
+    return plugin_callback(SpotifyHost.top_playlists, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'explore/new_releases')
 def new_releases(**kwargs):
-    return plugin_callback(SpotifyHost.new_releases, kwargs)
+    return plugin_callback(SpotifyHost.new_releases, kwargs, async=True)
 
 
 def Start():

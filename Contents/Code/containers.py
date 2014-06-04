@@ -154,9 +154,12 @@ class Containers(ViewBase):
 
         callback(oc)
 
-    def albums(self, albums, callback):
+    def albums(self, albums, callback, title=None):
+        if title is None:
+            title = L("MENU_ALBUMS")
+
         oc = ObjectContainer(
-            title2=L("MENU_ALBUMS"),
+            title2=title,
             content=ContainerContent.Albums
         )
 
