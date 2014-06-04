@@ -19,6 +19,7 @@ class Connection(Component, Emitter):
 
         self.client = None
         self.connected = False
+        self.disconnecting = False
 
         self.heartbeat_thread = None
 
@@ -29,6 +30,7 @@ class Connection(Component, Emitter):
 
     def reset(self):
         self.connected = False
+        self.disconnecting = False
 
         self.heartbeat_thread = None
 
@@ -55,6 +57,7 @@ class Connection(Component, Emitter):
         if not self.connected:
             return
 
+        self.disconnecting = True
         self.connected = False
 
         if self.client:
@@ -103,7 +106,7 @@ class Connection(Component, Emitter):
     def on_close(self, code, reason=None):
         log.info('Spotify connection closed')
 
-        if not self.connected:
+        if self.disconnecting:
             log.debug('Client requested disconnect, ignoring "close" event')
             return
 
