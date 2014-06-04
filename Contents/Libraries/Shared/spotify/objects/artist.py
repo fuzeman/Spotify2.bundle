@@ -15,7 +15,7 @@ class Artist(Descriptor):
     name = PropertyProxy
 
     popularity = PropertyProxy
-    top_track = PropertyProxy
+    top_tracks = PropertyProxy('top_track', 'TopTracks')
 
     albums = PropertyProxy('album_group', 'AlbumGroup')
     singles = PropertyProxy('single_group', 'AlbumGroup')

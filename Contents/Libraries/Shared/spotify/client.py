@@ -58,9 +58,11 @@ class Spotify(Component, Emitter):
 
     def connect(self):
         if not self.authenticated:
-            raise Exception('Account has not been authenticated')
+            log.info('Authenticating...')
+            self.components.authentication.connect()
+            return
 
-        log.info('Connecting to Spotify...')
+        log.info('Connecting...')
         self._resolve_ap()
 
     # Resolve AP
