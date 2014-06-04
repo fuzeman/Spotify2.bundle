@@ -15,6 +15,10 @@ class ViewBase(object):
     def sp(self):
         return self.host.sp
 
+    @property
+    def client(self):
+        return self.host.client
+
     @staticmethod
     def use_placeholders():
         return Client.Product in [

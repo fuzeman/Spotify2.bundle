@@ -15,16 +15,8 @@ class Containers(ViewBase):
             content=ContainerContent.Albums
         )
 
-        albums = []
-        tracks = []
-
-        # Object URIs
-        # TODO top_tracks needs to use the actual users region
-        top_tracks = [tt for tt in artist.top_tracks if tt.country == 'NZ']
-        top_tracks = top_tracks[0] if top_tracks else None
-
-        track_uris = [tr.uri for tr in top_tracks.tracks] if top_tracks else []
-        album_uris = [al.uri for al in artist.albums if al is not None]
+        track_uris, album_uris = self.client.artist_uris(artist)
+        tracks, albums = [], []
 
         def build():
             # Check if we are ready to build the response yet
