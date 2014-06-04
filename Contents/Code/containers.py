@@ -1,18 +1,9 @@
-from objects import Objects
 from routing import route_path
 from utils import ViewMode, normalize
+from view import ViewBase
 
 
-class Containers(object):
-    def __init__(self, host):
-        self.host = host
-
-        self.objects = Objects(host)
-
-    @property
-    def sp(self):
-        return self.host.sp
-
+class Containers(ViewBase):
     #
     # Metadata
     #
@@ -24,19 +15,57 @@ class Containers(object):
             content=ContainerContent.Albums
         )
 
-        oc.add(DirectoryObject(
-            key=route_path('artist', artist.uri, 'albums'),
-            title='Albums (%s)' % len(artist.albums)
-        ))
+        albums = []
+        tracks = []
 
+        # Object URIs
+        # TODO top_tracks needs to use the actual users region
+        top_tracks = [tt for tt in artist.top_tracks if tt.country == 'NZ']
+        top_tracks = top_tracks[0] if top_tracks else None
+
+        track_uris = [tr.uri for tr in top_tracks.tracks] if top_tracks else []
         album_uris = [al.uri for al in artist.albums if al is not None]
 
-        @self.sp.metadata(album_uris[:7])
-        def on_albums(albums):
-            for album in albums:
-                oc.add(self.objects.album(album))
+        def build():
+            # Check if we are ready to build the response yet
+            if len(albums) != len(album_uris[:self.columns]):
+                return
+
+            if len(tracks) != len(track_uris[:self.columns]):
+                return
+
+            # Top Tracks
+            self.append_header(
+                oc, 'Top Tracks (%s)' % len(track_uris),
+                route_path('artist', artist.uri, 'top_tracks')
+            )
+            self.append_items(oc, tracks)
+
+            # Albums
+            self.append_header(
+                oc, 'Albums (%s)' % len(album_uris),
+                route_path('artist', artist.uri, 'albums')
+            )
+            self.append_items(oc, albums)
 
             callback(oc)
+
+        if not track_uris and not album_uris:
+            build()
+            return
+
+        # Request albums
+        @self.sp.metadata(album_uris[:self.columns])
+        def on_albums(items):
+            albums.extend(items)
+            build()
+
+        # Request tracks
+        @self.sp.metadata(track_uris[:self.columns])
+        def on_tracks(items):
+            tracks.extend(items)
+            build()
+
 
     def artist_albums(self, artist, callback):
         oc = ObjectContainer(

@@ -1,21 +1,14 @@
-from objects import Objects
 from routing import route_path
 from utils import localized_format
+from view import ViewBase, COLUMNS
 
 import locale
+import urllib
 
 
-class SpotifySearch(object):
-    def __init__(self, host):
-        self.host = host
-
-        self.objects = Objects(host)
-
-    @property
-    def sp(self):
-        return self.host.sp
-
-    def run(self, query, callback, type='all', count=7, plain=False):
+class SpotifySearch(ViewBase):
+    def run(self, query, callback, type='all', count=COLUMNS, plain=False):
+        query = urllib.unquote_plus(query)
         count = int(count)
 
         Log('Search query: "%s", type: %s, count: %s, plain: %s' % (query, type, count, plain))
@@ -57,22 +50,7 @@ class SpotifySearch(object):
                 route_path('search', query=query, type=type, count=50, plain=True)
             )
 
-        for x in range(count):
-            if x < len(items):
-                oc.add(self.objects.get(items[x]))
-            elif not plain and placeholders:
-                # Add a placeholder to fix alignment on PHT
-                self.append_header(oc, '')
-
-    @classmethod
-    def append_header(cls, oc, title, key=''):
-        oc.add(DirectoryObject(key=key, title=title))
-
-    @staticmethod
-    def use_placeholders():
-        return Client.Product in [
-            'Plex Home Theater'
-        ]
+        self.append_items(oc, items, count, plain, placeholders)
 
     @staticmethod
     def get_title(type, plain=False):
