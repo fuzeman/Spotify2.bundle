@@ -1,8 +1,18 @@
 from spotify.core.revent import REvent
 from spotify.core.uri import Uri
 from spotify.objects.base import Descriptor, PropertyProxy
+from spotify.objects.image import Image
 from spotify.proto import playlist4changes_pb2
 from spotify.proto import playlist4content_pb2
+
+
+def create_image(uri):
+    uri = Uri.from_uri(uri)
+
+    if uri is None:
+        return None
+
+    return Image.from_id(uri.code)
 
 
 class PlaylistItem(Descriptor):
@@ -15,7 +25,7 @@ class PlaylistItem(Descriptor):
 
     def fetch(self, start=0, count=100, callback=None):
         if callback:
-            return self.sp.playlist(self.uri, start,count, callback)
+            return self.sp.playlist(self.uri, start, count, callback)
 
         # Fetch full playlist detail
         event = REvent()
@@ -31,7 +41,7 @@ class Playlist(Descriptor):
 
     uri = PropertyProxy(func=Uri.from_uri)
     name = PropertyProxy('attributes.name')
-    image = PropertyProxy
+    image = PropertyProxy(func=create_image)
 
     length = PropertyProxy
     position = PropertyProxy('contents.pos')
