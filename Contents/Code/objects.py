@@ -104,20 +104,22 @@ class Objects(object):
 
         return function_path('play', uri=str(track.uri), ext='mp3')
 
-    @staticmethod
-    def playlist(item):
+    @classmethod
+    def playlist(cls, item):
         if item.uri and item.uri.type == 'group':
             # (Playlist Folder)
             return DirectoryObject(
-                key=route_path('playlists', group=item.uri, name=normalize(item.name)),
+                key=route_path('playlists', group=item.uri, title=normalize(item.name)),
                 title=normalize(item.name),
                 thumb=R("placeholder-playlist.png")
             )
 
         thumb = R("placeholder-playlist.png")
 
-        if item.image:
-            thumb = item.image.file_url
+        if item.image and item.image.file_uri:
+            # Ensure we don't use invalid image uris
+            if len(item.image.file_uri.code) == 27:
+                thumb = function_path('image.png', uri=cls.image([item.image]))
 
         return DirectoryObject(
             key=route_path('playlist', item.uri),

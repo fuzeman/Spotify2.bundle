@@ -13,15 +13,16 @@ log = logging.getLogger(__name__)
 
 
 class MercuryRequest(Request):
-    def __init__(self, sp, name, requests, schema, header=None, defaults=None):
+    def __init__(self, sp, name, requests, schema, header=None, defaults=None, multi=None):
         """
         :type sp: spotify.client.Spotify
         :type name: str
         :type requests: list of dict
-        :type schema_response: dict or spotify.objects.base.Descriptor
+        :type schema: dict or spotify.objects.base.Descriptor
 
         :type header: dict
         :type defaults: dict
+        :type multi: bool
         """
         super(MercuryRequest, self).__init__(sp, name, None)
 
@@ -32,7 +33,7 @@ class MercuryRequest(Request):
 
         self.request = None
         self.request_payload = None
-        self.multi = None
+        self.multi = multi
 
         self.response = OrderedDict()
         self.response_type = Parser.Protobuf
@@ -115,14 +116,16 @@ class MercuryRequest(Request):
         self.respond()
 
     def reply_mercury(self, content_type, data):
-        self.multi = False
+        if self.multi is None:
+            self.multi = False
 
         yield (content_type, self.parse_protobuf(
             data, content_type
         ))
 
     def reply_mercury_mget(self, data):
-        self.multi = True
+        if self.multi is None:
+            self.multi = True
 
         response = mercury_pb2.MercuryMultiGetReply()
         response.ParseFromString(data)
@@ -138,7 +141,9 @@ class MercuryRequest(Request):
 
     def reply_json(self, data):
         self.response_type = Parser.MercuryJSON
-        self.multi = True
+
+        if self.multi is None:
+            self.multi = True
 
         data = json.loads(data)
 

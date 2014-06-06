@@ -119,6 +119,9 @@ def normalize(text):
     if text is None:
         return None
 
+    if type(text) is Framework.components.localization.LocalString:
+        text = str(text)
+
     if type(text) is unicode:
         text = unicodedata.normalize('NFKD', text)
 

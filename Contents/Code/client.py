@@ -3,7 +3,6 @@ from utils import Track
 
 from spotify import Spotify
 from threading import Lock, Event, Timer
-from tunigoapi import Tunigo
 import time
 
 
@@ -27,13 +26,11 @@ class SpotifyClient(object):
 
         self.on_login = Event()
 
-    def set_preferences(self, username, password, proxy_tracks, region):
+    def set_preferences(self, username, password, proxy_tracks):
         self.username = username
         self.password = password
 
         self.proxy_tracks = proxy_tracks
-
-        self.tunigo  = Tunigo(region)
 
     def start(self):
         if self.sp:
@@ -135,14 +132,6 @@ class SpotifyClient(object):
     # Media
     #
 
-    def is_album_playable(self, album):
-        """ Check if an album can be played by a client or not """
-        return True
-
-    def is_track_playable(self, track):
-        """ Check if a track can be played by a client or not """
-        return True
-
     def play(self, uri):
         if not uri:
             Log.Warn('Unable to play track with invalid "uri"')
@@ -218,24 +207,3 @@ class SpotifyClient(object):
         Log.Debug('Retrieved track_url: %s', repr(track_url))
         self.track_lock.release()
         return track_url
-
-    #
-    # Tunigo
-    #
-
-    # TODO move tunigo functionality to spotify.py
-
-    def featured_playlists(self):
-        pass
-
-    def top_playlists(self):
-        pass
-
-    def new_releases(self):
-        result = self.tunigo.getNewReleases()
-        uris = []
-
-        for item in result['items']:
-            uris.append(item['release']['uri'])
-
-        return uris

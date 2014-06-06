@@ -13,6 +13,8 @@ class Metadata(Component):
     def get(self, uris, callback=None):
         log.debug('metadata(%s)', uris)
 
+        multi = type(uris) is list
+
         if type(uris) is not list:
             uris = [uris]
 
@@ -43,12 +45,15 @@ class Metadata(Component):
         }, {
             'method': 'GET',
             'uri': 'hm://metadata/%ss' % h_type
-        })
+        }, multi=multi)
 
         return self.request_wrapper(request, callback)
 
     def playlist(self, uri, start=0, count=100, callback=None):
-        parts = str(uri).split(':')
+        if type(uri) is Uri:
+            uri = str(uri)
+        
+        parts = [self.uri_quote(p) for p in uri.split(':')]
 
         request = HermesRequest(self.sp, {
             'method': 'GET',
@@ -65,10 +70,10 @@ class Metadata(Component):
 
         request = HermesRequest(self.sp, {
             'method': 'GET',
-            'uri': 'hm://playlist/user/%s/rootlist?from=%s&length=%s' % (username, start, count)
+            'uri': 'hm://playlist/user/%s/rootlist?from=%s&length=%s' % (self.uri_quote(username), start, count)
         }, Playlist, defaults={
             'uri': Uri.from_uri('spotify:user:%s:rootlist' % username)
-        })
+        }, multi=True)
 
         return self.request_wrapper(request, callback)
 
@@ -84,6 +89,13 @@ class Metadata(Component):
         }, {
             'album': Album,
             'artist': Artist
-        })
+        }, multi=True)
 
         return self.request_wrapper(request, callback)
+
+    @staticmethod
+    def uri_quote(value):
+        if type(value) is unicode:
+            value = value.encode('utf-8')
+
+        return urllib.quote(value)

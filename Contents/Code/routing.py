@@ -6,7 +6,13 @@ import urllib
 
 
 def safe_encode(string):
-    return base64.b64encode(string).replace('/','@').replace('+','*').replace('=','_')
+    string = str(string)
+    return base64.b64encode(string).replace('/', '@').replace('+', '*').replace('=', '_')
+
+
+def safe_decode(string):
+    string = string.replace('@', '/').replace('*', '+').replace('_', '=')
+    return base64.b64decode(string).decode('utf-8')
 
 
 def pack(obj):
@@ -15,13 +21,23 @@ def pack(obj):
     return urllib.quote(encoded_string)
 
 
+def quote(value):
+    if not isinstance(value, basestring):
+        value = str(value)
+
+    if type(value) is unicode:
+        value = value.encode('utf-8')
+
+    return urllib.quote(value)
+
+
 def route_path(path, *args, **kwargs):
     result = '%s/%s%s' % (
         PREFIX,
         path,
 
         ('/' + ('/'.join([
-            str(x) for x in args
+            quote(x) for x in args
         ]))) if args else ''
     )
 

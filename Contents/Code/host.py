@@ -3,7 +3,7 @@ from containers import Containers
 from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
-from utils import authenticated, ViewMode
+from utils import authenticated
 
 from cachecontrol import CacheControl
 import requests
@@ -29,10 +29,6 @@ class SpotifyHost(object):
     @property
     def password(self):
         return Prefs["password"]
-
-    @property
-    def region(self):
-        return Prefs["region"]
 
     @property
     def proxy_tracks(self):
@@ -71,7 +67,7 @@ class SpotifyHost(object):
         self.client.server = self.server
 
         # Update preferences and start/restart the client
-        self.client.set_preferences(self.username, self.password, self.proxy_tracks, self.region)
+        self.client.set_preferences(self.username, self.password, self.proxy_tracks)
         self.client.start()
 
     #
@@ -272,28 +268,16 @@ class SpotifyHost(object):
         )
 
     def featured_playlists(self, callback):
-        oc = ObjectContainer(
-            title2=L("MENU_FEATURED_PLAYLISTS"),
-            content=ContainerContent.Playlists,
-            view_group=ViewMode.FeaturedPlaylists
-        )
-
-        callback(oc)
+        @self.sp.explore.featured_playlists()
+        def on_playlists(result):
+            callback(self.containers.playlists(result.items, title=L("MENU_FEATURED_PLAYLISTS")))
 
     def top_playlists(self, callback):
-        oc = ObjectContainer(
-            title2=L("MENU_TOP_PLAYLISTS"),
-            content=ContainerContent.Playlists,
-            view_group=ViewMode.FeaturedPlaylists
-        )
-
-        callback(oc)
+        @self.sp.explore.top_playlists()
+        def on_playlists(result):
+            callback(self.containers.playlists(result.items, title=L("MENU_TOP_PLAYLISTS")))
 
     def new_releases(self, callback):
-        uris = self.client.new_releases()
-
-        # TODO pull this info straight from the tunigo response
-
-        @self.sp.metadata(uris)
-        def on_albums(albums):
-            self.containers.albums(albums, callback, title=L("MENU_NEW_RELEASES"))
+        @self.sp.explore.new_releases()
+        def on_albums(result):
+            self.containers.albums(result.items, callback, title=L("MENU_NEW_RELEASES"))

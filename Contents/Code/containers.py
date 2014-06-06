@@ -2,6 +2,8 @@ from routing import route_path
 from utils import ViewMode, normalize
 from view import ViewBase
 
+from spotify.objects.playlist import Playlist
+
 
 class Containers(ViewBase):
     #
@@ -114,14 +116,19 @@ class Containers(ViewBase):
     # Your Music
     #
 
-    def playlists(self, playlists, group=None, name=None):
+    def playlists(self, playlists, group=None, title=None):
         oc = ObjectContainer(
-            title2=normalize(name) or L("MENU_PLAYLISTS"),
+            title2=normalize(title) or L("MENU_PLAYLISTS"),
             content=ContainerContent.Playlists,
             view_group=ViewMode.Playlists
         )
 
-        for item in playlists.fetch(group):
+        if type(playlists) is Playlist:
+            items = playlists.fetch(group)
+        else:
+            items = playlists
+
+        for item in items:
             oc.add(self.objects.playlist(item))
 
         return oc
