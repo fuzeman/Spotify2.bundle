@@ -73,7 +73,7 @@ class Metadata(Component):
             'uri': 'hm://playlist/user/%s/rootlist?from=%s&length=%s' % (self.uri_quote(username), start, count)
         }, Playlist, defaults={
             'uri': Uri.from_uri('spotify:user:%s:rootlist' % username)
-        }, multi=True)
+        })
 
         return self.request_wrapper(request, callback)
 

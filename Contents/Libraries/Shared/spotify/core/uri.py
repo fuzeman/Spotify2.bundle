@@ -31,7 +31,10 @@ class Uri(object):
         if self.username:
             parts.extend(['user', self.username])
 
-        parts.extend([self.type, self.code])
+        parts.append(self.type)
+
+        if self.code:
+            parts.append(self.code)
 
         if self.title:
             parts.append(self.title)
