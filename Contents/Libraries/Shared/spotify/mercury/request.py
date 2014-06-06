@@ -107,18 +107,18 @@ class MercuryRequest(Request):
         elif header.content_type == 'vnd.spotify/mercury-mget-reply':
             items = self.reply_mercury_mget(data)
         else:
-            items = self.reply_mercury(data)
+            items = self.reply_mercury(header.content_type, data)
 
         for x, (content_type, internal) in enumerate(items):
             self.update_response(x, header, content_type, internal)
 
         self.respond()
 
-    def reply_mercury(self, data):
+    def reply_mercury(self, content_type, data):
         self.multi = False
 
-        yield (header.content_type, self.parse_protobuf(
-            data, header.content_type
+        yield (content_type, self.parse_protobuf(
+            data, content_type
         ))
 
     def reply_mercury_mget(self, data):
@@ -179,6 +179,7 @@ class MercuryRequest(Request):
 
             # Build object from data
             item = Parser.construct(self.sp, self.response_type, descriptor, data)
+            item.dict_update(self.defaults)
 
             result.append(item)
 

@@ -38,7 +38,7 @@ class Image(Descriptor):
         )
 
     @classmethod
-    def from_id(cls, id, size=3):
+    def from_id(cls, id):
         return cls(None, {
             'file_id': Uri.from_id('image', id).to_gid(size=40),
             'size': 3

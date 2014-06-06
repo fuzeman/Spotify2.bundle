@@ -67,9 +67,10 @@ def class_parsers(cls, result=None, flat=False):
     if result is None:
         result = {'XML': {}}
 
-    if not hasattr(cls, '__parsers__'):
-        log.warn('Missing "__parsers__" attribute on %s', cls)
+    if getattr(cls, '__protobuf__', None):
+        result['Protobuf'] = cls
 
+    if not hasattr(cls, '__parsers__'):
         if flat:
             result['XML'] = cls
         else:
@@ -128,7 +129,6 @@ class Parser(object):
 
     @classmethod
     def parse(cls, sp, source, tag, data):
-        #log.debug('parse - data_type: %s, tag: %s, data: %s', repr(data_type), repr(tag), repr(data))
         descriptor = cls.get(source, tag)
 
         return cls.construct(sp, source, descriptor, data)
@@ -144,13 +144,14 @@ class Parser(object):
         if hasattr(parser, 'parse'):
             return parser.parse(sp, data, cls)
 
-        log.warn('Using an old-style parser %s', parser)
-
-        if source == 'XML':
+        if source == cls.XML:
             if type(data) is dict:
                 return parser.from_node_dict(sp, data, cls)
 
             return parser.from_node(sp, data, cls)
+
+        if source == cls.Protobuf:
+            return parser.from_protobuf(sp, data, cls)
 
         log.warn('Unknown old-style data type')
         return None

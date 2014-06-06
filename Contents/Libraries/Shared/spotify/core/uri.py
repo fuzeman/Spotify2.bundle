@@ -20,7 +20,10 @@ class Uri(object):
         return hex(v)[2:-1].rjust(size, '0')
 
     def to_gid(self, size=32):
-        return binascii.unhexlify(self.to_id(size=size))
+        try:
+            return binascii.unhexlify(self.to_id(size=size))
+        except TypeError:
+            return None
 
     def __str__(self):
         parts = []
@@ -56,6 +59,9 @@ class Uri(object):
 
     @classmethod
     def from_gid(cls, type, gid):
+        if gid is None:
+            return None
+
         id = binascii.hexlify(gid).rjust(32, '0')
 
         return cls.from_id(type, id)

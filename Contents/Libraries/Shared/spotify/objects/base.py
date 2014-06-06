@@ -165,13 +165,8 @@ class Descriptor(Component):
         return self.__repr__()
 
     @classmethod
-    def from_protobuf(cls, sp, internal, types, defaults=None):
-        obj = cls(sp, internal, types)
-
-        if defaults:
-            return obj.dict_update(defaults)
-
-        return obj
+    def from_protobuf(cls, sp, data, parser):
+        return cls(sp, data, parser.Protobuf, parser)
 
     @classmethod
     def from_node(cls, sp, node, types):
@@ -180,10 +175,6 @@ class Descriptor(Component):
     @classmethod
     def from_node_dict(cls, sp, data, types):
         raise NotImplementedError()
-
-    @classmethod
-    def from_dict(cls, sp, data, types):
-        return cls.from_node_dict(sp, data, types)
 
     @classmethod
     def construct(cls, sp, **kwargs):
