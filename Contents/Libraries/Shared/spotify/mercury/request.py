@@ -1,6 +1,6 @@
 from spotify.core.request import Request
 from spotify.core.uri import Uri
-from spotify.objects import NAME_MAP
+from spotify.objects import Parser
 from spotify.proto import mercury_pb2
 
 from collections import OrderedDict
@@ -35,6 +35,7 @@ class MercuryRequest(Request):
         self.multi = None
 
         self.response = OrderedDict()
+        self.response_type = Parser.Protobuf
 
         self.prepared_requests = []
         self.prepare(header)
@@ -95,47 +96,55 @@ class MercuryRequest(Request):
             self.emit('error', 'Server Error: Server didn\'t send a multi-GET reply for a multi-GET request!')
             return
 
-        self.process_reply(header, base64.b64decode(result[1]))
+        self.reply(header, base64.b64decode(result[1]))
 
-    def process_reply(self, header, data):
+    def reply(self, header, data):
         content_type = header.content_type.split(';')
+        items = []
 
-        if header.content_type == 'vnd.spotify/mercury-mget-reply':
-            self.multi = True
-
-            response = mercury_pb2.MercuryMultiGetReply()
-            response.ParseFromString(data)
-
-            # Parse items
-            items = [
-                (item.content_type, self.parse_protobuf(
-                    item.body, item.content_type
-                ))
-                if item.status_code == 200 else None
-                for item in response.reply
-            ]
-        elif content_type and content_type[0].endswith('+json'):
-            self.multi = True
-
-            data = json.loads(data)
-
-            # Parse items
-            items = [
-                (Uri.from_uri(item.get('uri')).type, item)
-                for item in data
-            ]
+        if content_type[0].endswith('+json'):
+            items = self.reply_json(data)
+        elif header.content_type == 'vnd.spotify/mercury-mget-reply':
+            items = self.reply_mercury_mget(data)
         else:
-            self.multi = False
-
-            # Parse items
-            items = [(header.content_type, self.parse_protobuf(
-                data, header.content_type
-            ))]
+            items = self.reply_mercury(data)
 
         for x, (content_type, internal) in enumerate(items):
             self.update_response(x, header, content_type, internal)
 
         self.respond()
+
+    def reply_mercury(self, data):
+        self.multi = False
+
+        yield (header.content_type, self.parse_protobuf(
+            data, header.content_type
+        ))
+
+    def reply_mercury_mget(self, data):
+        self.multi = True
+
+        response = mercury_pb2.MercuryMultiGetReply()
+        response.ParseFromString(data)
+
+        for item in response.reply:
+            if item.status_code != 200:
+                yield None
+                continue
+
+            yield (item.content_type, self.parse_protobuf(
+                item.body, item.content_type
+            ))
+
+    def reply_json(self, data):
+        self.response_type = Parser.MercuryJSON
+        self.multi = True
+
+        data = json.loads(data)
+
+        for item in data:
+            uri = Uri.from_uri(item.get('uri'))
+            yield uri.type, item
 
     def build(self, seq):
         if self.respond() or not self.request:
@@ -163,16 +172,13 @@ class MercuryRequest(Request):
             if item is None:
                 return False
 
-            content_type, internal = item
+            content_type, data = item
 
             # Get item descriptor
-            cls = self.find_descriptor(content_type)
+            descriptor = self.find_descriptor(content_type)
 
             # Build object from data
-            if type(internal) is dict:
-                item = cls.from_dict(self.sp, internal, NAME_MAP)
-            else:
-                item = cls.from_protobuf(self.sp, internal, NAME_MAP, self.defaults)
+            item = Parser.construct(self.sp, self.response_type, descriptor, data)
 
             result.append(item)
 

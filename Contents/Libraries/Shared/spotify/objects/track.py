@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 
 class Track(Descriptor):
     __protobuf__ = metadata_pb2.Track
-    __node__ = 'track'
 
     gid = PropertyProxy
     uri = PropertyProxy('gid', func=lambda gid: Uri.from_gid('track', gid))
@@ -32,6 +31,10 @@ class Track(Descriptor):
     alternatives = PropertyProxy('alternative', 'Track')
     # sale_period - []
     preview = PropertyProxy
+
+    @staticmethod
+    def __parsers__():
+        return [XML]
 
     def is_available(self):
         message = ''
@@ -210,17 +213,20 @@ class Track(Descriptor):
             position  # max_continuous
         )
 
-    @classmethod
-    def from_node(cls, sp, node, types):
-        return cls.from_node_dict(sp, etree_convert(node, {
-            'artist-id': ('artist-id', 'artist')
-        }), types)
+
+class XML(Track):
+    __tag__ = 'track'
 
     @classmethod
-    def from_node_dict(cls, sp, data, types):
+    def parse(cls, sp, data, parser):
+        if type(data) is not dict:
+            data = etree_convert(data, {
+                'artist-id': ('artist-id', 'artist')
+            })
+
         uri = Uri.from_id('track', data.get('id'))
 
-        return cls(sp, {
+        return Track(sp, {
             'gid': uri.to_gid(),
             'uri': uri,
             'name': data.get('title'),
@@ -245,7 +251,7 @@ class Track(Descriptor):
                 'cover': data.get('cover'),
                 'cover-small': data.get('cover-small'),
                 'cover-large': data.get('cover-large'),
-            },
+                },
 
             # TODO year
             'number': int(data.get('track-number')),
@@ -256,4 +262,4 @@ class Track(Descriptor):
             'external_id': data.get('external-ids'),
             'restriction': data.get('restrictions'),
             'file': data.get('files')
-        }, types)
+        }, parser.XML, parser)

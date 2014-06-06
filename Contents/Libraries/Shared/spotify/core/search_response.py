@@ -1,5 +1,5 @@
 from spotify.core.helpers import convert
-from spotify.objects import NODE_MAP, NAME_MAP
+from spotify.objects import Parser
 
 from lxml import etree
 import logging
@@ -57,10 +57,4 @@ class SearchResponse(object):
 
     @classmethod
     def parse_node(cls, sp, node):
-        parser_cls = NODE_MAP.get(node.tag)
-
-        if parser_cls is None:
-            log.warn('Unable to parse node with tag "%s"', node.tag)
-            return None
-
-        return parser_cls.from_node(sp, node, NAME_MAP)
+        return Parser.parse(sp, 'XML', node.tag, node)
