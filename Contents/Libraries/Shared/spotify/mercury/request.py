@@ -104,7 +104,7 @@ class MercuryRequest(Request):
         items = []
 
         if content_type[0].endswith('+json'):
-            items = self.reply_json(data)
+            items = self.reply_mercury_json(data)
         elif header.content_type == 'vnd.spotify/mercury-mget-reply':
             items = self.reply_mercury_mget(data)
         else:
@@ -139,7 +139,7 @@ class MercuryRequest(Request):
                 item.body, item.content_type
             ))
 
-    def reply_json(self, data):
+    def reply_mercury_json(self, data):
         self.response_type = Parser.MercuryJSON
 
         if self.multi is None:
@@ -165,20 +165,29 @@ class MercuryRequest(Request):
 
         return super(MercuryRequest, self).build(seq)
 
-    def respond(self):
-        # Check if all objects have been received
-        if not self.response or not all(self.response):
-            return False
-
-        result = []
-
-        # Build objects from protobuf responses
+    def get_items(self):
         for request in self.requests:
             uri = request.get('uri')
             item = self.response.get(uri)
 
             if item is None:
-                return False
+                continue
+
+            yield item
+
+    def respond(self):
+        # Check if all objects have been received
+        if not self.response or not all(self.response.values()):
+            return False
+
+        items = list(self.get_items()) or self.response.values()
+
+        result = []
+
+        # Build objects from protobuf responses
+        for item in items:
+            if item is None:
+                continue
 
             content_type, data = item
 

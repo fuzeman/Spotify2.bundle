@@ -134,7 +134,7 @@ class Objects(object):
 
     @staticmethod
     def image(covers):
-        if covers:
+        if covers and covers[-1]:
             # TODO might want to sort by 'size' (to ensure this is correct in all cases)
             # Pick largest cover
             return covers[-1].file_url
