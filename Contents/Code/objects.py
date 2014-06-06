@@ -114,7 +114,7 @@ class Objects(object):
         if item.uri and item.uri.type == 'group':
             # (Playlist Folder)
             return DirectoryObject(
-                key=route_path('playlists', group=item.uri, title=normalize(item.name)),
+                key=route_path('your_music/playlists', group=item.uri, title=normalize(item.name)),
                 title=normalize(item.name),
                 thumb=R("placeholder-playlist.png")
             )
