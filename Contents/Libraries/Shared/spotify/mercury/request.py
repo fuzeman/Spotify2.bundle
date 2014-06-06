@@ -166,14 +166,17 @@ class MercuryRequest(Request):
         return super(MercuryRequest, self).build(seq)
 
     def respond(self):
-        # Incorrect response count, not finished yet
-        if len(self.response) < len(self.requests):
+        # Check if all objects have been received
+        if not self.response or not all(self.response):
             return False
 
         result = []
 
         # Build objects from protobuf responses
-        for uri, item in self.response.items():
+        for request in self.requests:
+            uri = request.get('uri')
+            item = self.response.get(uri)
+
             if item is None:
                 return False
 
@@ -190,7 +193,7 @@ class MercuryRequest(Request):
 
         # Emit success event
         if len(self.requests) == 1 and not self.multi:
-            self.emit('success', result[0])
+            self.emit('success', result[0] if result else None)
         else:
             self.emit('success', result)
 

@@ -6,6 +6,10 @@ from spotify.objects.image import Image
 from spotify.proto import playlist4changes_pb2
 from spotify.proto import playlist4content_pb2
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 def create_image(uri):
     uri = Uri.from_uri(uri)
@@ -134,6 +138,7 @@ class Playlist(Descriptor):
 
             # Check if there was a request timeout
             if tracks is None:
+                log.warn('Timeout while fetching track metadata')
                 break
 
             # Yield each track

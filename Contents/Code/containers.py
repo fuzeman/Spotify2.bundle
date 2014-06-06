@@ -145,8 +145,8 @@ class Containers(ViewBase):
             view_group=ViewMode.Tracks
         )
 
-        for track in playlist.fetch():
-            oc.add(self.objects.track(track))
+        for x, track in enumerate(playlist.fetch()):
+            oc.add(self.objects.track(track, index=x))
 
         return oc
 

@@ -66,7 +66,12 @@ class Objects(object):
             thumb=image_url,
         )
 
-    def track(self, track):
+    def track(self, track, index=None):
+        rating_key = track.uri
+
+        if index is not None:
+            rating_key = '%s::%s' % (track.uri, index)
+
         image_url = function_path('image.png', uri=self.image(track.album.covers))
 
         return TrackObject(
@@ -83,7 +88,7 @@ class Objects(object):
             ],
 
             key=route_path('metadata', str(track.uri)),
-            rating_key=str(track.uri),
+            rating_key=rating_key,
 
             title=normalize(track.name),
             album=normalize(track.album.name),
