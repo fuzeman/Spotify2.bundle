@@ -154,7 +154,7 @@ class Stream(Emitter):
 
         if c_range:
             position = c_range.start - self.content_range.start
-            end = c_range.end - self.content_range.start
+            end = (c_range.end - self.content_range.start) + 1
 
             log.debug(
                 '[%s] [%s] Streaming - c_range: %s, position: %s, end: %s',

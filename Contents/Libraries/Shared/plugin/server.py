@@ -82,11 +82,12 @@ class Server(object):
         stream.open()
 
         c_range = r_range.content_range(stream.total_length) if r_range else None
+        r_length = (c_range.end - c_range.start + 1) if c_range else None
 
         # Update headers
         cherrypy.response.headers['Accept-Ranges'] = 'bytes'
         cherrypy.response.headers['Content-Type'] = stream.headers['Content-Type']
-        cherrypy.response.headers['Content-Length'] = c_range.length if c_range else stream.total_length
+        cherrypy.response.headers['Content-Length'] = r_length or stream.total_length
 
         if c_range:
             log.info('[%s] Content-Range: %s', track.uri, repr(c_range))
