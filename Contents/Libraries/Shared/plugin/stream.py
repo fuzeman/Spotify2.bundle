@@ -153,10 +153,14 @@ class Stream(Emitter):
         last_progress = None
 
         if c_range:
-            log.debug('[%s] [%s] Streaming Content-Range: %s', self.track.uri, self.num, c_range)
-
             position = c_range.start - self.content_range.start
-            log.debug('[%s] [%s] Position: %s', self.track.uri, self.num, position)
+            end = c_range.end - self.content_range.start
+
+            log.debug(
+                '[%s] [%s] Streaming - c_range: %s, position: %s, end: %s',
+                self.track.uri, self.num,
+                c_range, position, end
+            )
 
         while True:
             # Adjust chunk_size
@@ -170,14 +174,18 @@ class Stream(Emitter):
             if position + chunk_size > self.content_length:
                 chunk_size = self.content_length - position
 
+            if position + chunk_size > end:
+                chunk_size = end - position
+
             # Read chunk
             chunk = self.read(position, chunk_size)
+
+            # Display streaming progress
+            last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress, length=end)
 
             if not chunk:
                 log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (self.track.uri, self.num, position, self.content_length))
                 break
-
-            last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress)
 
             position = position + len(chunk)
 

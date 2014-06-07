@@ -4,11 +4,11 @@ import traceback
 log = logging.getLogger(__name__)
 
 
-def log_progress(stream, label, position, last):
+def log_progress(stream, label, position, last, length=None):
     """
     :type track: TrackReference
     """
-    percent = float(position) / stream.content_length
+    percent = float(position) / (length or stream.content_length)
     value = int(percent * 20)
 
     if value == last:

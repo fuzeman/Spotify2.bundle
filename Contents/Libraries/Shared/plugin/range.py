@@ -45,7 +45,7 @@ class Range(object):
             o.start = self._start
             o.end = self._end
 
-        o.length = abs(o.end - o.start)
+        o.length = length
 
         return o
 
