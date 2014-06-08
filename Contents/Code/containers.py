@@ -30,14 +30,14 @@ class Containers(ViewBase):
 
             # Top Tracks
             self.append_header(
-                oc, 'Top Tracks (%s)' % len(track_uris),
+                oc, '%s (%s)' % (L('TOP_TRACKS'), len(track_uris)),
                 route_path('artist', artist.uri, 'top_tracks')
             )
             self.append_items(oc, tracks)
 
             # Albums
             self.append_header(
-                oc, 'Albums (%s)' % len(album_uris),
+                oc, '%s (%s)' % (L('ALBUMS'), len(album_uris)),
                 route_path('artist', artist.uri, 'albums')
             )
             self.append_items(oc, albums)
@@ -62,7 +62,7 @@ class Containers(ViewBase):
 
     def artist_top_tracks(self, artist, callback):
         oc = ObjectContainer(
-            title2='%s - %s' % (normalize(artist.name), 'Top Tracks'),
+            title2='%s - %s' % (normalize(artist.name), L('TOP_TRACKS')),
             content=ContainerContent.Albums
         )
 
@@ -77,7 +77,7 @@ class Containers(ViewBase):
 
     def artist_albums(self, artist, callback):
         oc = ObjectContainer(
-            title2='%s - %s' % (normalize(artist.name), 'Albums'),
+            title2='%s - %s' % (normalize(artist.name), L('ALBUMS')),
             content=ContainerContent.Albums
         )
 
@@ -118,7 +118,7 @@ class Containers(ViewBase):
 
     def playlists(self, playlists, group=None, title=None):
         oc = ObjectContainer(
-            title2=normalize(title) or L("MENU_PLAYLISTS"),
+            title2=normalize(title) or L('PLAYLISTS'),
             content=ContainerContent.Playlists,
             view_group=ViewMode.Playlists
         )
@@ -137,7 +137,7 @@ class Containers(ViewBase):
         name = normalize(playlist.name)
 
         if playlist.uri.type == 'starred':
-            name = L("MENU_STARRED")
+            name = L('STARRED')
 
         oc = ObjectContainer(
             title2=name,
@@ -152,7 +152,7 @@ class Containers(ViewBase):
 
     def artists(self, artists, callback):
         oc = ObjectContainer(
-            title2=L("MENU_ARTISTS"),
+            title2=L('ARTISTS'),
             content=ContainerContent.Artists
         )
 
@@ -163,7 +163,7 @@ class Containers(ViewBase):
 
     def albums(self, albums, callback, title=None):
         if title is None:
-            title = L("MENU_ALBUMS")
+            title = L('ALBUMS')
 
         oc = ObjectContainer(
             title2=title,

@@ -165,7 +165,7 @@ def Start():
     ViewMode.AddModes(Plugin)
 
     ObjectContainer.title1 = 'Spotify'
-    ObjectContainer.content = 'Items'
+    ObjectContainer.content = 'items'
     ObjectContainer.art = R('art-default.png')
     DirectoryItem.thumb = R('icon-default.png')
 

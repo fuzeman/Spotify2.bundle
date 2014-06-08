@@ -1,5 +1,5 @@
 from routing import route_path
-from utils import localized_format
+from utils import LF
 from view import ViewBase, COLUMNS
 
 import locale
@@ -34,7 +34,7 @@ class SpotifySearch(ViewBase):
 
         return MessageContainer(
             header=L("MSG_TITLE_NO_RESULTS"),
-            message=localized_format("MSG_FMT_NO_RESULTS", query)
+            message=LF("MSG_BODY_NO_RESULTS", query)
         )
 
     def fill(self, result, oc, query, count, plain, placeholders, type):
@@ -57,20 +57,20 @@ class SpotifySearch(ViewBase):
         title = ""
 
         if type == 'artists':
-            title = "Artists"
+            title = L('ARTISTS')
         elif type == 'albums':
-            title = "Albums"
+            title = L('ALBUMS')
         elif type == 'tracks':
-            title = "Tracks"
+            title = L('TRACKS')
         elif type == 'playlists':
-            title = "Playlists"
+            title = L('PLAYLISTS')
 
         if title and plain:
             return title
         elif title:
-            return "Results - %s" % title
+            return "%s - %s" % (L('RESULTS'), title)
 
-        return "Results"
+        return L('RESULTS')
 
     @staticmethod
     def get_content(type):

@@ -3,7 +3,7 @@ import time
 import unicodedata
 
 
-def localized_format(key, args):
+def LF(key, args):
     """ Return the a localized string formatted with the given args """
     return str(L(key)) % args
 

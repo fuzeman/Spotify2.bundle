@@ -79,32 +79,32 @@ class SpotifyHost(object):
             objects=[
                 InputDirectoryObject(
                     key=route_path('search'),
-                    prompt=L("PROMPT_SEARCH"),
-                    title=L("MENU_SEARCH"),
+                    prompt=L('PROMPT_SEARCH'),
+                    title=L('SEARCH'),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore'),
-                    title=L("MENU_EXPLORE"),
+                    title=L('EXPLORE'),
                     thumb=R("icon-default.png")
                 ),
                 #DirectoryObject(
                 #    key=route_path('discover'),
-                #    title=L("MENU_DISCOVER"),
+                #    title=L("DISCOVER"),
                 #    thumb=R("icon-default.png")
                 #),
                 #DirectoryObject(
                 #    key=route_path('radio'),
-                #    title=L("MENU_RADIO"),
+                #    title=L("RADIO"),
                 #    thumb=R("icon-default.png")
                 #),
                 DirectoryObject(
                     key=route_path('your_music'),
-                    title=L("MENU_YOUR_MUSIC"),
+                    title=L('YOUR_MUSIC'),
                     thumb=R("icon-default.png")
                 ),
                 PrefsObject(
-                    title=L("MENU_PREFS"),
+                    title=L('PREFERENCES'),
                     thumb=R("icon-default.png")
                 )
             ],
@@ -181,26 +181,26 @@ class SpotifyHost(object):
     def your_music(self):
         """ Explore your music"""
         return ObjectContainer(
-            title2=L("MENU_YOUR_MUSIC"),
+            title2=L('YOUR_MUSIC'),
             objects=[
                 DirectoryObject(
                     key=route_path('your_music/playlists'),
-                    title=L("MENU_PLAYLISTS"),
+                    title=L('PLAYLISTS'),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
                     key=route_path('your_music/starred'),
-                    title=L("MENU_STARRED"),
+                    title=L('STARRED'),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
                     key=route_path('your_music/albums'),
-                    title=L("MENU_ALBUMS"),
+                    title=L('ALBUMS'),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
                     key=route_path('your_music/artists'),
-                    title=L("MENU_ARTISTS"),
+                    title=L('ARTISTS'),
                     thumb=R("icon-default.png")
                 ),
             ],
@@ -247,21 +247,21 @@ class SpotifyHost(object):
     def explore(self):
         """ Explore shared music"""
         return ObjectContainer(
-            title2=L("MENU_EXPLORE"),
+            title2=L('EXPLORE'),
             objects=[
                 DirectoryObject(
                     key=route_path('explore/featured_playlists'),
-                    title=L("MENU_FEATURED_PLAYLISTS"),
+                    title=L('FEATURED_PLAYLISTS'),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/top_playlists'),
-                    title=L("MENU_TOP_PLAYLISTS"),
+                    title=L('TOP_PLAYLISTS'),
                     thumb=R("icon-default.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/new_releases'),
-                    title=L("MENU_NEW_RELEASES"),
+                    title=L('NEW_RELEASES'),
                     thumb=R("icon-default.png")
                 )
             ],
@@ -270,14 +270,14 @@ class SpotifyHost(object):
     def featured_playlists(self, callback):
         @self.sp.explore.featured_playlists()
         def on_playlists(result):
-            callback(self.containers.playlists(result.items, title=L("MENU_FEATURED_PLAYLISTS")))
+            callback(self.containers.playlists(result.items, title=L('FEATURED_PLAYLISTS')))
 
     def top_playlists(self, callback):
         @self.sp.explore.top_playlists()
         def on_playlists(result):
-            callback(self.containers.playlists(result.items, title=L("MENU_TOP_PLAYLISTS")))
+            callback(self.containers.playlists(result.items, title=L('TOP_PLAYLISTS')))
 
     def new_releases(self, callback):
         @self.sp.explore.new_releases()
         def on_albums(result):
-            self.containers.albums(result.items, callback, title=L("MENU_NEW_RELEASES"))
+            self.containers.albums(result.items, callback, title=L('NEW_RELEASES'))
