@@ -132,14 +132,6 @@ class SpotifyClient(object):
     # Media
     #
 
-    def is_album_playable(self, album):
-        """ Check if an album can be played by a client or not """
-        return True
-
-    def is_track_playable(self, track):
-        """ Check if a track can be played by a client or not """
-        return True
-
     def play(self, uri):
         if not uri:
             Log.Warn('Unable to play track with invalid "uri"')

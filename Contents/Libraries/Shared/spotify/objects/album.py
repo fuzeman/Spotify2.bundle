@@ -1,4 +1,4 @@
-from spotify.core.helpers import convert
+from spotify.core.helpers import convert, etree_convert
 from spotify.core.uri import Uri
 from spotify.objects.base import Descriptor, PropertyProxy
 from spotify.proto import metadata_pb2
@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 
 class Album(Descriptor):
     __protobuf__ = metadata_pb2.Album
-    __node__ = 'album'
 
     gid = PropertyProxy
     uri = PropertyProxy('gid', func=lambda gid: Uri.from_gid('album', gid))
@@ -35,6 +34,10 @@ class Album(Descriptor):
     # sale_period - []
     cover_group = PropertyProxy('cover_group', 'ImageGroup')
 
+    @staticmethod
+    def __parsers__():
+        return [MercuryJSON, XML, Tunigo]
+
     def is_available(self):
         message = ''
 
@@ -55,12 +58,37 @@ class Album(Descriptor):
             for track in disc.tracks:
                 yield track
 
-    @classmethod
-    def from_node_dict(cls, sp, data, types):
-        uri = Uri.from_id('album', data.get('id'))
 
-        return cls(sp, {
-            'gid': uri.to_gid(),
+class MercuryJSON(Album):
+    @classmethod
+    def parse(cls, sp, data, parser):
+        return Album(sp, {
+            'name': data.get('name'),
+            'gid': Uri.from_uri(data.get('uri')).to_gid(),
+            'artist': [
+                {
+                    'uri': data.get('artistUri'),
+                    'name': data.get('artistName')
+                }
+            ],
+            'cover': [
+                {
+                    'imageUri': data.get('imageUri'),
+                }
+            ]
+        }, parser.MercuryJSON, parser)
+
+
+class XML(Album):
+    __tag__ = 'album'
+
+    @classmethod
+    def parse(cls, sp, data, parser):
+        if type(data) is not dict:
+            data = etree_convert(data)
+
+        return Album(sp, {
+            'gid': Uri.from_id('album', data.get('id')).to_gid(),
             'name': data.get('name'),
             'artist': [
                 {
@@ -74,35 +102,7 @@ class Album(Descriptor):
             'popularity': convert(data.get('popularity'), float),
             'restriction': data.get('restrictions'),
             'external_id': data.get('external-ids')
-        }, types)
-
-    @classmethod
-    def from_dict(cls, sp, data, types):
-        uri = Uri.from_uri(data.get('uri'))
-
-        internal = {
-            'name': data.get('name'),
-            'gid': uri.to_gid(),
-            'artist': [
-                {
-                    'uri': data.get('artistUri'),
-                    'name': data.get('artistName')
-                }
-            ]
-        }
-
-        # Cover
-        image_uri = data.get('imageUri')
-
-        if image_uri:
-            internal['cover'] = [
-                {
-                    'file_id': image_uri[image_uri.rfind('/') + 1:],
-                    'size': 0
-                }
-            ]
-
-        return cls(sp, internal, types)
+        }, parser.XML, parser)
 
     @classmethod
     def get_type(cls, value):
@@ -139,3 +139,24 @@ class Album(Descriptor):
                 'size': 2
             }
         ]
+
+
+class Tunigo(Album):
+    __tag__ = 'release'
+
+    @classmethod
+    def parse(cls, sp, data, parser):
+        return Album(sp, {
+            'gid': Uri.from_uri(data.get('uri')).to_gid(),
+            'name': data.get('albumName'),
+            'artist': [
+                {
+                    'artistName': data.get('artistName')
+                }
+            ],
+            'cover': [
+                {
+                    'image': data.get('image')
+                }
+            ],
+        }, parser.Tunigo, parser)

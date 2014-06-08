@@ -1,9 +1,14 @@
+from spotify.core.helpers import etree_convert
 from spotify.core.revent import REvent
 from spotify.core.uri import Uri
 from spotify.objects.base import Descriptor, PropertyProxy
 from spotify.objects.image import Image
 from spotify.proto import playlist4changes_pb2
 from spotify.proto import playlist4content_pb2
+
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def create_image(uri):
@@ -37,7 +42,6 @@ class PlaylistItem(Descriptor):
 
 class Playlist(Descriptor):
     __protobuf__ = playlist4changes_pb2.ListDump
-    __node__ = 'playlist'
 
     uri = PropertyProxy(func=Uri.from_uri)
     name = PropertyProxy('attributes.name')
@@ -48,6 +52,10 @@ class Playlist(Descriptor):
 
     items = PropertyProxy('contents.items', 'PlaylistItem')
     truncated = PropertyProxy('contents.truncated')
+
+    @staticmethod
+    def __parsers__():
+        return [XML, Tunigo]
 
     def list(self, group=None, flat=False):
         if group:
@@ -130,6 +138,7 @@ class Playlist(Descriptor):
 
             # Check if there was a request timeout
             if tracks is None:
+                log.warn('Timeout while fetching track metadata')
                 break
 
             # Yield each track
@@ -158,14 +167,37 @@ class Playlist(Descriptor):
         return True
 
 
-    @classmethod
-    def from_node_dict(cls, sp, data, types):
-        uri = Uri.from_uri(data.get('uri'))
+class XML(Playlist):
+    __tag__ = 'playlist'
 
-        return cls(sp, {
-            'uri': uri,
+    @classmethod
+    def parse(cls, sp, data, parser):
+        if type(data) is not dict:
+            data = etree_convert(data)
+
+        return Playlist(sp, {
+            'uri': Uri.from_uri(data.get('uri')),
             'attributes': {
                 'name': data.get('name')
             },
             'image': data.get('image')
-        }, types)
+        }, parser.XML, parser)
+
+
+class Tunigo(Playlist):
+    __tag__ = 'playlist'
+
+    @classmethod
+    def parse(cls, sp, data, parser):
+        image_uri = None
+
+        if data.get('image'):
+            image_uri = 'spotify:image:' + data.get('image')
+
+        return Playlist(sp, {
+            'uri': Uri.from_uri(data.get('uri')),
+            'attributes': {
+                'name': data.get('title')
+            },
+            'image': image_uri
+        }, parser.Tunigo, parser)
