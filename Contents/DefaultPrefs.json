@@ -13,12 +13,6 @@
         "default": ""
     },
     {
-        "id": "region",
-        "type": "text",
-        "label": "PREF_REGION",
-        "default": "us"
-    },
-    {
         "id": "displayAlbumYear",
         "type": "bool",
         "label": "PREF_SHOWALBUMYEAR",
