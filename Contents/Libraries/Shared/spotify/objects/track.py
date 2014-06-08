@@ -212,12 +212,12 @@ class Track(Descriptor):
 
     @classmethod
     def from_node(cls, sp, node, types):
-        return cls.from_dict(sp, etree_convert(node, {
+        return cls.from_node_dict(sp, etree_convert(node, {
             'artist-id': ('artist-id', 'artist')
         }), types)
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         uri = Uri.from_id('track', data.get('id'))
 
         return cls(sp, {
@@ -227,6 +227,7 @@ class Track(Descriptor):
 
             'artist': [
                 {
+                    '$source': 'node',
                     'id': artist.get('artist-id'),
                     'name': artist.get('artist')
                 }
@@ -234,6 +235,7 @@ class Track(Descriptor):
             ],
 
             'album': {
+                '$source': 'node',
                 'id': data.get('album-id'),
                 'name': data.get('album'),
 

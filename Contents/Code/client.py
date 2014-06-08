@@ -11,12 +11,6 @@ class SpotifyClient(object):
     user_agent = PLUGIN_ID
 
     def __init__(self):
-        """ Initializer
-
-        :param username:       The username to connect to spotify with.
-        :param password:       The password to authenticate with.
-        """
-
         self.current_track = None
         self.track_lock = Lock()
 
@@ -110,6 +104,29 @@ class SpotifyClient(object):
         :param query:          A query string.
         """
         return self.sp.search(query, query_type, max_results, offset)
+
+    def artist_uris(self, artist):
+        top_tracks = self.artist_top_tracks(artist)
+
+        # Top Track URIs
+        track_uris = []
+
+        if top_tracks:
+            track_uris = [tr.uri for tr in top_tracks.tracks if tr is not None]
+
+        # Album URIs
+        album_uris = [al.uri for al in artist.albums if al is not None]
+
+        return track_uris, album_uris
+
+    def artist_top_tracks(self, artist):
+        for tt in artist.top_tracks:
+            # TopTracks matches account region?
+            if tt.country == self.sp.country:
+                return tt
+
+        # Unable to find TopTracks for account region
+        return None
 
     #
     # Media

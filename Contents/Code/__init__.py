@@ -48,6 +48,19 @@ def plugin_callback(method, kwargs=None, async=False):
 
     return result
 
+#
+# Core
+#
+
+
+def main_menu(**kwargs):
+    return plugin_callback(SpotifyHost.main_menu, kwargs)
+
+
+@route(ROUTEBASE + 'search')
+def search(**kwargs):
+    return plugin_callback(SpotifyHost.search, kwargs, async=True)
+
 
 @route(ROUTEBASE + 'play')
 def play(**kwargs):
@@ -59,9 +72,23 @@ def image(**kwargs):
     return plugin_callback(SpotifyHost.image, kwargs)
 
 
+#
+# Metadata
+#
+
 @route(ROUTEBASE + 'artist/{uri}')
 def artist(**kwargs):
     return plugin_callback(SpotifyHost.artist, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'artist/{uri}/top_tracks')
+def artist_top_tracks(**kwargs):
+    return plugin_callback(SpotifyHost.artist_top_tracks, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'artist/{uri}/albums')
+def artist_albums(**kwargs):
+    return plugin_callback(SpotifyHost.artist_albums, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'album/{uri}')
@@ -69,7 +96,20 @@ def album(**kwargs):
     return plugin_callback(SpotifyHost.album, kwargs, async=True)
 
 
-@route(ROUTEBASE + 'playlists')
+@route(ROUTEBASE + 'metadata/{uri}')
+def metadata(**kwargs):
+    return plugin_callback(SpotifyHost.metadata, kwargs, async=True)
+
+#
+# Your Music
+#
+
+@route(ROUTEBASE + 'your_music')
+def your_music(**kwargs):
+    return plugin_callback(SpotifyHost.your_music, kwargs)
+
+
+@route(ROUTEBASE + 'your_music/playlists')
 def playlists(**kwargs):
     return plugin_callback(SpotifyHost.playlists, kwargs, async=True)
 
@@ -79,23 +119,42 @@ def playlist(**kwargs):
     return plugin_callback(SpotifyHost.playlist, kwargs, async=True)
 
 
-@route(ROUTEBASE + 'starred')
+@route(ROUTEBASE + 'your_music/starred')
 def starred(**kwargs):
     return plugin_callback(SpotifyHost.starred, kwargs, async=True)
 
 
-@route(ROUTEBASE + 'metadata/{uri}')
-def metadata(**kwargs):
-    return plugin_callback(SpotifyHost.metadata, kwargs, async=True)
+@route(ROUTEBASE + 'your_music/artists')
+def artists(**kwargs):
+    return plugin_callback(SpotifyHost.artists, kwargs, async=True)
 
 
-@route(ROUTEBASE + 'search')
-def search(**kwargs):
-    return plugin_callback(SpotifyHost.search, kwargs, async=True)
+@route(ROUTEBASE + 'your_music/albums')
+def albums(**kwargs):
+    return plugin_callback(SpotifyHost.albums, kwargs, async=True)
+
+#
+# Explore
+#
+
+@route(ROUTEBASE + 'explore')
+def explore(**kwargs):
+    return plugin_callback(SpotifyHost.explore, kwargs)
 
 
-def main_menu(**kwargs):
-    return plugin_callback(SpotifyHost.main_menu, kwargs)
+@route(ROUTEBASE + 'explore/featured_playlists')
+def featured_playlists(**kwargs):
+    return plugin_callback(SpotifyHost.featured_playlists, kwargs)
+
+
+@route(ROUTEBASE + 'explore/top_playlists')
+def top_playlists(**kwargs):
+    return plugin_callback(SpotifyHost.top_playlists, kwargs)
+
+
+@route(ROUTEBASE + 'explore/new_releases')
+def new_releases(**kwargs):
+    return plugin_callback(SpotifyHost.new_releases, kwargs)
 
 
 def Start():

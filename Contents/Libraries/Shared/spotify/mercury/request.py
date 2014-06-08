@@ -1,10 +1,12 @@
 from spotify.core.request import Request
+from spotify.core.uri import Uri
 from spotify.objects import NAME_MAP
 from spotify.proto import mercury_pb2
 
 from collections import OrderedDict
 import base64
 import httplib
+import json
 import logging
 
 log = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ class MercuryRequest(Request):
 
         self.request = None
         self.request_payload = None
+        self.multi = None
 
         self.response = OrderedDict()
 
@@ -42,7 +45,7 @@ class MercuryRequest(Request):
         for request in self.requests:
             request = self.parse_request(request)
 
-            if self.cached_response(request):
+            if header and self.cached_response(request):
                 continue
 
             # Update payload
@@ -95,10 +98,15 @@ class MercuryRequest(Request):
         self.process_reply(header, base64.b64decode(result[1]))
 
     def process_reply(self, header, data):
+        content_type = header.content_type.split(';')
+
         if header.content_type == 'vnd.spotify/mercury-mget-reply':
+            self.multi = True
+
             response = mercury_pb2.MercuryMultiGetReply()
             response.ParseFromString(data)
 
+            # Parse items
             items = [
                 (item.content_type, self.parse_protobuf(
                     item.body, item.content_type
@@ -106,7 +114,20 @@ class MercuryRequest(Request):
                 if item.status_code == 200 else None
                 for item in response.reply
             ]
+        elif content_type and content_type[0].endswith('+json'):
+            self.multi = True
+
+            data = json.loads(data)
+
+            # Parse items
+            items = [
+                (Uri.from_uri(item.get('uri')).type, item)
+                for item in data
+            ]
         else:
+            self.multi = False
+
+            # Parse items
             items = [(header.content_type, self.parse_protobuf(
                 data, header.content_type
             ))]
@@ -132,7 +153,7 @@ class MercuryRequest(Request):
 
     def respond(self):
         # Incorrect response count, not finished yet
-        if len(self.response) != len(self.requests):
+        if len(self.response) < len(self.requests):
             return False
 
         result = []
@@ -147,11 +168,16 @@ class MercuryRequest(Request):
             # Get item descriptor
             cls = self.find_descriptor(content_type)
 
-            # Build item from protobuf
-            result.append(cls.from_protobuf(self.sp, internal, NAME_MAP, self.defaults))
+            # Build object from data
+            if type(internal) is dict:
+                item = cls.from_dict(self.sp, internal, NAME_MAP)
+            else:
+                item = cls.from_protobuf(self.sp, internal, NAME_MAP, self.defaults)
+
+            result.append(item)
 
         # Emit success event
-        if len(self.requests) == 1:
+        if len(self.requests) == 1 and not self.multi:
             self.emit('success', result[0])
         else:
             self.emit('success', result)

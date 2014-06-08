@@ -28,9 +28,14 @@ class HermesRequest(MercuryRequest):
         return True
 
     def update_response(self, index, header, content_type, internal):
-        uri = cache.get_object_uri(content_type, internal)
+        uri = None
 
-        if uri is None:
+        if type(internal) is dict:
+            uri = internal.get('uri')
+        else:
+            uri = cache.get_object_uri(content_type, internal)
+
+        if uri is None and index < len(self.prepared_requests):
             # Fallback to original request uri
             uri = self.prepared_requests[index].uri
 

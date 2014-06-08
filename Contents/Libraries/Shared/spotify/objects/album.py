@@ -56,7 +56,7 @@ class Album(Descriptor):
                 yield track
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         uri = Uri.from_id('album', data.get('id'))
 
         return cls(sp, {
@@ -64,6 +64,7 @@ class Album(Descriptor):
             'name': data.get('name'),
             'artist': [
                 {
+                    '$source': 'node',
                     'id': data.get('artist-id'),
                     'name': data.get('artist-name')
                 }
@@ -74,6 +75,34 @@ class Album(Descriptor):
             'restriction': data.get('restrictions'),
             'external_id': data.get('external-ids')
         }, types)
+
+    @classmethod
+    def from_dict(cls, sp, data, types):
+        uri = Uri.from_uri(data.get('uri'))
+
+        internal = {
+            'name': data.get('name'),
+            'gid': uri.to_gid(),
+            'artist': [
+                {
+                    'uri': data.get('artistUri'),
+                    'name': data.get('artistName')
+                }
+            ]
+        }
+
+        # Cover
+        image_uri = data.get('imageUri')
+
+        if image_uri:
+            internal['cover'] = [
+                {
+                    'file_id': image_uri[image_uri.rfind('/') + 1:],
+                    'size': 0
+                }
+            ]
+
+        return cls(sp, internal, types)
 
     @classmethod
     def get_type(cls, value):
@@ -95,14 +124,17 @@ class Album(Descriptor):
 
         return [
             {
+                '$source': 'node',
                 'file_id': data.get('cover'),
                 'size': 0
             },
             {
+                '$source': 'node',
                 'file_id': data.get('cover-small'),
                 'size': 1
             },
             {
+                '$source': 'node',
                 'file_id': data.get('cover-large'),
                 'size': 2
             }

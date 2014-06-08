@@ -13,3 +13,10 @@ class User(Component):
             start, count,
             callback
         )
+
+    def collection(self, source, params=None, callback=None):
+        return self.sp.collection(
+            self.username,
+            source, params,
+            callback
+        )

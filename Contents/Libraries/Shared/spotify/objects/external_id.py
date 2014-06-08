@@ -10,7 +10,7 @@ class ExternalId(Descriptor):
     id = PropertyProxy
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         return cls(sp, {
             'type': data.get('type'),
             'id': data.get('id')

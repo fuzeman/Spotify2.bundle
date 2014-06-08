@@ -3,15 +3,23 @@
     "PREF_PASSWORD"                 : "Password",
     "PREF_SORTPLAYLISTS"            : "Sort the playlists by name",
     "PREF_SHOWALBUMYEAR"            : "Show album release year",
-    "PREF_PROXY_TRACKS"              : "Proxy tracks (via PMS)",
+    "PREF_PROXY_TRACKS"             : "Proxy tracks (via PMS)",
+    "PREF_REGION"                   : "Region (two letter country code)",
 
+    "MENU_EXPLORE"                  : "Explore",
+    "MENU_YOUR_MUSIC"               : "Your Music",
+    "MENU_FEATURED_PLAYLISTS"       : "Featured Playlists",
+    "MENU_TOP_PLAYLISTS"            : "Top Playlists",
+    "MENU_NEW_RELEASES"             : "New Releases",
     "MENU_PLAYLISTS"                : "Playlists",
     "MENU_SEARCH"                   : "Search",
     "MENU_STARRED"                  : "Starred",
+    "MENU_ALBUMS"                   : "Albums",
+    "MENU_ARTISTS"                  : "Artists",
+    "MENU_TOP_TRACKS"               : "Top Tracks",
     "MENU_PREFS"                    : "Preferences",
 
     "PROMPT_SEARCH"                 : "Search for music",
-
 
     "MSG_CALLBACK_FAILURE_TITLE"    : "Callback failure",
     "MSG_CALLBACK_FAILURE_BODY"     : "Callback returned an invalid result",

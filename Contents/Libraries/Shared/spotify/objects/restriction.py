@@ -65,7 +65,7 @@ class Restriction(Descriptor):
         return False, 'unknown failure'
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         catalogue = [
             CATALOGUE_MAP[name]
             for name in data.get('catalogues', '').split(',')

@@ -1,0 +1,38 @@
+{
+    "PREF_USERNAME"                 : "Usuario",
+    "PREF_PASSWORD"                 : "Contraseña",
+    "PREF_SORTPLAYLISTS"            : "Ordena las listas por nombre",
+    "PREF_SHOWALBUMYEAR"            : "Mostrar el año de lanzamiento del album",
+    "PREF_REGION"                   : "Region (codigo de dos letras del país)",
+
+    "MENU_EXPLORE"                  : "Explorar",
+    "MENU_YOUR_MUSIC"               : "Tu Musica",
+    "MENU_FEATURED_PLAYLISTS"       : "Listas Recomendadas",
+    "MENU_TOP_PLAYLISTS"            : "Listas de Éxitos",
+    "MENU_NEW_RELEASES"             : "Nuevos Lanzamientos",
+    "MENU_PLAYLISTS"                : "Listas",
+    "MENU_SEARCH"                   : "Buscar",
+    "MENU_STARRED"                  : "Favoritas",
+    "MENU_ALBUMS"                   : "Albumes",
+    "MENU_ARTISTS"                  : "Artistas",
+    "MENU_TOP_TRACKS"               : "Temas principales",
+    "MENU_PREFS"                    : "Opciones",
+
+    "PROMPT_SEARCH"                 : "Buscar musica",
+
+    "MSG_TITLE_MISSING_LOGIN"       : "Faltan los datos de autenticacion",
+    "MSG_BODY_MISSING_LOGIN"        : "No se configuraron los datos de usuario y contraseña",
+
+    "MSG_TITLE_LOGIN_IN_PROGRESS"   : "Ingresando",
+    "MSG_BODY_LOGIN_IN_PROGRESS"    : "Aun estamos intentando abrir una sesion con Spotify...",
+
+    "MSG_TITLE_LOGIN_FAILED"        : "Fallo el ingreso",
+    "MSG_TITLE_NO_RESULTS"          : "No hay resultados",
+    "MSG_TITLE_UNKNOWN_PLAYLIST"    : "No se pudo encontrar la lista",
+
+    "MSG_TITLE_PLAYLIST_ERROR"      : "Fallo al traer las listas",
+    "MSG_BODY_PLAYIST_ERROR"        : "No se encontro el detalle para la lista seleccionada",
+
+    "MSG_FMT_DID_YOU_MEAN"          : "Quieres decir '%s'?",
+    "MSG_FMT_NO_RESULTS"            : "Sin coincidencias para '%s'..."
+}

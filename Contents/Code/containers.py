@@ -1,16 +1,12 @@
-from objects import Objects
+from routing import route_path
 from utils import ViewMode, normalize
+from view import ViewBase
 
 
-class Containers(object):
-    def __init__(self, host):
-        self.host = host
-
-        self.objects = Objects(host)
-
-    @property
-    def sp(self):
-        return self.host.sp
+class Containers(ViewBase):
+    #
+    # Metadata
+    #
 
     # TODO list singles?
     def artist(self, artist, callback):
@@ -19,12 +15,76 @@ class Containers(object):
             content=ContainerContent.Albums
         )
 
-        album_uris = [al.uri for al in artist.albums if al is not None]
+        track_uris, album_uris = self.client.artist_uris(artist)
+        tracks, albums = [], []
+
+        def build():
+            # Check if we are ready to build the response yet
+            if len(albums) != len(album_uris[:self.columns]):
+                return
+
+            if len(tracks) != len(track_uris[:self.columns]):
+                return
+
+            # Top Tracks
+            self.append_header(
+                oc, 'Top Tracks (%s)' % len(track_uris),
+                route_path('artist', artist.uri, 'top_tracks')
+            )
+            self.append_items(oc, tracks)
+
+            # Albums
+            self.append_header(
+                oc, 'Albums (%s)' % len(album_uris),
+                route_path('artist', artist.uri, 'albums')
+            )
+            self.append_items(oc, albums)
+
+            callback(oc)
+
+        if not track_uris and not album_uris:
+            build()
+            return
+
+        # Request albums
+        @self.sp.metadata(album_uris[:self.columns])
+        def on_albums(items):
+            albums.extend(items)
+            build()
+
+        # Request tracks
+        @self.sp.metadata(track_uris[:self.columns])
+        def on_tracks(items):
+            tracks.extend(items)
+            build()
+
+    def artist_top_tracks(self, artist, callback):
+        oc = ObjectContainer(
+            title2='%s - %s' % (normalize(artist.name), 'Top Tracks'),
+            content=ContainerContent.Albums
+        )
+
+        track_uris, _ = self.client.artist_uris(artist)
+
+        @self.sp.metadata(track_uris)
+        def on_albums(track):
+            for track in track:
+                oc.add(self.objects.get(track))
+
+            callback(oc)
+
+    def artist_albums(self, artist, callback):
+        oc = ObjectContainer(
+            title2='%s - %s' % (normalize(artist.name), 'Albums'),
+            content=ContainerContent.Albums
+        )
+
+        _, album_uris = self.client.artist_uris(artist)
 
         @self.sp.metadata(album_uris)
         def on_albums(albums):
             for album in albums:
-                oc.add(self.objects.album(album))
+                oc.add(self.objects.get(album))
 
             callback(oc)
 
@@ -43,6 +103,16 @@ class Containers(object):
                 oc.add(self.objects.track(track))
 
             callback(oc)
+
+    def metadata(self, track):
+        oc = ObjectContainer()
+        oc.add(self.objects.track(track))
+
+        return oc
+
+    #
+    # Your Music
+    #
 
     def playlists(self, playlists, group=None, name=None):
         oc = ObjectContainer(
@@ -73,8 +143,24 @@ class Containers(object):
 
         return oc
 
-    def metadata(self, track):
-        oc = ObjectContainer()
-        oc.add(self.objects.track(track))
+    def artists(self, artists, callback):
+        oc = ObjectContainer(
+            title2=L("MENU_ARTISTS"),
+            content=ContainerContent.Artists
+        )
 
-        return oc
+        for artist in artists:
+            oc.add(self.objects.artist(artist))
+
+        callback(oc)
+
+    def albums(self, albums, callback):
+        oc = ObjectContainer(
+            title2=L("MENU_ALBUMS"),
+            content=ContainerContent.Albums
+        )
+
+        for album in albums:
+            oc.add(self.objects.album(album))
+
+        callback(oc)
