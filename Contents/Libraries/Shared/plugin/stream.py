@@ -86,7 +86,7 @@ class Stream(Emitter):
             # Build dummy ContentRange
             self.content_range = ContentRange(
                 start=0,
-                end=self.content_length,
+                end=self.content_length - 1,
                 length=self.content_length
             )
 
