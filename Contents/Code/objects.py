@@ -7,21 +7,27 @@ class Objects(object):
         self.host = host
 
     def get(self, item):
-        node = getattr(item, '__node__', None)
+        item_class = getattr(item, '__class__', None)
 
-        if node == 'artist':
+        if item_class is None:
+            Log.Debug('Unable to retrieve class from item: %s', item)
+            return None
+
+        name = getattr(item_class, '__name__', None)
+
+        if name == 'Artist':
             return self.artist(item)
 
-        if node == 'album':
+        if name == 'Album':
             return self.album(item)
 
-        if node == 'track':
+        if name == 'Track':
             return self.track(item)
 
-        if node == 'playlist':
+        if name == 'Playlist':
             return self.playlist(item)
 
-        Log.Debug('Unknown object with node: %s, type: %s' % (node, type(item)))
+        Log.Debug('Unknown object with name: %s, type: %s' % (name, type(item)))
         return None
 
     def artist(self, artist):
