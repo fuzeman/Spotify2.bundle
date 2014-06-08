@@ -145,7 +145,7 @@ class Stream(Emitter):
         :type c_range: plugin.range.ContentRange
         """
         position = 0
-        end = None
+        end = self.content_range.end + 1
 
         chunk_scale = 0
         chunk_size = self.chunk_size_min
