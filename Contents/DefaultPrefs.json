@@ -21,7 +21,13 @@
     {
         "id": "proxy_tracks",
         "type": "bool",
-        "label": "PREF_PROXY_TRACKS",
+        "label": "PREF_SS_ENABLED",
         "default": "true"
+    },
+    {
+        "id": "proxy_hostname",
+        "type": "text",
+        "label": "PREF_SS_HOSTNAME",
+        "default": ""
     }
 ]

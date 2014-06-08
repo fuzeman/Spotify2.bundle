@@ -3,10 +3,11 @@ from containers import Containers
 from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
-from utils import authenticated
+from utils import authenticated, parse_xml
 
 from cachecontrol import CacheControl
 import requests
+import socket
 
 
 class SpotifyHost(object):
@@ -22,6 +23,11 @@ class SpotifyHost(object):
 
         self.containers = Containers(self)
 
+        # Server detail
+        self.server_name = None
+        self.server_address = None
+        self.server_version = None
+
     @property
     def username(self):
         return Prefs["username"]
@@ -33,6 +39,19 @@ class SpotifyHost(object):
     @property
     def proxy_tracks(self):
         return Prefs['proxy_tracks']
+
+    @property
+    def hostname(self):
+        if Prefs['proxy_hostname']:
+            # Custom hostname defined in preferences
+            return Prefs['proxy_hostname']
+
+        if self.server_address:
+            # Hostname identified from Plex API
+            return self.server_address
+
+        # Fallback to socket hostname
+        return socket.gethostname()
 
     @property
     def sp(self):
@@ -51,7 +70,7 @@ class SpotifyHost(object):
             return
 
         if not self.client:
-            self.client = SpotifyClient()
+            self.client = SpotifyClient(self)
 
         # Start server (if 'proxy_tracks' is enabled)
         if not self.server and self.proxy_tracks:
@@ -66,9 +85,53 @@ class SpotifyHost(object):
         # Update reference on SpotifyClient
         self.client.server = self.server
 
-        # Update preferences and start/restart the client
-        self.client.set_preferences(self.username, self.password, self.proxy_tracks)
+        # start/restart the client
         self.client.start()
+
+    def get(self, url, *args, **kwargs):
+        try:
+            return self.session.get(url, *args, **kwargs)
+        except:
+            return None
+
+    def get_xml(self, url, *args, **kwargs):
+        response = self.session.get(url, *args, **kwargs)
+        if not response:
+            return None
+
+        return parse_xml(response.content)
+
+    def refresh(self):
+        Log.Debug('Refreshing server info...')
+
+        # Determine local server name
+        detail = self.get_xml('http://127.0.0.1:32400')
+
+        if not detail:
+            Log.Warn('"/" request failed, unable to retrieve info')
+            return None
+
+        self.server_name = detail.get('friendlyName')
+
+        # Find server address and version
+        servers = self.get_xml('http://127.0.0.1:32400/servers')
+
+        if not servers:
+            Log.Warn('"/servers" request failed, unable to retrieve server info')
+            return None
+
+        for server in servers.findall('Server'):
+            if server.get('name').lower() == self.server_name.lower():
+                self.server_address = server.get('address')
+                self.server_version = server.get('version')
+                break
+
+        Log.Debug(
+            'Updated server info - name: %s, address: %s, version: %s',
+            self.server_name,
+            self.server_address,
+            self.server_version
+        )
 
     #
     # Core

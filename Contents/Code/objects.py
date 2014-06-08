@@ -6,6 +6,10 @@ class Objects(object):
     def __init__(self, host):
         self.host = host
 
+    @property
+    def client(self):
+        return self.host.client
+
     def get(self, item):
         item_class = getattr(item, '__class__', None)
 
@@ -84,7 +88,7 @@ class Objects(object):
             items=[
                 MediaObject(
                     parts=[PartObject(
-                        key=self.track_url(track),
+                        key=self.client.track_url(track),
                         duration=int(track.duration)
                     )],
                     duration=int(track.duration),
@@ -108,12 +112,6 @@ class Objects(object):
             art=image_url,
             thumb=image_url
         )
-
-    def track_url(self, track):
-        if self.host.proxy_tracks and self.host.server:
-            return self.host.server.get_track_url(track.uri)
-
-        return function_path('play', uri=str(track.uri), ext='mp3')
 
     @classmethod
     def playlist(cls, item):

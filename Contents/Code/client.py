@@ -1,3 +1,4 @@
+from routing import function_path
 from settings import PLUGIN_ID
 from utils import Track
 
@@ -10,27 +11,19 @@ class SpotifyClient(object):
     audio_buffer_size = 50
     user_agent = PLUGIN_ID
 
-    def __init__(self):
+    def __init__(self, host):
+        self.host = host
+
         self.current_track = None
         self.track_lock = Lock()
 
-        self.username = None
-        self.password = None
-
-        self.proxy_tracks = True
         self.server = None
 
         self.sp = None
         self.reconnect_time = None
         self.reconnect_timer = None
 
-        self.on_login = Event()
-
-    def set_preferences(self, username, password, proxy_tracks):
-        self.username = username
-        self.password = password
-
-        self.proxy_tracks = proxy_tracks
+        self.ready_event = Event()
 
     def start(self):
         if self.sp:
@@ -38,12 +31,19 @@ class SpotifyClient(object):
             pass
 
         self.sp = Spotify()
-        self.on_login = Event()
+        self.ready_event = Event()
 
         self.sp.on('error', lambda message: Log.Error(message))\
                .on('close', self.on_close)
 
-        self.sp.login(self.username, self.password, lambda: self.on_login.set())
+        self.sp.login(self.host.username, self.host.password, self.on_login)
+
+    def on_login(self):
+        # Refresh server info
+        self.host.refresh()
+
+        # Release request hold
+        self.ready_event.set()
 
     def on_close(self, code, reason=None):
         # Force re-authentication
@@ -68,7 +68,7 @@ class SpotifyClient(object):
         self.reconnect_time = time.time()
 
         # Hold requests while we re-connect
-        self.on_login = Event()
+        self.ready_event = Event()
 
         # Start connecting...
         self.sp.connect()
@@ -81,14 +81,14 @@ class SpotifyClient(object):
 
     @property
     def constructed(self):
-        return self.sp and self.on_login
+        return self.sp and self.ready_event
 
     @property
     def ready(self):
         if not self.constructed:
             return False
 
-        return self.on_login.wait(10)
+        return self.ready_event.wait(10)
 
     def shutdown(self):
         self.sp.api.shutdown()
@@ -132,15 +132,21 @@ class SpotifyClient(object):
     # Media
     #
 
+    def track_url(self, track):
+        if self.host.proxy_tracks and self.server:
+            return self.server.get_track_url(track.uri, hostname=self.host.hostname)
+
+        return function_path('play', uri=str(track.uri), ext='mp3')
+
     def play(self, uri):
         if not uri:
             Log.Warn('Unable to play track with invalid "uri"')
             return
 
-        Log.Debug('play proxy_tracks: %s' % self.proxy_tracks)
+        Log.Debug('play proxy_tracks: %s' % self.host.proxy_tracks)
 
         # Return proxy URL (if enabled)
-        if self.proxy_tracks and self.server:
+        if self.host.proxy_tracks and self.server:
             return self.server.get_track_url(uri)
 
         # Get the track and return a direct stream URL

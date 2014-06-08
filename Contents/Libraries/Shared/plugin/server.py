@@ -129,7 +129,10 @@ class Server(object):
 
         self.lock_end.release()
 
-    def get_track_url(self, uri):
+    def get_track_url(self, uri, hostname=None):
+        if not hostname:
+            hostname = socket.gethostname()
+
         return "http://%s:%d/track/%s.mp3" % (
-            socket.gethostname(), self.port, uri
+            hostname, self.port, uri
         )

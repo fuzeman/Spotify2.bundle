@@ -126,3 +126,10 @@ def normalize(text):
         text = unicodedata.normalize('NFKD', text)
 
     return text.encode('ascii', 'ignore')
+
+
+def parse_xml(string):
+    try:
+        return XML.ElementFromString(string)
+    except:
+        return None
