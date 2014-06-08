@@ -149,7 +149,7 @@ class Track(object):
         for (start, end), stream in self.streams.items():
             if not start and not end:
                 log.info('Stream rate-limiting enabled on %s', stream)
-                stream.read_sleep = 30 / 1000  # 30ms per 1024 bytes
+                stream.read_sleep = float(30) / 1000  # 30ms per 1024 bytes
                 continue
 
             log.info('Stream priority enabled on %s', stream)
