@@ -2,8 +2,8 @@ from plugin.range import ContentRange
 from plugin.util import log_progress, func_catch
 
 from pyemitter import Emitter
-from threading import Thread
-from urllib2 import Request, urlopen
+from threading import Thread, Event
+from requests import Request
 import logging
 import time
 
@@ -11,11 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class Stream(Emitter):
-    buffer_wait_ms = 100
-    buffer_wait = buffer_wait_ms / 1000.0
-
-    chunk_size_min = 6 * 1024
-    chunk_size_max = 10 * 1024
+    chunk_size = 8192
 
     def __init__(self, track, num, r_range):
         """
@@ -23,8 +19,9 @@ class Stream(Emitter):
         :type num: int
         :type r_range: plugin.range.Range
         """
-        # Stream request
         self.track = track
+        self.server = track.server
+
         self.num = num
         self.range = r_range
 
@@ -44,9 +41,7 @@ class Stream(Emitter):
 
         self.buffer = bytearray()
 
-        # State
-        self.opened = False
-        self.reading = False
+        self.state = ''
 
     def log(self, message, *args, **kwargs):
         header = '[%s] [%s] ' % (self.track.uri, self.num)
@@ -58,26 +53,39 @@ class Stream(Emitter):
         if self.range:
             headers['Range'] = str(self.range)
 
-        self.request = Request(self.track.info['uri'], headers=headers)
+        return headers
 
     def open(self):
-        if self.opened:
+        if self.state != '':
             return
 
-        self.opened = True
+        self.state = 'opening'
+        self.emit('opening')
+
+        future = self.server.session.get(
+            self.track.info['uri'],
+            headers=self.prepare(),
+            stream=True
+        )
+        future.add_done_callback(self.callback)
+
+    def callback(self, future):
+        ex = future.exception()
+
+        if ex:
+            log.error('Request failed: %s', ex)
+            return
+
+        self.response = future.result()
+        self.headers = self.response.headers
+
+        self.state = 'opened'
         self.emit('opened')
 
-        self.prepare()
-        self.response = urlopen(self.request)
-
-        self.headers = self.response.info()
-
-        self.log('Opened')
-
-        self.content_length = int(self.headers.getheader('Content-Length'))
+        self.content_length = int(self.headers.get('Content-Length'))
         self.log('Content-Length: %s', self.content_length)
 
-        self.content_range = ContentRange.parse(self.headers.getheader('Content-Range'))
+        self.content_range = ContentRange.parse(self.headers.get('Content-Range'))
         self.log('Content-Range: %s', self.content_range)
 
         if self.content_range:
@@ -94,50 +102,28 @@ class Stream(Emitter):
 
         self.log('Total-Length: %s', self.total_length)
 
-        if self.headers.getheader('Content-Type') == 'text/xml':
+        if self.headers.get('Content-Type') == 'text/xml':
             # Error, log response
-            self.log(self.response.read())
+            self.log(self.response.content)
             return
-
-        self.reading = True
 
         # Read back entire stream
         self.read_thread = Thread(target=func_catch, args=(self.run,))
         self.read_thread.start()
 
-    def read(self, position, chunk_size=1024):
-        # Fire 'on_read'
-        self.track.on_read()
-
-        # Wait until range is buffered
-        while self.reading and len(self.buffer) < position + 1:
-            time.sleep(self.buffer_wait)
-
-        return self.buffer[position:position + chunk_size]
-
     def run(self):
-        chunk_size = 1024
+        self.state = 'reading'
+        self.emit('reading')
+
         last_progress = None
 
-        self.log('Reading...')
-
-        while True:
-            chunk = self.response.read(chunk_size)
-
+        for chunk in self.response.iter_content(self.chunk_size):
             self.buffer.extend(chunk)
-
-            if not chunk:
-                break
+            self.emit('received', len(chunk))
 
             last_progress = log_progress(self, '[%s]   Reading' % self.num, len(self.buffer), last_progress)
 
-            # Sleep between read calls (if enabled)
-            if self.read_sleep:
-                time.sleep(self.read_sleep)
-
-        self.reading = False
-        self.log('Read finished')
-
+        self.state = 'buffered'
         self.emit('buffered')
 
     def iter(self, c_range):
@@ -147,10 +133,12 @@ class Stream(Emitter):
         position = 0
         end = self.content_range.end + 1
 
-        chunk_scale = 0
-        chunk_size = self.chunk_size_min
-
         last_progress = None
+        ev_received = Event()
+
+        @self.on('received')
+        def on_received(chunk_size):
+            ev_received.set()
 
         if c_range:
             position = c_range.start - self.content_range.start
@@ -162,34 +150,19 @@ class Stream(Emitter):
                 c_range, position, end
             )
 
-        while True:
-            # Adjust chunk_size
-            if chunk_scale < 1:
-                chunk_scale = 2 * (float(position) / self.content_length)
-                chunk_size = int(self.chunk_size_min + (self.chunk_size_max * chunk_scale))
+        while position < self.content_length:
+            data = self.buffer[position:]
 
-                if chunk_scale > 1:
-                    chunk_scale = 1
-
-            if position + chunk_size > self.content_length:
-                chunk_size = self.content_length - position
-
-            if position + chunk_size > end:
-                chunk_size = end - position
-
-            # Read chunk
-            chunk = self.read(position, chunk_size)
-
-            # Display streaming progress
-            last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress, length=end)
-
-            if not chunk:
-                log.info('[%s] [%s] Finished at %s bytes (content-length: %s)' % (self.track.uri, self.num, position, self.content_length))
+            if data:
+                last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress, length=end)
+                position += len(data)
+                yield str(data)
+            elif self.state != 'buffered':
+                ev_received.clear()
+                ev_received.wait()
+            else:
                 break
 
-            position = position + len(chunk)
-
-            # Write chunk
-            yield chunk
+        self.off('received', on_received)
 
         log.info('[%s] [%s] Complete', self.track.uri, self.num)
