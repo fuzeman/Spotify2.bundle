@@ -41,6 +41,7 @@ class Stream(Emitter):
 
         self.buffer = bytearray()
 
+        self.on_reading = Event()
         self.state = ''
 
     def log(self, message, *args, **kwargs):
@@ -114,6 +115,7 @@ class Stream(Emitter):
     def run(self):
         self.state = 'reading'
         self.emit('reading')
+        self.on_reading.set()
 
         last_progress = None
 

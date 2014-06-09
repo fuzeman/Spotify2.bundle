@@ -81,12 +81,10 @@ class Server(object):
             cherrypy.response.status = 404
             return
 
-        ev_opened = Event()
+        stream.open()
 
-        stream.once('reading', lambda: ev_opened.set())\
-              .open()
-
-        ev_opened.wait()
+        stream.on_reading.wait()
+        log.debug('stream ready')
 
         c_range = r_range.content_range(stream.total_length) if r_range else None
         r_length = (c_range.end - c_range.start + 1) if c_range else None
