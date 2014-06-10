@@ -3,9 +3,7 @@ from plugin.util import log_progress, func_catch
 
 from pyemitter import Emitter
 from threading import Thread, Event
-from requests import Request
 import logging
-import time
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +35,7 @@ class Stream(Emitter):
 
         # Data buffering
         self.read_thread = None
+        self.read_event = Event()
         self.read_sleep = None
 
         self.buffer = bytearray()
@@ -109,6 +108,8 @@ class Stream(Emitter):
             return
 
         # Read back entire stream
+        self.read_event.set()
+
         self.read_thread = Thread(target=func_catch, args=(self.run,))
         self.read_thread.start()
 
@@ -121,9 +122,11 @@ class Stream(Emitter):
 
         for chunk in self.response.iter_content(self.chunk_size):
             self.buffer.extend(chunk)
-            self.emit('received', len(chunk))
+            self.emit('received', len(chunk), __suppress=True)
 
             last_progress = log_progress(self, '[%s]   Reading' % self.num, len(self.buffer), last_progress)
+
+            self.read_event.wait()
 
         self.state = 'buffered'
         self.emit('buffered')

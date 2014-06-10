@@ -137,7 +137,7 @@ class Track(object):
         streams_active = [
             (r_range, stream)
             for r_range, stream in self.streams.items()
-            if stream.reading
+            if stream.state == 'reading'
         ]
 
         # Ignore if this is the first active stream
@@ -149,19 +149,18 @@ class Track(object):
         for (start, end), stream in self.streams.items():
             if not start and not end:
                 log.info('Stream rate-limiting enabled on %s', stream)
-                stream.read_sleep = float(30) / 1000  # 30ms per 1024 bytes
+                stream.read_event.clear()
                 continue
 
             log.info('Stream priority enabled on %s', stream)
 
-            stream.off('buffered')\
-                  .on('buffered', self.limit_buffered)
+            stream.once('buffered', self.limit_buffered)
 
     def limit_buffered(self):
         ready = all([
-            not stream.reading
+            stream.state == 'buffered'
             for stream in self.streams.values()
-            if stream.read_sleep is None
+            if stream.read_event.is_set()
         ])
 
         if not ready:
@@ -176,7 +175,7 @@ class Track(object):
             self.limit_timer = None
 
         for range, stream in self.streams.items():
-            stream.read_sleep = None
+            stream.read_event.set()
 
         log.info('Stream rate-limiting disabled')
 

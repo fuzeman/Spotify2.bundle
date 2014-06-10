@@ -1,6 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor
 import logging
 import traceback
+
+# concurrent.futures is optional
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    ThreadPoolExecutor = None
+
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +29,9 @@ class Emitter(object):
         self.__constructed = True
 
         if self.threading:
+            if ThreadPoolExecutor is None:
+                raise Exception('concurrent.futures is required for threading')
+
             self.__threading_pool = ThreadPoolExecutor(max_workers=self.threading_workers)
 
     def __log(self, message, *args, **kwargs):
@@ -107,7 +116,10 @@ class Emitter(object):
         return self
 
     def emit(self, event, *args, **kwargs):
-        self.__log('emit(event: %s, args: %s, kwargs: %s)', repr(event), repr(args), repr(kwargs))
+        suppress = kwargs.pop('__suppress', False)
+
+        if not suppress:
+            self.__log('emit(event: %s, args: %s, kwargs: %s)', repr(event), repr(args), repr(kwargs))
 
         self.__ensure_constructed()
 
