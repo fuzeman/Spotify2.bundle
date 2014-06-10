@@ -37,15 +37,22 @@ class Track(Descriptor):
         return [XML]
 
     def is_available(self):
-        message = ''
+        catalogues = {}
+        available = False
 
         for restriction in self.restrictions:
-            success, message = restriction.check()
+            re_available, re_allowed = restriction.check()
 
-            if success:
-                return True
+            if re_allowed and restriction.catalogues:
+                for catalogue in restriction.catalogues:
+                    catalogues[catalogue] = True
 
-        log.debug('Track "%s" not available (%s)', self.uri, message)
+            if restriction.type is None or restriction.type == 'streaming':
+                available |= re_available
+
+        if catalogues.get(self.sp.catalogue):
+            return True
+
         return False
 
     def find_alternative(self):
@@ -66,9 +73,6 @@ class Track(Descriptor):
 
         # Update our object with new attributes
         self.protobuf_update(alternative, 'uri', 'gid', 'restrictions', 'files')
-
-        log.debug('Found alternative track "%s"', self.uri)
-
         return True
 
     def track_uri(self, callback=None):
