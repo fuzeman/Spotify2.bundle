@@ -180,9 +180,7 @@ class SpotifyHost(object):
     @authenticated
     def play(self, uri):
         """ Play a spotify track: redirect the user to the actual stream """
-        Log('play(%s)' % repr(uri))
-
-        return Redirect(self.client.play(uri))
+        return Redirect(self.client.stream_url(uri))
 
     @authenticated
     def image(self, uri):
