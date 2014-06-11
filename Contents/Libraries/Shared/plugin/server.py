@@ -2,8 +2,10 @@ from plugin.dispatcher import Dispatcher
 from plugin.range import Range
 from plugin.track import Track
 
-from threading import Lock
+from requests_futures.sessions import FuturesSession
+from threading import Lock, Event
 import cherrypy
+import cherrypy.wsgiserver
 import logging
 import socket
 import traceback
@@ -14,9 +16,9 @@ log = logging.getLogger(__name__)
 class Server(object):
     def __init__(self, plugin_host, port=12555):
         self.plugin_host = plugin_host
-
         self.port = port
 
+        self.session = FuturesSession()
         self.cache = {}
 
         self.current = None
@@ -80,6 +82,9 @@ class Server(object):
             return
 
         stream.open()
+
+        stream.on_reading.wait()
+        log.debug('stream ready')
 
         c_range = r_range.content_range(stream.total_length) if r_range else None
         r_length = (c_range.end - c_range.start + 1) if c_range else None
