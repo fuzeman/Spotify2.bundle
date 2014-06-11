@@ -52,9 +52,30 @@ class Direct(object):
             @self.sp.metadata(uri)
             def on_metadata(track):
                 self.cur_track = track
+
+                # Ensure track is available, find alternative
+                if not self.cur_track.is_available():
+                    log.info('[%s] Track is not available, looking for an alternative...', uri)
+
+                    if self.cur_track.find_alternative():
+                        log.info('[%s] Alternative found (uri: "%s")', uri, self.cur_track.uri)
+                    else:
+                        log.warn('[%s] No alternatives could be found', uri)
+
+                for x, restriction in enumerate(self.cur_track.restrictions):
+                    log.debug(
+                        '[%s] R#%s countries allowed: "%s", countries forbidden: "%s", catalogues: "%s"',
+                        uri, x + 1,
+                        ', '.join(restriction.countries_allowed),
+                        ', '.join(restriction.countries_forbidden),
+                        ', '.join(restriction.catalogues)
+                    )
+
                 ev_metadata.set()
 
-            ev_metadata.wait()
+            if not ev_metadata.wait():
+                log.warn('metadata request timeout')
+                return None
 
             # Stream info
             @self.cur_track.track_uri()
@@ -62,13 +83,15 @@ class Direct(object):
                 self.cur_stream = stream.get('result')
                 ev_stream.set()
 
-            ev_stream.wait()
+            if not ev_stream.wait():
+                log.warn('track_uri request timeout')
+                return None
 
             # Start streaming track
             return self.start()
 
     def start(self):
-        log.debug('[%s] Sending "track_event" (3)', self.cur_track.uri)
+        log.info('[%s] Sending "track_event" (3)', self.cur_track.uri)
 
         self.cur_track.track_event(self.cur_stream['lid'], 3, 0)
 
@@ -82,7 +105,7 @@ class Direct(object):
 
         position = self.position
 
-        log.debug(
+        log.info(
             '[%s] Sending "track_end" (position: %s, duration: %s)',
             self.cur_track.uri, position, self.cur_track.duration
         )
