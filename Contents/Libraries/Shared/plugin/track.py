@@ -37,11 +37,24 @@ class Track(object):
     def on_metadata(self, metadata):
         self.metadata = metadata
 
-        # Ensure track is actually available (check restrictions)
+        uri = self.metadata.uri
+
+        # Ensure track is available, find alternative
         if not self.metadata.is_available():
+            log.info('[%s] Track is not available, looking for an alternative...', uri)
+
             # Try find alternative track that is available
-            if not self.metadata.find_alternative():
-                log.warn('Unable to find alternative for track "%s"', self.metadata.uri)
+            if self.metadata.find_alternative():
+                log.info('[%s] Alternative found (uri: "%s")', uri, self.metadata.uri)
+            else:
+                log.warn('[%s] No alternatives could be found', uri)
+
+        # Log track restrictions for debugging
+        for x, restriction in enumerate(self.metadata.restrictions):
+            log.debug(
+                '[%s] R#%s countries allowed: %s, countries forbidden: %s, catalogues: %s', uri, x + 1,
+                restriction.countries_allowed, restriction.countries_forbidden, restriction.catalogues
+            )
 
         self.metadata_ev.set()
 
