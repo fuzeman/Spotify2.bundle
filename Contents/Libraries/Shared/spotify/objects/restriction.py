@@ -29,7 +29,7 @@ def parse_catalogues(value):
 
 
 def parse_countries(value):
-    if value is None:
+    if not value:
         return None
 
     return [value[i:i+2] for i in range(0, len(value), 2)]
