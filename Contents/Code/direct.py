@@ -64,11 +64,8 @@ class Direct(object):
 
                 for x, restriction in enumerate(self.cur_track.restrictions):
                     log.debug(
-                        '[%s] R#%s countries allowed: "%s", countries forbidden: "%s", catalogues: "%s"',
-                        uri, x + 1,
-                        ', '.join(restriction.countries_allowed),
-                        ', '.join(restriction.countries_forbidden),
-                        ', '.join(restriction.catalogues)
+                        '[%s] R#%s countries allowed: %s, countries forbidden: %s, catalogues: %s', uri, x + 1,
+                        restriction.countries_allowed, restriction.countries_forbidden, restriction.catalogues
                     )
 
                 ev_metadata.set()

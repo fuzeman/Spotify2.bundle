@@ -1,4 +1,4 @@
-from routing import route_path, function_path
+from routing import route_path, function_path, quote
 from utils import normalize
 
 
@@ -98,7 +98,7 @@ class Objects(object):
             ],
 
             key=route_path('metadata', str(track.uri)),
-            rating_key=rating_key,
+            rating_key=quote(rating_key),
 
             title=normalize(track.name),
             album=normalize(track.album.name),
