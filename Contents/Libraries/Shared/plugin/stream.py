@@ -156,7 +156,7 @@ class Stream(Emitter):
             )
 
         while position < self.content_length:
-            data = self.buffer[position:]
+            data = self.buffer[position:end]
 
             if data:
                 last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress, length=end)
