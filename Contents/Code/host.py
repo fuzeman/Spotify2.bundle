@@ -28,6 +28,8 @@ class SpotifyHost(object):
         self.server_address = None
         self.server_version = None
 
+        self.local_address = None
+
     @property
     def username(self):
         return Prefs["username"]
@@ -45,6 +47,10 @@ class SpotifyHost(object):
         if Prefs['proxy_hostname']:
             # Custom hostname defined in preferences
             return Prefs['proxy_hostname']
+
+        if self.local_address:
+            # Hostname identified from <socket>.getsockname()
+            return self.local_address
 
         if self.server_address:
             # Hostname identified from Plex API
@@ -102,6 +108,12 @@ class SpotifyHost(object):
         return parse_xml(response.content)
 
     def refresh(self):
+        self.refresh_server()
+        self.refresh_local()
+
+        Log.Info('Using the host/address "%s" for streaming', self.hostname)
+
+    def refresh_server(self):
         Log.Debug('Refreshing server info...')
 
         # Determine local server name
@@ -132,6 +144,25 @@ class SpotifyHost(object):
             self.server_address,
             self.server_version
         )
+
+    def refresh_local(self):
+        try:
+            s_discovery = socket.socket(type=socket.SOCK_DGRAM)
+            s_discovery.connect(('spotify.com', 80))
+
+            netloc = s_discovery.getsockname()
+            s_discovery.close()
+
+            if len(netloc) != 2:
+                self.local_address = None
+                Log.Warn('Invalid response from getsockname(): %s', netloc)
+                return
+
+            self.local_address, _ = netloc
+            Log.Debug('Updated local info - address: %s', self.local_address)
+        except Exception, ex:
+            self.local_address = None
+            Log.Warn('Unable to discover local address - %s', ex)
 
     #
     # Core
