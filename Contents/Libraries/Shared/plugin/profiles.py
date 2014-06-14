@@ -42,12 +42,30 @@ class ProfileManager(object):
         log.info('Loaded profile with name "%s" (supports_ranges: %s)', profile.name, profile.supports_ranges)
 
     def get(self, name):
-        name = name.lower()
+        if name:
+            name = name.lower()
 
         if name in self.profiles:
             return self.profiles[name]
 
-        return self.profiles.get('generic')
+        return None
+
+    def match(self, headers):
+        # Find device name
+        device = headers.get('X-Plex-Device')
+
+        if device is None:
+            log.debug('Missing "X-Plex-Device" header, returning generic profile - headers: %s', headers)
+            return self.profiles.get('generic')
+
+        # Find profile
+        profile = self.get(device)
+
+        if profile is None:
+            log.debug('Unable to find profile for %s, returning generic profile - headers: %s', repr(device), headers)
+            return self.profiles.get('generic')
+
+        return profile
 
 
 class Profile(object):
@@ -58,11 +76,10 @@ class Profile(object):
 
     @classmethod
     def parse(cls, data):
-        obj = cls()
-        obj.name = data.get('name')
-
         supports = data.get('supports', {})
 
+        obj = cls()
+        obj.name = data.get('name')
         obj.supports_ranges = supports.get('ranges', True)
 
         return obj

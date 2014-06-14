@@ -68,15 +68,13 @@ class Server(object):
         log.info('Received request for "%s"', uri)
 
         # Parse request
-        d_name = cherrypy.request.headers.get('X-Plex-Device')
-        d_profile = self.profiles.get(d_name)
-
+        r_profile = self.profiles.match(cherrypy.request.headers)
         r_range = None
 
-        if d_profile.supports_ranges:
+        if r_profile.supports_ranges:
             r_range = Range.parse(cherrypy.request.headers.get('Range'))
 
-        log.info('Device: "%s", Profile: "%s", Range: %s', d_name, d_profile.name, repr(r_range))
+        log.info('Profile: "%s", Range: %s', r_profile.name, repr(r_range))
 
         # Call end() if track has changed
         if self.current and uri != self.current.uri:
@@ -103,7 +101,7 @@ class Server(object):
         c_range = None
         r_length = None
 
-        if d_profile.supports_ranges:
+        if r_profile.supports_ranges:
             cherrypy.response.headers['Accept-Ranges'] = 'bytes'
 
             if r_range:
