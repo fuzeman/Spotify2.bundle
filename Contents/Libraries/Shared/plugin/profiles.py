@@ -39,7 +39,7 @@ class ProfileManager(object):
         profile = Profile.parse(data)
 
         self.profiles[name.lower()] = profile
-        log.info('Loaded profile with name "%s"', profile.name)
+        log.info('Loaded profile with name "%s" (supports_ranges: %s)', profile.name, profile.supports_ranges)
 
     def get(self, name):
         name = name.lower()
