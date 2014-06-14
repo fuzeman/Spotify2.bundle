@@ -1,4 +1,5 @@
 from plugin.dispatcher import Dispatcher
+from plugin.profiles import ProfileManager
 from plugin.range import Range
 from plugin.track import Track
 
@@ -7,6 +8,7 @@ from threading import Lock, Event
 import cherrypy
 import cherrypy.wsgiserver
 import logging
+import os
 import socket
 import traceback
 
@@ -18,6 +20,7 @@ class Server(object):
         self.plugin_host = plugin_host
         self.port = port
 
+        self.profiles = ProfileManager()
         self.session = FuturesSession()
         self.cache = {}
 
@@ -31,6 +34,9 @@ class Server(object):
         return self.plugin_host.sp
 
     def start(self):
+        # Load profiles
+        self.profiles.load_directory(os.path.join(self.plugin_host.bundle_path, 'Profiles'))
+
         # CherryPy
         cherrypy.config.update({
             'engine.autoreload.on': False,
@@ -59,7 +65,16 @@ class Server(object):
     track._cp_config = {'response.stream': True}
 
     def track_handle(self, uri):
-        log.info('Received track request for "%s"', uri)
+        log.info('Received request for "%s"', uri)
+
+        # Parse request
+        r_profile = self.profiles.match(cherrypy.request.headers)
+        r_range = None
+
+        if r_profile.supports_ranges:
+            r_range = Range.parse(cherrypy.request.headers.get('Range'))
+
+        log.info('Profile: "%s", Range: %s', r_profile.name, repr(r_range))
 
         # Call end() if track has changed
         if self.current and uri != self.current.uri:
@@ -70,9 +85,6 @@ class Server(object):
 
         # Update current
         self.current = track
-
-        r_range = Range.parse(cherrypy.request.headers.get('Range'))
-        log.info('[%s] Range: %s', track.uri, repr(r_range))
 
         stream = track.stream(r_range)
 
@@ -86,11 +98,18 @@ class Server(object):
         stream.on_reading.wait()
         log.debug('stream ready')
 
-        c_range = r_range.content_range(stream.total_length) if r_range else None
-        r_length = (c_range.end - c_range.start + 1) if c_range else None
+        c_range = None
+        r_length = None
 
-        # Update headers
-        cherrypy.response.headers['Accept-Ranges'] = 'bytes'
+        if r_profile.supports_ranges:
+            cherrypy.response.headers['Accept-Ranges'] = 'bytes'
+
+            if r_range:
+                # Parse request range
+                c_range = r_range.content_range(stream.total_length)
+                r_length = (c_range.end - c_range.start + 1)
+
+        # Set headers
         cherrypy.response.headers['Content-Type'] = stream.headers['Content-Type']
         cherrypy.response.headers['Content-Length'] = r_length or stream.total_length
 

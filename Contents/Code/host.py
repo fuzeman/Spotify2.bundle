@@ -6,6 +6,7 @@ from search import SpotifySearch
 from utils import authenticated, parse_xml
 
 from cachecontrol import CacheControl
+import os
 import requests
 import socket
 
@@ -66,6 +67,14 @@ class SpotifyHost(object):
 
         return self.client.sp
 
+    @property
+    def code_path(self):
+        return Core.code_path
+
+    @property
+    def bundle_path(self):
+        return os.path.abspath(os.path.join(self.code_path, '..'))
+
     def preferences_updated(self):
         # Trigger a client restart
         self.start()
@@ -74,6 +83,8 @@ class SpotifyHost(object):
         if not self.username or not self.password:
             Log("Username or password not set: not logging in")
             return
+
+        Log.Debug('bundle_path: "%s"', self.bundle_path)
 
         if not self.client:
             self.client = SpotifyClient(self)
