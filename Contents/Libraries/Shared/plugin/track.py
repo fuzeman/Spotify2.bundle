@@ -135,8 +135,9 @@ class Track(object):
 
         # Create new stream
         stream = Stream(self, len(self.streams), r_range)
-        self.streams[r_range.tuple()] = stream
+        stream.once('received', lambda chunk_size: self.on_read())
 
+        self.streams[r_range.tuple()] = stream
         self.limit_set()
 
         return stream
@@ -196,6 +197,8 @@ class Track(object):
         if self.playing:
             return
 
+        log.debug('[%s] Started', self.uri)
+
         # Schedule limit reset
         self.limit_timer = Timer(self.limit_seconds, self.limit_reset)
         self.limit_timer.start()
@@ -226,6 +229,7 @@ class Track(object):
     def end(self):
         """Send track end/completion events"""
         if not self.playing or self.ended:
+            log.warn('[%s] Invalid Track.end() call (playing: %s, ended: %s)', self.uri, self.playing, self.ended)
             return
 
         log.debug('[%s] Sending "track_end" event (position: %s)', self.uri, self.position)

@@ -138,6 +138,8 @@ class Server(object):
         return self.cache[uri]
 
     def track_end(self, track):
+        log.debug('[%s] Track ended', track.uri)
+
         self.lock_end.acquire()
 
         # Send "track_end" event
