@@ -71,7 +71,10 @@ class Server(object):
         d_name = cherrypy.request.headers.get('X-Plex-Device')
         d_profile = self.profiles.get(d_name)
 
-        r_range = Range.parse(cherrypy.request.headers.get('Range'))
+        r_range = None
+
+        if d_profile.supports_ranges:
+            r_range = Range.parse(cherrypy.request.headers.get('Range'))
 
         log.info('Device: "%s", Profile: "%s", Range: %s', d_name, d_profile.name, repr(r_range))
 
@@ -97,11 +100,18 @@ class Server(object):
         stream.on_reading.wait()
         log.debug('stream ready')
 
-        c_range = r_range.content_range(stream.total_length) if r_range else None
-        r_length = (c_range.end - c_range.start + 1) if c_range else None
+        c_range = None
+        r_length = None
 
-        # Update headers
-        cherrypy.response.headers['Accept-Ranges'] = 'bytes'
+        if d_profile.supports_ranges:
+            cherrypy.response.headers['Accept-Ranges'] = 'bytes'
+
+            if r_range:
+                # Parse request range
+                c_range = r_range.content_range(stream.total_length)
+                r_length = (c_range.end - c_range.start + 1)
+
+        # Set headers
         cherrypy.response.headers['Content-Type'] = stream.headers['Content-Type']
         cherrypy.response.headers['Content-Length'] = r_length or stream.total_length
 
