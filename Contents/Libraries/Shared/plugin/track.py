@@ -1,6 +1,7 @@
 from plugin.range import Range
 from plugin.stream import Stream
 
+from pyemitter import Emitter
 from threading import Event, Timer
 import logging
 import time
@@ -8,7 +9,7 @@ import time
 log = logging.getLogger(__name__)
 
 
-class Track(object):
+class Track(Emitter):
     reuse_distance = 1024 * 1024  # 1MB (in bytes)
     final_distance = 128 * 1024   # 128kB (in bytes)
     limit_seconds = 5
@@ -57,17 +58,24 @@ class Track(object):
             )
 
         self.metadata_ev.set()
+        self.emit('metadata', self.metadata)
 
     def on_track_uri(self, response):
         self.info = response.get('result')
-        self.info_ev.set()
-
         log.debug('received track info: %s', self.info)
 
-    def on_track_error(self, error):
         self.info_ev.set()
+        self.emit('track_uri', self.info)
 
+        # Track has started
+        self.on_start()
+
+    def on_track_error(self, error):
+        self.info = None
         log.debug('track error: %s', error)
+
+        self.info_ev.set()
+        self.emit('track_uri', self.info)
 
     def stream(self, r_range):
         """
@@ -135,7 +143,6 @@ class Track(object):
 
         # Create new stream
         stream = Stream(self, len(self.streams), r_range)
-        stream.once('received', lambda chunk_size: self.on_read())
 
         self.streams[r_range.tuple()] = stream
         self.limit_set()
@@ -193,7 +200,7 @@ class Track(object):
 
         log.info('Stream rate-limiting disabled')
 
-    def on_read(self):
+    def on_start(self):
         if self.playing:
             return
 
