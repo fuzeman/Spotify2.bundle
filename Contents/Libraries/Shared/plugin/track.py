@@ -2,7 +2,7 @@ from plugin.range import Range
 from plugin.stream import Stream
 
 from pyemitter import Emitter
-from threading import Event, Timer
+from threading import Event, Timer, Lock
 import logging
 import time
 
@@ -24,8 +24,12 @@ class Track(Emitter):
         self.info = None
         self.info_ev = Event()
 
+        self.setup_lock = Lock()
+
         self.buffer = bytearray()
+
         self.streams = {}
+        self.stream_lock = Lock()
 
         self.limit_timer = None
 
@@ -34,6 +38,20 @@ class Track(Emitter):
 
         self.playing = False
         self.ended = False
+
+    def setup(self):
+        with self.setup_lock:
+            if self.metadata is None:
+                # Fetch metadata
+                self.server.sp.metadata(self.uri, self.on_metadata)
+                self.metadata_ev.wait()
+
+            if self.info is None:
+                # Fetch stream info
+                self.metadata.track_uri(self.on_track_uri) \
+                    .on('error', self.on_track_error)
+
+                self.info_ev.wait(timeout=5)
 
     def on_metadata(self, metadata):
         self.metadata = metadata
@@ -83,70 +101,71 @@ class Track(Emitter):
         :rtype: plugin.stream.Stream
         """
 
-        if r_range is None:
-            r_range = Range(0, None)
+        with self.stream_lock:
+            if r_range is None:
+                r_range = Range(0, None)
 
-        # Check for existing stream (with same range)
-        if r_range.tuple() in self.streams:
-            log.debug('Returning existing stream (r_range: %s)', repr(r_range))
-            return self.streams[r_range.tuple()]
+            # Check for existing stream (with same range)
+            if r_range.tuple() in self.streams:
+                log.debug('Returning existing stream (r_range: %s)', repr(r_range))
 
-        for s_range in self.streams:
-            stream = self.streams[s_range]
+                # Ensure we are setup to stream (metadata, info)
+                self.setup()
 
-            s_start, s_end = s_range
+                return self.streams[r_range.tuple()]
 
-            # Ensure stream contains the range-start
-            if s_start > r_range.start:
-                continue
+            for s_range in self.streams:
+                stream = self.streams[s_range]
 
-            # Ensure stream contains the range-end
-            if s_end != r_range.end:
-                if r_range.end is None or s_end is None:
+                s_start, s_end = s_range
+
+                # Ensure stream contains the range-start
+                if s_start > r_range.start:
                     continue
 
-                if s_end < r_range.end:
+                # Ensure stream contains the range-end
+                if s_end != r_range.end:
+                    if r_range.end is None or s_end is None:
+                        continue
+
+                    if s_end < r_range.end:
+                        continue
+
+                # Check if we should open a new stream
+                buf_distance = (r_range.start - s_start) - len(stream.buffer)
+                end_distance = stream.total_length - r_range.start
+
+                if buf_distance > self.reuse_distance and end_distance < self.final_distance:
+                    # TODO - Ensure stream-source isn't about to expire
+                    log.debug(
+                        "Buffer is %s bytes away and range is %s bytes from the end of the track - ignoring it",
+                        buf_distance, end_distance
+                    )
                     continue
 
-            # Check if we should open a new stream
-            buf_distance = (r_range.start - s_start) - len(stream.buffer)
-            end_distance = stream.total_length - r_range.start
+                log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
 
-            if buf_distance > self.reuse_distance and end_distance < self.final_distance:
-                # TODO - Ensure stream-source isn't about to expire
-                log.debug(
-                    "Buffer is %s bytes away and range is %s bytes from the end of the track - ignoring it",
-                    buf_distance, end_distance
-                )
-                continue
+                # Ensure we are setup to stream (metadata, info)
+                self.setup()
 
-            log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
-            return self.streams[s_range]
+                return self.streams[s_range]
 
-        log.debug('Building stream for track (r_range: %s)', repr(r_range))
+            log.debug('Building stream for track (r_range: %s)', repr(r_range))
 
-        if self.metadata is None:
-            # Fetch metadata
-            self.server.sp.metadata(self.uri, self.on_metadata)
-            self.metadata_ev.wait()
+            # Create new stream
+            stream = Stream(self, len(self.streams), r_range)
 
-        if self.info is None:
-            # Fetch stream info
-            self.metadata.track_uri(self.on_track_uri)\
-                         .on('error', self.on_track_error)
+            # Store stream
+            self.streams[r_range.tuple()] = stream
 
-            self.info_ev.wait(timeout=5)
+        # Ensure we are setup to stream (metadata, info)
+        self.setup()
 
         # Validate stream info
         if not self.info or 'uri' not in self.info:
             return None
 
-        # Create new stream
-        stream = Stream(self, len(self.streams), r_range)
-
-        self.streams[r_range.tuple()] = stream
         self.limit_set()
-
         return stream
 
     def limit_set(self):
