@@ -95,7 +95,11 @@ class Server(object):
 
         stream.open()
 
-        stream.on_reading.wait()
+        if not stream.on_reading.wait():
+            log.warn('Unable to open stream')
+            cherrypy.response.status = 404
+            return
+
         log.debug('stream ready')
 
         c_range = None

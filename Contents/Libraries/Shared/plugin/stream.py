@@ -3,6 +3,7 @@ from plugin.util import log_progress, func_catch
 
 from pyemitter import Emitter
 from threading import Thread, Event
+from revent import REvent
 import logging
 
 log = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class Stream(Emitter):
 
         self.buffer = bytearray()
 
-        self.on_reading = Event()
+        self.on_reading = REvent()
         self.state = ''
 
     def log(self, message, *args, **kwargs):
@@ -73,7 +74,8 @@ class Stream(Emitter):
         ex = future.exception()
 
         if ex:
-            log.error('Request failed: %s', ex)
+            log.warn('Request failed: %s', ex)
+            self.on_reading.set(False)
             return
 
         self.response = future.result()
@@ -105,6 +107,7 @@ class Stream(Emitter):
         if self.headers.get('Content-Type') == 'text/xml':
             # Error, log response
             self.log(self.response.content)
+            self.on_reading.set(False)
             return
 
         # Read back entire stream
@@ -116,7 +119,7 @@ class Stream(Emitter):
     def run(self):
         self.state = 'reading'
         self.emit('reading')
-        self.on_reading.set()
+        self.on_reading.set(True)
 
         last_progress = None
 

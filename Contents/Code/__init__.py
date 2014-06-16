@@ -1,9 +1,9 @@
-from revent import REvent
 from host import SpotifyHost
 from settings import PREFIX, VERSION, ROUTEBASE
 from utils import ViewMode
 import logging_handler
 
+from revent import REvent
 import locale
 
 logging_handler.setup()
