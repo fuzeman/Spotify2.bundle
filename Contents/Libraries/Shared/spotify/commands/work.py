@@ -2,6 +2,7 @@ from spotify.commands.base import Command
 
 import execjs
 import logging
+import traceback
 
 log = logging.getLogger(__name__)
 
@@ -26,8 +27,12 @@ class DoWork(Command):
     def process(self, payload):
         log.debug("got work, payload: %s", payload)
 
-        ctx = execjs.compile(WORK_RUNNER % payload)
-        result = ctx.eval('main.run.call(main)')
+        try:
+            ctx = execjs.compile(WORK_RUNNER % payload)
+            result = ctx.eval('main.run.call(main)')
+        except Exception, ex:
+            log.warn('Unable to run work - %s - %s', ex, traceback.format_exc())
+            return
 
         log.debug('result: %s' % result)
 
