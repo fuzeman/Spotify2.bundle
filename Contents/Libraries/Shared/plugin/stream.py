@@ -2,7 +2,7 @@ from plugin.range import ContentRange
 from plugin.util import log_progress, func_catch
 
 from pyemitter import Emitter
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 from revent import REvent
 import logging
 
@@ -21,7 +21,7 @@ class Stream(Emitter):
         self.track = track
         self.server = track.server
 
-        self.num = num
+        self.stream_num = num
         self.range = r_range
 
         # HTTP request/response
@@ -44,8 +44,11 @@ class Stream(Emitter):
         self.on_reading = REvent()
         self.state = ''
 
+        self.request_lock = Lock()
+        self.request_seq = 0
+
     def log(self, message, *args, **kwargs):
-        header = '[%s] [%s] ' % (self.track.uri, self.num)
+        header = '[%s] [%s] ' % (self.track.uri, self.stream_num)
         log.info(header + str(message), *args, **kwargs)
 
     def prepare(self):
@@ -127,7 +130,7 @@ class Stream(Emitter):
             self.buffer.extend(chunk)
             self.emit('received', len(chunk), __suppress=True)
 
-            last_progress = log_progress(self, '[%s]   Reading' % self.num, len(self.buffer), last_progress)
+            last_progress = log_progress(self, '[%s]     Reading' % self.stream_num, len(self.buffer), last_progress)
 
             self.read_event.wait()
 
@@ -138,6 +141,10 @@ class Stream(Emitter):
         """
         :type c_range: plugin.range.ContentRange
         """
+        with self.request_lock:
+            num = self.request_seq
+            self.request_seq += 1
+
         position = 0
         end = self.content_range.end + 1
 
@@ -153,9 +160,9 @@ class Stream(Emitter):
             end = (c_range.end - self.content_range.start) + 1
 
             log.debug(
-                '[%s] [%s] Streaming - c_range: %s, position: %s, end: %s',
-                self.track.uri, self.num,
-                c_range, position, end
+                '[%s] [%s:%s] Streaming - c_range: %s, position: %s, end: %s',
+                self.track.uri, self.stream_num,
+                num, c_range, position, end
             )
 
         while position < self.content_length:
@@ -168,7 +175,10 @@ class Stream(Emitter):
             data = self.buffer[position:position + chunk_size]
 
             if data:
-                last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress, length=end)
+                last_progress = log_progress(
+                    self, '[%s:%s] Streaming' % (self.stream_num, num),
+                    position, last_progress, length=end
+                )
                 position += len(data)
                 yield str(data)
             elif self.state != 'buffered':
@@ -179,4 +189,8 @@ class Stream(Emitter):
 
         self.off('received', on_received)
 
-        log.info('[%s] [%s] Complete', self.track.uri, self.num)
+        log.info(
+            '[%s] [%s:%s] Complete',
+            self.track.uri, self.stream_num,
+            num
+        )
