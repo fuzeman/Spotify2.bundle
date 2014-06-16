@@ -134,7 +134,7 @@ class Playlist(Descriptor):
             event = REvent()
             self.sp.metadata(uris, callback=lambda items: event.set(items))
 
-            tracks = event.wait(5)
+            tracks = event.wait(10)
 
             # Check if there was a request timeout
             if tracks is None:
