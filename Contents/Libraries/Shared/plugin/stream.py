@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 
 class Stream(Emitter):
-    chunk_size = 8192
+    chunk_size = 10240  # 10kB
 
     def __init__(self, track, num, r_range):
         """
@@ -145,7 +145,7 @@ class Stream(Emitter):
         ev_received = Event()
 
         @self.on('received')
-        def on_received(chunk_size):
+        def on_received(*args):
             ev_received.set()
 
         if c_range:
@@ -159,7 +159,13 @@ class Stream(Emitter):
             )
 
         while position < self.content_length:
-            data = self.buffer[position:end]
+            chunk_size = end - position
+
+            # Clamp to maximum `chunk_size`
+            if chunk_size > self.chunk_size:
+                chunk_size = self.chunk_size
+
+            data = self.buffer[position:position + chunk_size]
 
             if data:
                 last_progress = log_progress(self, '[%s] Streaming' % self.num, position, last_progress, length=end)
