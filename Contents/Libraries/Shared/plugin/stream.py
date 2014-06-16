@@ -151,7 +151,7 @@ class Stream(Emitter):
         last_progress = None
         ev_received = Event()
 
-        @self.on('received')
+        @self.on(['received', 'buffered'])
         def on_received(*args):
             ev_received.set()
 
@@ -187,7 +187,8 @@ class Stream(Emitter):
             else:
                 break
 
-        self.off('received', on_received)
+        self.off('received', on_received)\
+            .off('buffered', on_received)
 
         log.info(
             '[%s] [%s:%s] Complete',
