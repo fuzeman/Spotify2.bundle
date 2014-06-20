@@ -1,17 +1,31 @@
 {
+    "SEARCH"                        : "Search",
+    "EXPLORE"                       : "Explore",
+    "YOUR_MUSIC"                    : "Your Music",
+    "PREFERENCES"                   : "Preferences",
+
+    "ARTISTS"                       : "Artists",
+    "ALBUMS"                        : "Albums",
+    "TRACKS"                        : "Tracks",
+
+    "TOP_TRACKS"                    : "Top Tracks",
+    "PLAYLISTS"                     : "Playlists",
+    "STARRED"                       : "Starred",
+    "RESULTS"                       : "Results",
+
+    "FEATURED_PLAYLISTS"            : "Featured Playlists",
+    "TOP_PLAYLISTS"                 : "Top Playlists",
+    "NEW_RELEASES"                  : "New Releases",
+
+
     "PREF_USERNAME"                 : "Username",
     "PREF_PASSWORD"                 : "Password",
     "PREF_SORTPLAYLISTS"            : "Sort the playlists by name",
     "PREF_SHOWALBUMYEAR"            : "Show album release year",
-    "PREF_PROXY_TRACKS"              : "Proxy tracks (via PMS)",
-
-    "MENU_PLAYLISTS"                : "Playlists",
-    "MENU_SEARCH"                   : "Search",
-    "MENU_STARRED"                  : "Starred",
-    "MENU_PREFS"                    : "Preferences",
+    "PREF_SS_ENABLED"               : "Streaming Server - Enabled",
+    "PREF_SS_HOSTNAME"              : "Streaming Server - Hostname (optional)",
 
     "PROMPT_SEARCH"                 : "Search for music",
-
 
     "MSG_CALLBACK_FAILURE_TITLE"    : "Callback failure",
     "MSG_CALLBACK_FAILURE_BODY"     : "Callback returned an invalid result",
@@ -32,12 +46,13 @@
     "MSG_BODY_LOGIN_IN_PROGRESS"    : "We're still trying to open a Spotify session...",
 
     "MSG_TITLE_LOGIN_FAILED"        : "Login Failed",
-    "MSG_TITLE_NO_RESULTS"          : "No results",
     "MSG_TITLE_UNKNOWN_PLAYLIST"    : "Unable to find playlist",
 
     "MSG_TITLE_PLAYLIST_ERROR"      : "Error Retrieving Playlist",
     "MSG_BODY_PLAYIST_ERROR"        : "The selected playlist details could not be found",
 
-    "MSG_FMT_DID_YOU_MEAN"          : "Did you mean '%s'?",
-    "MSG_FMT_NO_RESULTS"            : "No matches for search '%s'..."
+    "MSG_BODY_DID_YOU_MEAN"         : "Did you mean '%s'?",
+
+    "MSG_TITLE_NO_RESULTS"          : "No results",
+    "MSG_BODY_NO_RESULTS"           : "No matches for search '%s'..."
 }

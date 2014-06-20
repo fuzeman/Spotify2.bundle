@@ -1,4 +1,5 @@
 from spotify.components import Authentication, Connection, Metadata, Search
+from spotify.components.explore import Explore
 
 
 class ComponentManager(object):
@@ -18,5 +19,5 @@ class ComponentManager(object):
             .on('authenticated', self.sp.on_authenticated)
 
         self.metadata = Metadata(self.sp)
-
         self.search = Search(self.sp)
+        self.explore = Explore(self.sp)

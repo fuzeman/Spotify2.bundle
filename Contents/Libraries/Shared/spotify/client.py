@@ -25,7 +25,7 @@ class Spotify(Component, Emitter):
         self.authenticated = False
         self.config = None
 
-        self.user_info = None
+        self.user_info = {}
         self.user = None
 
     # User
@@ -157,6 +157,15 @@ class Spotify(Component, Emitter):
     def playlists(self, username, start=0, count=100, callback=None):
         return self.components.metadata.playlists(username, start, count, callback)
 
+    def collection(self, username, source, params=None, callback=None):
+        return self.components.metadata.collection(username, source, params, callback)
+
     # Search
     def search(self, query, query_type='all', start=0, count=50, callback=None):
         return self.components.search.search(query, query_type, start, count, callback)
+
+    # Explore
+
+    @property
+    def explore(self):
+        return self.components.explore

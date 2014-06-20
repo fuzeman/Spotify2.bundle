@@ -33,8 +33,8 @@ class AlbumGroup(Descriptor):
         return album
 
     @classmethod
-    def from_protobuf(cls, sp, internal, types, defaults=None):
-        obj = super(AlbumGroup, cls).from_protobuf(sp, internal, types, defaults)
+    def from_protobuf(cls, sp, data, parser):
+        obj = super(AlbumGroup, cls).from_protobuf(sp, data, parser)
 
         # Return first available album (instead of the actual group)
         return obj.find_available()

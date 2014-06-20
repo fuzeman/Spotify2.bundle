@@ -10,9 +10,9 @@ log = logging.getLogger(__name__)
 
 
 class PropertyProxy(object):
-    def __init__(self, name=None, type_=None, func=None):
+    def __init__(self, name=None, type=None, func=None):
         self.name = name
-        self.type = type_
+        self.type = type
         self.func = func
 
     def get_value(self, instance, key):
@@ -39,66 +39,45 @@ class PropertyProxy(object):
 
         return self.get_attribute(value, path)
 
-    def get(self, key, obj, type_map):
+    def get(self, key, obj, data_type, parser):
         if key in obj._cache:
             return obj._cache[key]
 
         # Pull value from instance or protobuf
-        original = (
+        data = (
             self.get_attribute(obj, self.name) or
-            self.get_attribute(obj._internal, self.name)
+            self.get_attribute(obj._data, self.name)
         )
 
         # Transform attribute values
-        value = self.parse(obj, original, type_map)
+        value = self.parse(obj, data, data_type, parser)
 
         # Cache for later use
         obj._cache[key] = value
 
         return value
 
-    def get_type(self, types):
-        if self.type in types:
-            return types[self.type]
-
-        if self.name in types:
-            return types[self.name]
-
-        log.warn('Unable to find type for "%s" or "%s"', self.type, self.name)
-        return None
-
-    def parse(self, obj, value, types):
-        # Retrieve 'type' from type_map
-        if type(self.type) is str:
-            if not types:
-                return value
-
-            self.type = self.get_type(types)
-
+    def parse(self, obj, data, data_type, parser):
         # Use 'func' if specified
         if self.func:
-            return self.func(value)
+            return self.func(data)
 
         if not self.type:
-            return value
+            return data
 
         # Convert to 'type'
-        if isinstance(value, (list, RepeatedCompositeFieldContainer)):
-            return [self.construct(obj.sp, x, types) for x in value]
+        if isinstance(data, (list, RepeatedCompositeFieldContainer)):
+            return [self.construct(obj.sp, x, data_type, parser) for x in data]
 
-        return self.construct(obj.sp, value, types)
+        return self.construct(obj.sp, data, data_type, parser)
 
-    def construct(self, sp, value, types):
-        if value is None:
+    def construct(self, sp, data, data_type, parser):
+        if data is None:
             return None
 
-        if isinstance(value, etree._Element):
-            return self.type.from_node(sp, value, types)
+        tag = self.type or self.name
 
-        if type(value) is dict:
-            return self.type.from_dict(sp, value, types)
-
-        return self.type.from_protobuf(sp, value, types)
+        return parser.parse(sp, data_type, tag, data)
 
     @staticmethod
     def parse_date(value):
@@ -112,13 +91,14 @@ class Descriptor(Component):
     __protobuf__ = None
     __node__ = None
 
-    def __init__(self, sp, internal=None, type_map=None):
+    def __init__(self, sp, data=None, data_type=None, parser=None):
         super(Descriptor, self).__init__(sp)
 
-        self._internal = internal
+        self._data = data
+        self._data_type = data_type
 
         self._proxies = self._find_proxies()
-        self._type_map = type_map
+        self._parser = parser
         self._cache = {}
 
     def dict_update(self, attributes):
@@ -177,7 +157,7 @@ class Descriptor(Component):
             proxy = proxies.get(name)
 
             if isinstance(proxy, PropertyProxy):
-                return proxy.get(name, self, self._type_map)
+                return proxy.get(name, self, self._data_type, self._parser)
 
         return super(Descriptor, self).__getattribute__(name)
 
@@ -185,20 +165,15 @@ class Descriptor(Component):
         return self.__repr__()
 
     @classmethod
-    def from_protobuf(cls, sp, internal, types, defaults=None):
-        obj = cls(sp, internal, types)
-
-        if defaults:
-            return obj.dict_update(defaults)
-
-        return obj
+    def from_protobuf(cls, sp, data, parser):
+        return cls(sp, data, parser.Protobuf, parser)
 
     @classmethod
     def from_node(cls, sp, node, types):
-        return cls.from_dict(sp, etree_convert(node), types)
+        return cls.from_node_dict(sp, etree_convert(node), types)
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         raise NotImplementedError()
 
     @classmethod

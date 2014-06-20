@@ -5,7 +5,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-CATALOGUE_MAP = {
+CATALOGUE_NAME_MAP = {
     # SUBSCRIPTION
     'premium':   1,
     'unlimited': 1,
@@ -13,8 +13,22 @@ CATALOGUE_MAP = {
     'free':      0
 }
 
+CATALOGUE_ID_MAP = {
+    0: 'free',
+    1: 'premium',
+    3: 'shuffle'
+}
 
-def split_countries(value):
+
+def parse_catalogues(value):
+    return [
+        CATALOGUE_ID_MAP[x]
+        for x in value
+        if x in CATALOGUE_ID_MAP
+    ]
+
+
+def parse_countries(value):
     if value is None:
         return None
 
@@ -25,51 +39,30 @@ class Restriction(Descriptor):
     __protobuf__ = metadata_pb2.Restriction
     __node__ = 'restriction'
 
-    catalogues = PropertyProxy('catalogue')
-    countries_allowed = PropertyProxy(func=split_countries)
-    countries_forbidden = PropertyProxy(func=split_countries)
+    catalogues = PropertyProxy('catalogue', func=parse_catalogues)
+    countries_allowed = PropertyProxy(func=parse_countries)
+    countries_forbidden = PropertyProxy(func=parse_countries)
     type = PropertyProxy
 
     def check(self):
-        # Check restriction validity
-        if not self.countries_allowed and not self.countries_forbidden:
-            return False, 'invalid'
+        available = True
+        allowed = True
 
-        # Check catalogue
-        u_catalogue = CATALOGUE_MAP.get(self.sp.user_info.get('catalogue'))
+        if self.countries_allowed is not None:
+            available = len(self.countries_allowed) != 0
+            allowed = self.sp.country in self.countries_allowed
+        elif self.countries_forbidden is not None:
+            allowed = self.sp.country not in self.countries_forbidden
 
-        if u_catalogue not in self.catalogues:
-            return False, 'catalogue not allowed'
+        return available, allowed
 
-        # Check country
-        u_country = self.sp.user_info.get('country')
-
-        allowed = not self.countries_allowed or u_country in self.countries_allowed
-        forbidden = u_country in self.countries_forbidden
-
-        # Assume allowed (if country is in both lists)
-        if allowed and forbidden:
-            forbidden = False
-
-        # Passed restriction
-        if allowed and not forbidden:
-            return True, ''
-
-        # Return failure reason
-        if not allowed:
-            return False, 'country not allowed'
-
-        if forbidden:
-            return False, 'country forbidden'
-
-        return False, 'unknown failure'
 
     @classmethod
-    def from_dict(cls, sp, data, types):
+    def from_node_dict(cls, sp, data, types):
         catalogue = [
-            CATALOGUE_MAP[name]
+            CATALOGUE_NAME_MAP[name]
             for name in data.get('catalogues', '').split(',')
-            if name in CATALOGUE_MAP
+            if name in CATALOGUE_NAME_MAP
         ]
 
         return cls(sp, {

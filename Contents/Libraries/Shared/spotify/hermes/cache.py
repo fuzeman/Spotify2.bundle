@@ -62,6 +62,9 @@ class HermesCache(object):
         return k_content, k_item
 
     def store(self, header, content_type, internal):
+        if type(internal) is dict:
+            return None
+
         k_content, k_item = self.get_object_key(content_type, internal)
 
         if not k_content or not k_item:

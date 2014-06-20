@@ -1,21 +1,14 @@
-from objects import Objects
 from routing import route_path
-from utils import localized_format
+from utils import LF
+from view import ViewBase, COLUMNS
 
 import locale
+import urllib
 
 
-class SpotifySearch(object):
-    def __init__(self, host):
-        self.host = host
-
-        self.objects = Objects(host)
-
-    @property
-    def sp(self):
-        return self.host.sp
-
-    def run(self, query, callback, type='all', count=7, plain=False):
+class SpotifySearch(ViewBase):
+    def run(self, query, callback, type='all', count=COLUMNS, plain=False):
+        query = urllib.unquote_plus(query)
         count = int(count)
 
         Log('Search query: "%s", type: %s, count: %s, plain: %s' % (query, type, count, plain))
@@ -41,7 +34,7 @@ class SpotifySearch(object):
 
         return MessageContainer(
             header=L("MSG_TITLE_NO_RESULTS"),
-            message=localized_format("MSG_FMT_NO_RESULTS", query)
+            message=LF("MSG_BODY_NO_RESULTS", query)
         )
 
     def fill(self, result, oc, query, count, plain, placeholders, type):
@@ -53,46 +46,31 @@ class SpotifySearch(object):
 
         if not plain:
             self.append_header(
-                oc, '%s (%s)' % (self.get_title(type, placeholders), locale.format('%d', total, grouping=True)),
+                oc, '%s (%s)' % (self.get_title(type, True), locale.format('%d', total, grouping=True)),
                 route_path('search', query=query, type=type, count=50, plain=True)
             )
 
-        for x in range(count):
-            if x < len(items):
-                oc.add(self.objects.get(items[x]))
-            elif not plain and placeholders:
-                # Add a placeholder to fix alignment on PHT
-                self.append_header(oc, '')
-
-    @classmethod
-    def append_header(cls, oc, title, key=''):
-        oc.add(DirectoryObject(key=key, title=title))
-
-    @staticmethod
-    def use_placeholders():
-        return Client.Product in [
-            'Plex Home Theater'
-        ]
+        self.append_items(oc, items, count, plain, placeholders)
 
     @staticmethod
     def get_title(type, plain=False):
         title = ""
 
         if type == 'artists':
-            title = " Artists"
+            title = L('ARTISTS')
         elif type == 'albums':
-            title = "Albums"
+            title = L('ALBUMS')
         elif type == 'tracks':
-            title = "Tracks"
+            title = L('TRACKS')
         elif type == 'playlists':
-            title = "Playlists"
+            title = L('PLAYLISTS')
 
         if title and plain:
             return title
         elif title:
-            return "Results - %s" % title
+            return "%s - %s" % (L('RESULTS'), title)
 
-        return "Results"
+        return L('RESULTS')
 
     @staticmethod
     def get_content(type):
