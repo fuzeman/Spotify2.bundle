@@ -70,7 +70,7 @@ class Track(Emitter):
 
         # Log track restrictions for debugging
         for x, restriction in enumerate(self.metadata.restrictions):
-            log.debug(
+            log.info(
                 '[%s] R#%s countries allowed: %s, countries forbidden: %s, catalogues: %s', uri, x + 1,
                 restriction.countries_allowed, restriction.countries_forbidden, restriction.catalogues
             )
@@ -90,7 +90,7 @@ class Track(Emitter):
 
     def on_track_error(self, error):
         self.info = None
-        log.debug('track error: %s', error)
+        log.warn('track error: %s', error)
 
         self.info_ev.set()
         self.emit('track_uri', self.info)
@@ -107,7 +107,7 @@ class Track(Emitter):
 
             # Check for existing stream (with same range)
             if r_range.tuple() in self.streams:
-                log.debug('Returning existing stream (r_range: %s)', repr(r_range))
+                log.info('Returning existing stream (r_range: %s)', repr(r_range))
 
                 # Ensure we are setup to stream (metadata, info)
                 self.setup()
@@ -133,7 +133,7 @@ class Track(Emitter):
 
                 # Wait until the stream has opened
                 if not stream.on_open.wait(5):
-                    log.debug('Timeout while waiting for stream to open')
+                    log.info('Timeout while waiting for stream to open')
                     continue
 
                 # Check if we should open a new stream
@@ -142,20 +142,20 @@ class Track(Emitter):
 
                 if buf_distance > self.reuse_distance and end_distance < self.final_distance:
                     # TODO - Ensure stream-source isn't about to expire
-                    log.debug(
+                    log.info(
                         "Buffer is %s bytes away and range is %s bytes from the end of the track - ignoring it",
                         buf_distance, end_distance
                     )
                     continue
 
-                log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
+                log.info('Returning existing stream with similar range (s_range: %s)', repr(s_range))
 
                 # Ensure we are setup to stream (metadata, info)
                 self.setup()
 
                 return self.streams[s_range]
 
-            log.debug('Building stream for track (r_range: %s)', repr(r_range))
+            log.info('Building stream for track (r_range: %s)', repr(r_range))
 
             # Create new stream
             stream = Stream(self, len(self.streams), r_range)
@@ -233,7 +233,7 @@ class Track(Emitter):
         if self.playing:
             return
 
-        log.debug('[%s] Started', self.uri)
+        log.info('[%s] Started', self.uri)
 
         # Schedule limit reset
         self.limit_timer = Timer(self.limit_seconds, self.limit_reset)

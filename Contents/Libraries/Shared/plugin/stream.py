@@ -160,7 +160,7 @@ class Stream(Emitter):
             position = c_range.start - self.content_range.start
             end = (c_range.end - self.content_range.start) + 1
 
-            log.debug(
+            log.info(
                 '[%s] [%s:%s] Streaming - c_range: %s, position: %s, end: %s',
                 self.track.uri, self.stream_num,
                 num, c_range, position, end
@@ -180,6 +180,12 @@ class Stream(Emitter):
             data = self.buffer[position:position + chunk_size]
 
             if data:
+                log.log(
+                    logging.TRACE,
+                    '[%s] [%s:%s] Sending chunk - len(data): %s',
+                    self.track.uri, self.stream_num, num, len(data)
+                )
+
                 last_progress = log_progress(
                     self, '[%s:%s] Streaming' % (self.stream_num, num),
                     position, last_progress, length=end
@@ -187,6 +193,12 @@ class Stream(Emitter):
                 position += len(data)
                 yield str(data)
             elif self.state != 'buffered':
+                log.log(
+                    logging.TRACE,
+                    '[%s] [%s:%s] Waiting for buffer',
+                    self.track.uri, self.stream_num, num
+                )
+
                 ev_received.clear()
                 ev_received.wait()
             else:

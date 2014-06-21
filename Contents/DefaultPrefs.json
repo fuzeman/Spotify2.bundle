@@ -29,5 +29,19 @@
         "type": "text",
         "label": "PREF_SS_HOSTNAME",
         "default": ""
+    },
+    {
+        "id": "level_events",
+        "type": "enum",
+        "label": "PREF_LEVEL_EVENTS",
+        "values": ["INFO", "DEBUG"],
+        "default": "INFO"
+    },
+    {
+        "id": "level_streaming",
+        "type": "enum",
+        "label": "PREF_LEVEL_STREAMING",
+        "values": ["INFO", "DEBUG", "TRACE"],
+        "default": "INFO"
     }
 ]

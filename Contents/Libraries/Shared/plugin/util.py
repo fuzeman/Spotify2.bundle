@@ -14,7 +14,7 @@ def log_progress(stream, label, position, last, length=None):
     if value == last:
         return value
 
-    log.debug('[%s] %s [%s|%s] %03d%%' % (
+    log.info('[%s] %s [%s|%s] %03d%%' % (
         stream.track.uri,
         label,
         (' ' * value),

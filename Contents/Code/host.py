@@ -4,6 +4,7 @@ from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
 from utils import authenticated, parse_xml
+import logging_handler
 
 from cachecontrol import CacheControl
 import os
@@ -76,6 +77,9 @@ class SpotifyHost(object):
         return os.path.abspath(os.path.join(self.code_path, '..'))
 
     def preferences_updated(self):
+        # Update logging levels
+        logging_handler.setup()
+
         # Trigger a client restart
         self.start()
 
