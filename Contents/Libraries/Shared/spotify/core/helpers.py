@@ -68,3 +68,12 @@ def convert(value, to_type, default=None):
         return to_type(value)
     except:
         return default
+
+
+def repr_trim(value, length=1000):
+    value = repr(value)
+
+    if len(value) < length:
+        return value
+
+    return '<%s - %s characters>' % (type(value).__name__, len(value))
