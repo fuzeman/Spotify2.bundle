@@ -124,6 +124,8 @@ class Server(object):
                 c_range = r_range.content_range(stream.total_length)
                 r_length = (c_range.end - c_range.start + 1)
 
+                log.debug('[%s] Range: %s, Length: %s', track.uri, c_range, r_length)
+
         # Set headers
         cherrypy.response.headers['Content-Type'] = stream.headers['Content-Type']
         cherrypy.response.headers['Content-Length'] = r_length or stream.total_length
@@ -133,6 +135,8 @@ class Server(object):
 
             cherrypy.response.headers['Content-Range'] = str(c_range)
             cherrypy.response.status = 206
+
+        log.debug('[%s] Headers: %s', track.uri, cherrypy.response.headers)
 
         # Stream response
         return stream.iter(c_range)
