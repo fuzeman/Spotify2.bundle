@@ -31,6 +31,13 @@
         "default": ""
     },
     {
+        "id": "proxy_ranges",
+        "type": "enum",
+        "label": "PREF_SS_RANGES",
+        "values": ["Automatic", "Disabled", "Enabled"],
+        "default": "Automatic"
+    },
+    {
         "id": "level_events",
         "type": "enum",
         "label": "PREF_LEVEL_EVENTS",

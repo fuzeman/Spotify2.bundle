@@ -29,6 +29,8 @@ class Server(object):
         self.lock_get = Lock()
         self.lock_end = Lock()
 
+        self.supports_ranges = None
+
     @property
     def sp(self):
         return self.plugin_host.sp
@@ -71,7 +73,16 @@ class Server(object):
         r_profile = self.profiles.match(cherrypy.request.headers)
         r_range = None
 
-        if r_profile.supports_ranges:
+        supports_ranges = True
+
+        if self.supports_ranges is not None:
+            # Global "Streaming Server - Range support" option
+            supports_ranges = self.supports_ranges
+        else:
+            # Profile specific option
+            supports_ranges = r_profile.supports_ranges
+
+        if supports_ranges:
             r_range = Range.parse(cherrypy.request.headers.get('Range'))
 
         log.info('Profile: "%s", Range: %s', r_profile.name, repr(r_range))
@@ -105,7 +116,7 @@ class Server(object):
         c_range = None
         r_length = None
 
-        if r_profile.supports_ranges:
+        if supports_ranges:
             cherrypy.response.headers['Accept-Ranges'] = 'bytes'
 
             if r_range:

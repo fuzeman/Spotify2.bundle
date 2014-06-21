@@ -3,6 +3,7 @@ from containers import Containers
 from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
+from settings import PREF_SS_RANGES
 from utils import authenticated, parse_xml
 import logging_handler
 
@@ -102,6 +103,10 @@ class SpotifyHost(object):
         if self.server and not self.proxy_tracks:
             self.server.stop()
             self.server = None
+
+        # Update server preferences
+        if self.server:
+            self.server.supports_ranges = PREF_SS_RANGES.get(Prefs['proxy_ranges'], True)
 
         # Update reference on SpotifyClient
         self.client.server = self.server

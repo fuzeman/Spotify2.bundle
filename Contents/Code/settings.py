@@ -13,3 +13,9 @@ LOGGERS     = [
     'requests',
     'spotify'
 ]
+
+PREF_SS_RANGES = {
+    'Automatic': None,
+    'Disabled': False,
+    'Enabled': True
+}
