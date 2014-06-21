@@ -36,12 +36,13 @@ class Stream(Emitter):
 
         # Data buffering
         self.read_thread = None
-        self.read_event = Event()
         self.read_sleep = None
 
         self.buffer = bytearray()
 
-        self.on_reading = REvent()
+        self.on_open = REvent()
+        self.on_reading = Event()
+
         self.state = ''
 
         self.request_lock = Lock()
@@ -78,7 +79,7 @@ class Stream(Emitter):
 
         if ex:
             log.warn('Request failed: %s', ex)
-            self.on_reading.set(False)
+            self.on_open.set(False)
             return
 
         self.response = future.result()
@@ -110,11 +111,11 @@ class Stream(Emitter):
         if self.headers.get('Content-Type') == 'text/xml':
             # Error, log response
             self.log(self.response.content)
-            self.on_reading.set(False)
+            self.on_open.set(False)
             return
 
         # Read back entire stream
-        self.read_event.set()
+        self.on_reading.set()
 
         self.read_thread = Thread(target=func_catch, args=(self.run,))
         self.read_thread.start()
@@ -122,7 +123,7 @@ class Stream(Emitter):
     def run(self):
         self.state = 'reading'
         self.emit('reading')
-        self.on_reading.set(True)
+        self.on_open.set(True)
 
         last_progress = None
 
@@ -132,7 +133,7 @@ class Stream(Emitter):
 
             last_progress = log_progress(self, '[%s]     Reading' % self.stream_num, len(self.buffer), last_progress)
 
-            self.read_event.wait()
+            self.on_reading.wait()
 
         self.state = 'buffered'
         self.emit('buffered')

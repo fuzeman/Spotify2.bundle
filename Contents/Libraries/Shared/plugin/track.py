@@ -131,6 +131,11 @@ class Track(Emitter):
                     if s_end < r_range.end:
                         continue
 
+                # Wait until the stream has opened
+                if not stream.on_open.wait(5):
+                    log.debug('Timeout while waiting for stream to open')
+                    continue
+
                 # Check if we should open a new stream
                 buf_distance = (r_range.start - s_start) - len(stream.buffer)
                 end_distance = stream.total_length - r_range.start
@@ -189,7 +194,7 @@ class Track(Emitter):
         for (start, end), stream in self.streams.items():
             if not start and not end:
                 log.info('Stream rate-limiting enabled on %s', stream)
-                stream.read_event.clear()
+                stream.on_reading.clear()
                 continue
 
             log.info('Stream priority enabled on %s', stream)
@@ -200,7 +205,7 @@ class Track(Emitter):
         ready = all([
             stream.state == 'buffered'
             for stream in self.streams.values()
-            if stream.read_event.is_set()
+            if stream.on_reading.is_set()
         ])
 
         if not ready:
@@ -215,7 +220,7 @@ class Track(Emitter):
             self.limit_timer = None
 
         for range, stream in self.streams.items():
-            stream.read_event.set()
+            stream.on_reading.set()
 
         log.info('Stream rate-limiting disabled')
 
