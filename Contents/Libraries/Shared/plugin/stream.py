@@ -173,6 +173,10 @@ class Stream(Emitter):
             if chunk_size > self.chunk_size:
                 chunk_size = self.chunk_size
 
+            # Check if range has reached the end
+            if not chunk_size:
+                break
+
             data = self.buffer[position:position + chunk_size]
 
             if data:

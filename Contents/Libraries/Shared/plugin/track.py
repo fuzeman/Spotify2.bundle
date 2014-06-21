@@ -219,10 +219,15 @@ class Track(Emitter):
             self.limit_timer.cancel()
             self.limit_timer = None
 
+        limited = False
+
         for range, stream in self.streams.items():
+            limited |= not stream.on_reading.is_set()
+
             stream.on_reading.set()
 
-        log.info('Stream rate-limiting disabled')
+        if limited:
+            log.info('Stream rate-limiting disabled')
 
     def on_start(self):
         if self.playing:
