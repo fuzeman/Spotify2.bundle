@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 class Track(Emitter):
     reuse_distance = 1024 * 1024  # 1MB (in bytes)
     final_distance = 128 * 1024   # 128kB (in bytes)
-    limit_seconds = 5
+    limit_seconds = 10
 
     def __init__(self, server, uri):
         self.server = server
