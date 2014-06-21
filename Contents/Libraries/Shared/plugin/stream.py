@@ -131,6 +131,12 @@ class Stream(Emitter):
             self.buffer.extend(chunk)
             self.emit('received', len(chunk), __suppress=True)
 
+            log.log(
+                logging.TRACE,
+                '[%s] [%s] Received chunk - len(chunk): %s',
+                self.track.uri, self.stream_num, len(chunk)
+            )
+
             last_progress = log_progress(self, '[%s]     Reading' % self.stream_num, len(self.buffer), last_progress)
 
             self.on_reading.wait()
