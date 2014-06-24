@@ -1,6 +1,5 @@
 from direct import Direct
 from routing import function_path
-from settings import PLUGIN_ID
 
 from spotify import Spotify
 from threading import Event, Timer
@@ -9,9 +8,6 @@ import time
 
 
 class SpotifyClient(object):
-    audio_buffer_size = 50
-    user_agent = PLUGIN_ID
-
     def __init__(self, host):
         self.host = host
 
