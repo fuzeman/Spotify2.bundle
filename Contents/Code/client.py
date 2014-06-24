@@ -19,7 +19,7 @@ class SpotifyClient(object):
         self.reconnect_timer = None
 
         self.ready_event = Event()
-        self.errors = []
+        self.messages = []
 
     def start(self):
         if self.sp:
@@ -29,7 +29,7 @@ class SpotifyClient(object):
         self.sp = Spotify()
 
         self.ready_event = Event()
-        self.errors = []
+        self.messages = []
 
         self.sp.on('error', self.on_error)\
                .on('close', self.on_close)
@@ -44,7 +44,7 @@ class SpotifyClient(object):
         self.ready_event.set()
 
     def on_error(self, message):
-        self.errors.append((logging.ERROR, message))
+        self.messages.append((logging.ERROR, message))
         Log.Error(message)
 
     def on_close(self, code, reason=None):
@@ -146,8 +146,8 @@ class SpotifyClient(object):
 
         return self.direct.get(uri)
 
-    def get_last_error(self):
-        if not self.errors:
+    def last_message(self):
+        if not self.messages:
             return None, ''
 
-        return self.errors[-1]
+        return self.messages[-1]

@@ -192,12 +192,12 @@ class SpotifyHost(object):
     def main_menu(self):
         objects = []
 
-        level, message = self.client.get_last_error()
+        level, message = self.client.last_message()
 
         if level:
             objects.append(DirectoryObject(
-                key=route_path('errors'),
-                title='%s: "%s"' % (logging.getLevelName(level), message),
+                key=route_path('messages'),
+                title='%s: %s' % (logging.getLevelName(level), message),
                 thumb=R("icon-default.png")
             ))
 
@@ -238,6 +238,20 @@ class SpotifyHost(object):
             objects=objects,
             no_cache=True
         )
+
+    def messages(self):
+        oc = ObjectContainer(
+            title2=L('MESSAGES'),
+            no_cache=True
+        )
+
+        for level, message in self.client.messages:
+            oc.add(DirectoryObject(
+                key=route_path('messages'),
+                title='[%s] %s' % (logging.getLevelName(level), message)
+            ))
+
+        return oc
 
     @authenticated
     def search(self, query, callback, type='all', count=7, plain=False):
