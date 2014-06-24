@@ -18,7 +18,9 @@ class Spotify(Component, Emitter):
         self.create_session(user_agent)
 
         # Construct modules
-        self.commands = CommandManager(self)
+        self.commands = CommandManager(self)\
+            .pipe('error', self)
+
         self.components = ComponentManager(self)
 
         # Session data

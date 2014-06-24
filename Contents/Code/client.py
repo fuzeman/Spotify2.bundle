@@ -1,16 +1,13 @@
 from direct import Direct
 from routing import function_path
-from settings import PLUGIN_ID
 
 from spotify import Spotify
 from threading import Event, Timer
+import logging
 import time
 
 
 class SpotifyClient(object):
-    audio_buffer_size = 50
-    user_agent = PLUGIN_ID
-
     def __init__(self, host):
         self.host = host
 
@@ -22,6 +19,7 @@ class SpotifyClient(object):
         self.reconnect_timer = None
 
         self.ready_event = Event()
+        self.messages = []
 
     def start(self):
         if self.sp:
@@ -29,9 +27,11 @@ class SpotifyClient(object):
             pass
 
         self.sp = Spotify()
-        self.ready_event = Event()
 
-        self.sp.on('error', lambda message: Log.Error(message))\
+        self.ready_event = Event()
+        self.messages = []
+
+        self.sp.on('error', self.on_error)\
                .on('close', self.on_close)
 
         self.sp.login(self.host.username, self.host.password, self.on_login)
@@ -42,6 +42,10 @@ class SpotifyClient(object):
 
         # Release request hold
         self.ready_event.set()
+
+    def on_error(self, message):
+        self.messages.append((logging.ERROR, message))
+        Log.Error(message)
 
     def on_close(self, code, reason=None):
         # Force re-authentication
@@ -141,3 +145,9 @@ class SpotifyClient(object):
             return self.server.get_track_url(str(uri), hostname=self.host.hostname)
 
         return self.direct.get(uri)
+
+    def last_message(self):
+        if not self.messages:
+            return None, ''
+
+        return self.messages[-1]

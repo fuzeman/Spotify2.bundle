@@ -57,6 +57,11 @@ def main_menu(**kwargs):
     return plugin_callback(SpotifyHost.main_menu, kwargs)
 
 
+@route(ROUTEBASE + 'messages')
+def messages(**kwargs):
+    return plugin_callback(SpotifyHost.messages, kwargs)
+
+
 @route(ROUTEBASE + 'search')
 def search(**kwargs):
     return plugin_callback(SpotifyHost.search, kwargs, async=True)

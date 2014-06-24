@@ -8,6 +8,7 @@ from utils import authenticated, parse_xml
 import logging_handler
 
 from cachecontrol import CacheControl
+import logging
 import os
 import requests
 import socket
@@ -189,40 +190,68 @@ class SpotifyHost(object):
     #
 
     def main_menu(self):
+        objects = []
+
+        level, message = self.client.last_message()
+
+        if level:
+            objects.append(DirectoryObject(
+                key=route_path('messages'),
+                title='%s: %s' % (logging.getLevelName(level), message),
+                thumb=R("icon-default.png")
+            ))
+
+        objects.extend([
+            InputDirectoryObject(
+                key=route_path('search'),
+                prompt=L('PROMPT_SEARCH'),
+                title=L('SEARCH'),
+                thumb=R("icon-default.png")
+            ),
+            DirectoryObject(
+                key=route_path('explore'),
+                title=L('EXPLORE'),
+                thumb=R("icon-default.png")
+            ),
+            #DirectoryObject(
+            #    key=route_path('discover'),
+            #    title=L("DISCOVER"),
+            #    thumb=R("icon-default.png")
+            #),
+            #DirectoryObject(
+            #    key=route_path('radio'),
+            #    title=L("RADIO"),
+            #    thumb=R("icon-default.png")
+            #),
+            DirectoryObject(
+                key=route_path('your_music'),
+                title=L('YOUR_MUSIC'),
+                thumb=R("icon-default.png")
+            ),
+            PrefsObject(
+                title=L('PREFERENCES'),
+                thumb=R("icon-default.png")
+            )
+        ])
+
         return ObjectContainer(
-            objects=[
-                InputDirectoryObject(
-                    key=route_path('search'),
-                    prompt=L('PROMPT_SEARCH'),
-                    title=L('SEARCH'),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('explore'),
-                    title=L('EXPLORE'),
-                    thumb=R("icon-default.png")
-                ),
-                #DirectoryObject(
-                #    key=route_path('discover'),
-                #    title=L("DISCOVER"),
-                #    thumb=R("icon-default.png")
-                #),
-                #DirectoryObject(
-                #    key=route_path('radio'),
-                #    title=L("RADIO"),
-                #    thumb=R("icon-default.png")
-                #),
-                DirectoryObject(
-                    key=route_path('your_music'),
-                    title=L('YOUR_MUSIC'),
-                    thumb=R("icon-default.png")
-                ),
-                PrefsObject(
-                    title=L('PREFERENCES'),
-                    thumb=R("icon-default.png")
-                )
-            ],
+            objects=objects,
+            no_cache=True
         )
+
+    def messages(self):
+        oc = ObjectContainer(
+            title2=L('MESSAGES'),
+            no_cache=True
+        )
+
+        for level, message in self.client.messages:
+            oc.add(DirectoryObject(
+                key=route_path('messages'),
+                title='[%s] %s' % (logging.getLevelName(level), message)
+            ))
+
+        return oc
 
     @authenticated
     def search(self, query, callback, type='all', count=7, plain=False):
