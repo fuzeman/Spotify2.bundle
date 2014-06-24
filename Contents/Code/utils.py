@@ -86,3 +86,11 @@ def parse_xml(string):
         return XML.ElementFromString(string)
     except:
         return None
+
+
+def all(items):
+    for item in items:
+        if not item:
+            return False
+
+    return True
