@@ -10,6 +10,10 @@ RE_LANDING = re.compile(
     re.IGNORECASE | re.DOTALL
 )
 
+AUTH_ERRORS = {
+    'invalid_credentials': 'Invalid account credentials provided, check your username/password'
+}
+
 log = logging.getLogger(__name__)
 
 
@@ -23,11 +27,6 @@ class Authentication(Component, Emitter):
 
         self.credentials = {'type': 'anonymous'}
         self.landing_params = None
-
-        # Broadcast errors upstream
-        @self.on('error')
-        def on_error(*args, **kwargs):
-            self.sp.emit('error', *args, **kwargs)
 
     def login(self, username=None, password=None):
         if username and password:
@@ -119,12 +118,13 @@ class Authentication(Component, Emitter):
         data = res.json()
 
         if data['status'] == 'ERROR':
-            msg = data.get('error', 'unknown')
+            error = data.get('error', 'unknown')
+            message = data.get('message')
 
-            if data.get('message'):
-                msg += ': ' + data['message']
+            if not message:
+                message = AUTH_ERRORS.get(error, 'Unknown')
 
-            self.emit('error', msg)
+            self.emit('error', '%s (%s)' % (message, error))
             return
 
         self.emit('authenticated', data['config'])
