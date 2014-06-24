@@ -1,12 +1,12 @@
-from host import SpotifyHost
-from settings import PREFIX, VERSION, ROUTEBASE
-from utils import ViewMode
-
 import logging_handler
 logging_handler.setup()
 
 import migrator
 migrator.run()
+
+from host import SpotifyHost
+from settings import PREFIX, VERSION, ROUTEBASE
+from utils import ViewMode
 
 from revent import REvent
 import locale
