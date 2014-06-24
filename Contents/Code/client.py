@@ -4,6 +4,7 @@ from settings import PLUGIN_ID
 
 from spotify import Spotify
 from threading import Event, Timer
+import logging
 import time
 
 
@@ -22,6 +23,7 @@ class SpotifyClient(object):
         self.reconnect_timer = None
 
         self.ready_event = Event()
+        self.errors = []
 
     def start(self):
         if self.sp:
@@ -29,9 +31,11 @@ class SpotifyClient(object):
             pass
 
         self.sp = Spotify()
-        self.ready_event = Event()
 
-        self.sp.on('error', lambda message: Log.Error(message))\
+        self.ready_event = Event()
+        self.errors = []
+
+        self.sp.on('error', self.on_error)\
                .on('close', self.on_close)
 
         self.sp.login(self.host.username, self.host.password, self.on_login)
@@ -42,6 +46,10 @@ class SpotifyClient(object):
 
         # Release request hold
         self.ready_event.set()
+
+    def on_error(self, message):
+        self.errors.append((logging.ERROR, message))
+        Log.Error(message)
 
     def on_close(self, code, reason=None):
         # Force re-authentication
@@ -141,3 +149,9 @@ class SpotifyClient(object):
             return self.server.get_track_url(str(uri), hostname=self.host.hostname)
 
         return self.direct.get(uri)
+
+    def get_last_error(self):
+        if not self.errors:
+            return None, ''
+
+        return self.errors[-1]

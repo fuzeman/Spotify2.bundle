@@ -8,6 +8,7 @@ from utils import authenticated, parse_xml
 import logging_handler
 
 from cachecontrol import CacheControl
+import logging
 import os
 import requests
 import socket
@@ -189,39 +190,53 @@ class SpotifyHost(object):
     #
 
     def main_menu(self):
+        objects = []
+
+        level, message = self.client.get_last_error()
+
+        if level:
+            objects.append(DirectoryObject(
+                key=route_path('errors'),
+                title='%s: "%s"' % (logging.getLevelName(level), message),
+                thumb=R("icon-default.png")
+            ))
+
+        objects.extend([
+            InputDirectoryObject(
+                key=route_path('search'),
+                prompt=L('PROMPT_SEARCH'),
+                title=L('SEARCH'),
+                thumb=R("icon-default.png")
+            ),
+            DirectoryObject(
+                key=route_path('explore'),
+                title=L('EXPLORE'),
+                thumb=R("icon-default.png")
+            ),
+            #DirectoryObject(
+            #    key=route_path('discover'),
+            #    title=L("DISCOVER"),
+            #    thumb=R("icon-default.png")
+            #),
+            #DirectoryObject(
+            #    key=route_path('radio'),
+            #    title=L("RADIO"),
+            #    thumb=R("icon-default.png")
+            #),
+            DirectoryObject(
+                key=route_path('your_music'),
+                title=L('YOUR_MUSIC'),
+                thumb=R("icon-default.png")
+            ),
+            PrefsObject(
+                title=L('PREFERENCES'),
+                thumb=R("icon-default.png")
+            )
+        ])
+
         return ObjectContainer(
-            objects=[
-                InputDirectoryObject(
-                    key=route_path('search'),
-                    prompt=L('PROMPT_SEARCH'),
-                    title=L('SEARCH'),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('explore'),
-                    title=L('EXPLORE'),
-                    thumb=R("icon-default.png")
-                ),
-                #DirectoryObject(
-                #    key=route_path('discover'),
-                #    title=L("DISCOVER"),
-                #    thumb=R("icon-default.png")
-                #),
-                #DirectoryObject(
-                #    key=route_path('radio'),
-                #    title=L("RADIO"),
-                #    thumb=R("icon-default.png")
-                #),
-                DirectoryObject(
-                    key=route_path('your_music'),
-                    title=L('YOUR_MUSIC'),
-                    thumb=R("icon-default.png")
-                ),
-                PrefsObject(
-                    title=L('PREFERENCES'),
-                    thumb=R("icon-default.png")
-                )
-            ],
+            objects=objects,
+            no_cache=True
         )
 
     @authenticated
