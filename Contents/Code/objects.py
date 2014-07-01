@@ -107,8 +107,6 @@ class Objects(object):
             index=int(track.number),
             duration=int(track.duration),
 
-            source_title='Spotify',
-
             art=image_url,
             thumb=image_url
         )
