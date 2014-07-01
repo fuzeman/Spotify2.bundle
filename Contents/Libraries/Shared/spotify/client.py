@@ -18,7 +18,9 @@ class Spotify(Component, Emitter):
         self.create_session(user_agent)
 
         # Construct modules
-        self.commands = CommandManager(self)
+        self.commands = CommandManager(self)\
+            .pipe('error', self)
+
         self.components = ComponentManager(self)
 
         # Session data
@@ -112,7 +114,7 @@ class Spotify(Component, Emitter):
         if name == 'login_complete':
             return self.on_login_complete()
 
-        return self.emit('error', 'Unhandled command with name "%s"' % name)
+        log.warn('Unhandled command with name "%s"', name)
 
     def on_login_complete(self):
         self.send('sp/log', 41, 1, 1656, 951, 0, 0)

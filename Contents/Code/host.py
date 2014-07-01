@@ -3,9 +3,12 @@ from containers import Containers
 from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
+from settings import PREF_SS_RANGES
 from utils import authenticated, parse_xml
+import logging_handler
 
 from cachecontrol import CacheControl
+import logging
 import os
 import requests
 import socket
@@ -76,6 +79,9 @@ class SpotifyHost(object):
         return os.path.abspath(os.path.join(self.code_path, '..'))
 
     def preferences_updated(self):
+        # Update logging levels
+        logging_handler.setup()
+
         # Trigger a client restart
         self.start()
 
@@ -98,6 +104,10 @@ class SpotifyHost(object):
         if self.server and not self.proxy_tracks:
             self.server.stop()
             self.server = None
+
+        # Update server preferences
+        if self.server:
+            self.server.supports_ranges = PREF_SS_RANGES.get(Prefs['proxy_ranges'], True)
 
         # Update reference on SpotifyClient
         self.client.server = self.server
@@ -180,40 +190,68 @@ class SpotifyHost(object):
     #
 
     def main_menu(self):
+        objects = []
+
+        level, message = self.client.last_message()
+
+        if level:
+            objects.append(DirectoryObject(
+                key=route_path('messages'),
+                title='%s: %s' % (logging.getLevelName(level), message),
+                thumb=R("icon-default.png")
+            ))
+
+        objects.extend([
+            InputDirectoryObject(
+                key=route_path('search'),
+                prompt=L('PROMPT_SEARCH'),
+                title=L('SEARCH'),
+                thumb=R("icon-default.png")
+            ),
+            DirectoryObject(
+                key=route_path('explore'),
+                title=L('EXPLORE'),
+                thumb=R("icon-default.png")
+            ),
+            #DirectoryObject(
+            #    key=route_path('discover'),
+            #    title=L("DISCOVER"),
+            #    thumb=R("icon-default.png")
+            #),
+            #DirectoryObject(
+            #    key=route_path('radio'),
+            #    title=L("RADIO"),
+            #    thumb=R("icon-default.png")
+            #),
+            DirectoryObject(
+                key=route_path('your_music'),
+                title=L('YOUR_MUSIC'),
+                thumb=R("icon-default.png")
+            ),
+            PrefsObject(
+                title=L('PREFERENCES'),
+                thumb=R("icon-default.png")
+            )
+        ])
+
         return ObjectContainer(
-            objects=[
-                InputDirectoryObject(
-                    key=route_path('search'),
-                    prompt=L('PROMPT_SEARCH'),
-                    title=L('SEARCH'),
-                    thumb=R("icon-default.png")
-                ),
-                DirectoryObject(
-                    key=route_path('explore'),
-                    title=L('EXPLORE'),
-                    thumb=R("icon-default.png")
-                ),
-                #DirectoryObject(
-                #    key=route_path('discover'),
-                #    title=L("DISCOVER"),
-                #    thumb=R("icon-default.png")
-                #),
-                #DirectoryObject(
-                #    key=route_path('radio'),
-                #    title=L("RADIO"),
-                #    thumb=R("icon-default.png")
-                #),
-                DirectoryObject(
-                    key=route_path('your_music'),
-                    title=L('YOUR_MUSIC'),
-                    thumb=R("icon-default.png")
-                ),
-                PrefsObject(
-                    title=L('PREFERENCES'),
-                    thumb=R("icon-default.png")
-                )
-            ],
+            objects=objects,
+            no_cache=True
         )
+
+    def messages(self):
+        oc = ObjectContainer(
+            title2=L('MESSAGES'),
+            no_cache=True
+        )
+
+        for level, message in self.client.messages:
+            oc.add(DirectoryObject(
+                key=route_path('messages'),
+                title='[%s] %s' % (logging.getLevelName(level), message)
+            ))
+
+        return oc
 
     @authenticated
     def search(self, query, callback, type='all', count=7, plain=False):

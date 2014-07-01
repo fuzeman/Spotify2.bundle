@@ -1,6 +1,7 @@
 from spotify.core.helpers import convert
 from spotify.core.uri import Uri
 
+from threading import Lock
 import logging
 import time
 
@@ -21,6 +22,7 @@ class HermesCache(object):
 
     def __init__(self):
         self._store = {}
+        self._store_lock = Lock()
 
     def get_schema_key(self, content_type):
         key = self.schema_types.get(content_type)
@@ -70,12 +72,13 @@ class HermesCache(object):
         if not k_content or not k_item:
             return None
 
-        if self._store.get(k_content) is None:
-            self._store[k_content] = {}
+        with self._store_lock:
+            if self._store.get(k_content) is None:
+                self._store[k_content] = {}
 
-        item = HermesCacheObject.create(header, content_type, internal)
+            item = HermesCacheObject.create(header, content_type, internal)
 
-        self._store[k_content][k_item] = item
+            self._store[k_content][k_item] = item
 
         return item
 
@@ -85,20 +88,21 @@ class HermesCache(object):
         if not k_content or not k_item:
             return None
 
-        if self._store.get(k_content) is None:
-            return None
+        with self._store_lock:
+            if self._store.get(k_content) is None:
+                return None
 
-        item = self._store[k_content].get(k_item)
+            item = self._store[k_content].get(k_item)
 
-        if item is None:
-            return None
+            if item is None:
+                return None
 
-        log.debug('retrieved "%s" from cache (timestamp: %s, valid: %s)', uri,
-                  item.timestamp, item.is_valid())
+            log.debug('retrieved "%s" from cache (timestamp: %s, valid: %s)', uri,
+                      item.timestamp, item.is_valid())
 
-        if not item.is_valid():
-            del self._store[k_content][k_item]
-            return None
+            if not item.is_valid():
+                del self._store[k_content][k_item]
+                return None
 
         return item
 

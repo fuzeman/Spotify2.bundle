@@ -1,4 +1,5 @@
 from spotify.components.base import Component
+from spotify.core.helpers import repr_trim
 from spotify.core.request import Request
 
 from pyemitter import Emitter
@@ -141,7 +142,7 @@ class Connection(Component, Emitter):
             raise Exception('Unable to send message, socket has been closed')
 
         encoded = json.dumps(message, separators=(',', ':'))
-        log.debug('send encoded: %s' % repr(encoded))
+        log.debug('send encoded: %s' % repr_trim(encoded))
 
         with self.send_lock:
             self.client.send(encoded)

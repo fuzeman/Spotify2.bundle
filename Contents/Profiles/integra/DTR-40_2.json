@@ -2,6 +2,6 @@
     "name": "INTEGRA DTR-40.2",
 
     "supports": {
-        "ranges": false
+        "ranges": true
     }
 }

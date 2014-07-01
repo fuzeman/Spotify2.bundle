@@ -119,7 +119,7 @@ class Emitter(object):
         suppress = kwargs.pop('__suppress', False)
 
         if not suppress:
-            self.__log('emit(event: %s, args: %s, kwargs: %s)', repr(event), repr(args), repr(kwargs))
+            self.__log('emit(event: %s, args: %s, kwargs: %s)', repr(event), repr_trim(args), repr_trim(kwargs))
 
         self.__ensure_constructed()
 
@@ -209,3 +209,12 @@ def off(emitter, event, func=None):
 
 def emit(emitter, event, *args, **kwargs):
     return emitter.emit(event, *args, **kwargs)
+
+
+def repr_trim(value, length=1000):
+    value = repr(value)
+
+    if len(value) < length:
+        return value
+
+    return '<%s - %s characters>' % (type(value).__name__, len(value))

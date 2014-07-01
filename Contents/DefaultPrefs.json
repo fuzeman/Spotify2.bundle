@@ -29,5 +29,26 @@
         "type": "text",
         "label": "PREF_SS_HOSTNAME",
         "default": ""
+    },
+    {
+        "id": "proxy_ranges",
+        "type": "enum",
+        "label": "PREF_SS_RANGES",
+        "values": ["Automatic", "Disabled", "Enabled"],
+        "default": "Automatic"
+    },
+    {
+        "id": "level_events",
+        "type": "enum",
+        "label": "PREF_LEVEL_EVENTS",
+        "values": ["INFO", "DEBUG"],
+        "default": "INFO"
+    },
+    {
+        "id": "level_streaming",
+        "type": "enum",
+        "label": "PREF_LEVEL_STREAMING",
+        "values": ["INFO", "DEBUG", "TRACE"],
+        "default": "INFO"
     }
 ]

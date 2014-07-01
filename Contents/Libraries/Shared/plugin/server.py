@@ -29,6 +29,8 @@ class Server(object):
         self.lock_get = Lock()
         self.lock_end = Lock()
 
+        self.supports_ranges = None
+
     @property
     def sp(self):
         return self.plugin_host.sp
@@ -71,7 +73,16 @@ class Server(object):
         r_profile = self.profiles.match(cherrypy.request.headers)
         r_range = None
 
-        if r_profile.supports_ranges:
+        supports_ranges = True
+
+        if self.supports_ranges is not None:
+            # Global "Streaming Server - Range support" option
+            supports_ranges = self.supports_ranges
+        else:
+            # Profile specific option
+            supports_ranges = r_profile.supports_ranges
+
+        if supports_ranges:
             r_range = Range.parse(cherrypy.request.headers.get('Range'))
 
         log.info('Profile: "%s", Range: %s', r_profile.name, repr(r_range))
@@ -95,7 +106,7 @@ class Server(object):
 
         stream.open()
 
-        if not stream.on_reading.wait():
+        if not stream.on_open.wait():
             log.warn('Unable to open stream')
             cherrypy.response.status = 404
             return
@@ -105,13 +116,15 @@ class Server(object):
         c_range = None
         r_length = None
 
-        if r_profile.supports_ranges:
+        if supports_ranges:
             cherrypy.response.headers['Accept-Ranges'] = 'bytes'
 
             if r_range:
                 # Parse request range
                 c_range = r_range.content_range(stream.total_length)
                 r_length = (c_range.end - c_range.start + 1)
+
+                log.debug('[%s] Range: %s, Length: %s', track.uri, c_range, r_length)
 
         # Set headers
         cherrypy.response.headers['Content-Type'] = stream.headers['Content-Type']
@@ -122,6 +135,8 @@ class Server(object):
 
             cherrypy.response.headers['Content-Range'] = str(c_range)
             cherrypy.response.status = 206
+
+        log.debug('[%s] Headers: %s', track.uri, cherrypy.response.headers)
 
         # Stream response
         return stream.iter(c_range)

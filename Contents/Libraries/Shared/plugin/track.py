@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 class Track(Emitter):
     reuse_distance = 1024 * 1024  # 1MB (in bytes)
     final_distance = 128 * 1024   # 128kB (in bytes)
-    limit_seconds = 5
+    limit_seconds = 10
 
     def __init__(self, server, uri):
         self.server = server
@@ -70,7 +70,7 @@ class Track(Emitter):
 
         # Log track restrictions for debugging
         for x, restriction in enumerate(self.metadata.restrictions):
-            log.debug(
+            log.info(
                 '[%s] R#%s countries allowed: %s, countries forbidden: %s, catalogues: %s', uri, x + 1,
                 restriction.countries_allowed, restriction.countries_forbidden, restriction.catalogues
             )
@@ -90,7 +90,7 @@ class Track(Emitter):
 
     def on_track_error(self, error):
         self.info = None
-        log.debug('track error: %s', error)
+        log.warn('track error: %s', error)
 
         self.info_ev.set()
         self.emit('track_uri', self.info)
@@ -107,7 +107,7 @@ class Track(Emitter):
 
             # Check for existing stream (with same range)
             if r_range.tuple() in self.streams:
-                log.debug('Returning existing stream (r_range: %s)', repr(r_range))
+                log.info('Returning existing stream (r_range: %s)', repr(r_range))
 
                 # Ensure we are setup to stream (metadata, info)
                 self.setup()
@@ -131,26 +131,31 @@ class Track(Emitter):
                     if s_end < r_range.end:
                         continue
 
+                # Wait until the stream has opened
+                if not stream.on_open.wait(5):
+                    log.info('Timeout while waiting for stream to open')
+                    continue
+
                 # Check if we should open a new stream
                 buf_distance = (r_range.start - s_start) - len(stream.buffer)
                 end_distance = stream.total_length - r_range.start
 
                 if buf_distance > self.reuse_distance and end_distance < self.final_distance:
                     # TODO - Ensure stream-source isn't about to expire
-                    log.debug(
+                    log.info(
                         "Buffer is %s bytes away and range is %s bytes from the end of the track - ignoring it",
                         buf_distance, end_distance
                     )
                     continue
 
-                log.debug('Returning existing stream with similar range (s_range: %s)', repr(s_range))
+                log.info('Returning existing stream with similar range (s_range: %s)', repr(s_range))
 
                 # Ensure we are setup to stream (metadata, info)
                 self.setup()
 
                 return self.streams[s_range]
 
-            log.debug('Building stream for track (r_range: %s)', repr(r_range))
+            log.info('Building stream for track (r_range: %s)', repr(r_range))
 
             # Create new stream
             stream = Stream(self, len(self.streams), r_range)
@@ -189,7 +194,7 @@ class Track(Emitter):
         for (start, end), stream in self.streams.items():
             if not start and not end:
                 log.info('Stream rate-limiting enabled on %s', stream)
-                stream.read_event.clear()
+                stream.on_reading.clear()
                 continue
 
             log.info('Stream priority enabled on %s', stream)
@@ -200,7 +205,7 @@ class Track(Emitter):
         ready = all([
             stream.state == 'buffered'
             for stream in self.streams.values()
-            if stream.read_event.is_set()
+            if stream.on_reading.is_set()
         ])
 
         if not ready:
@@ -214,16 +219,21 @@ class Track(Emitter):
             self.limit_timer.cancel()
             self.limit_timer = None
 
-        for range, stream in self.streams.items():
-            stream.read_event.set()
+        limited = False
 
-        log.info('Stream rate-limiting disabled')
+        for range, stream in self.streams.items():
+            limited |= not stream.on_reading.is_set()
+
+            stream.on_reading.set()
+
+        if limited:
+            log.info('Stream rate-limiting disabled')
 
     def on_start(self):
         if self.playing:
             return
 
-        log.debug('[%s] Started', self.uri)
+        log.info('[%s] Started', self.uri)
 
         # Schedule limit reset
         self.limit_timer = Timer(self.limit_seconds, self.limit_reset)

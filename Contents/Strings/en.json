@@ -1,4 +1,5 @@
 {
+    "MESSAGES"                      : "Messages",
     "SEARCH"                        : "Search",
     "EXPLORE"                       : "Explore",
     "YOUR_MUSIC"                    : "Your Music",
@@ -24,6 +25,9 @@
     "PREF_SHOWALBUMYEAR"            : "Show album release year",
     "PREF_SS_ENABLED"               : "Streaming Server - Enabled",
     "PREF_SS_HOSTNAME"              : "Streaming Server - Hostname (optional)",
+    "PREF_SS_RANGES"                : "Streaming Server - Range support",
+    "PREF_LEVEL_EVENTS"             : "Logging - Events",
+    "PREF_LEVEL_STREAMING"          : "Logging - Streaming",
 
     "PROMPT_SEARCH"                 : "Search for music",
 

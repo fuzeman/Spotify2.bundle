@@ -2,6 +2,10 @@ from settings import LOGGERS
 
 import logging
 
+# Create "TRACE" level
+logging.TRACE = 9
+logging.addLevelName(logging.TRACE, 'TRACE')
+
 
 class PlexHandler(logging.StreamHandler):
     level_funcs = {
@@ -19,14 +23,35 @@ class PlexHandler(logging.StreamHandler):
 
 
 def setup():
-    Log.Debug(logging.Logger.manager.loggerDict)
+    Log.Debug(logging.Logger.manager.loggerDict.keys())
 
     logging.basicConfig(level=logging.DEBUG)
 
+    logger_levels = levels()
+    Log.Debug(logger_levels)
+
     for name in LOGGERS:
+        level = logger_levels.get(name, logging.DEBUG)
         logger = logging.getLogger(name)
 
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(level)
         logger.handlers = [PlexHandler()]
 
-        Log.Debug('PlexHandler added to %s logger' % logger)
+        Log.Debug('Piping events from "%s" to plex (level: %s)' % (name, logging.getLevelName(level)))
+
+
+def levels():
+    return {
+        'plugin':    parse_level(Prefs['level_streaming']),
+        'pyemitter': parse_level(Prefs['level_events'])
+    }
+
+
+def parse_level(name):
+    if name == 'DEBUG':
+        return logging.DEBUG
+
+    if name == 'TRACE':
+        return logging.TRACE
+
+    return logging.INFO

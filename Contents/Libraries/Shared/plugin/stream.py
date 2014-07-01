@@ -36,12 +36,13 @@ class Stream(Emitter):
 
         # Data buffering
         self.read_thread = None
-        self.read_event = Event()
         self.read_sleep = None
 
         self.buffer = bytearray()
 
-        self.on_reading = REvent()
+        self.on_open = REvent()
+        self.on_reading = Event()
+
         self.state = ''
 
         self.request_lock = Lock()
@@ -78,7 +79,7 @@ class Stream(Emitter):
 
         if ex:
             log.warn('Request failed: %s', ex)
-            self.on_reading.set(False)
+            self.on_open.set(False)
             return
 
         self.response = future.result()
@@ -110,11 +111,11 @@ class Stream(Emitter):
         if self.headers.get('Content-Type') == 'text/xml':
             # Error, log response
             self.log(self.response.content)
-            self.on_reading.set(False)
+            self.on_open.set(False)
             return
 
         # Read back entire stream
-        self.read_event.set()
+        self.on_reading.set()
 
         self.read_thread = Thread(target=func_catch, args=(self.run,))
         self.read_thread.start()
@@ -122,7 +123,7 @@ class Stream(Emitter):
     def run(self):
         self.state = 'reading'
         self.emit('reading')
-        self.on_reading.set(True)
+        self.on_open.set(True)
 
         last_progress = None
 
@@ -130,9 +131,15 @@ class Stream(Emitter):
             self.buffer.extend(chunk)
             self.emit('received', len(chunk), __suppress=True)
 
+            log.log(
+                logging.TRACE,
+                '[%s] [%s] Received chunk - len(chunk): %s',
+                self.track.uri, self.stream_num, len(chunk)
+            )
+
             last_progress = log_progress(self, '[%s]     Reading' % self.stream_num, len(self.buffer), last_progress)
 
-            self.read_event.wait()
+            self.on_reading.wait()
 
         self.state = 'buffered'
         self.emit('buffered')
@@ -159,7 +166,7 @@ class Stream(Emitter):
             position = c_range.start - self.content_range.start
             end = (c_range.end - self.content_range.start) + 1
 
-            log.debug(
+            log.info(
                 '[%s] [%s:%s] Streaming - c_range: %s, position: %s, end: %s',
                 self.track.uri, self.stream_num,
                 num, c_range, position, end
@@ -172,9 +179,19 @@ class Stream(Emitter):
             if chunk_size > self.chunk_size:
                 chunk_size = self.chunk_size
 
+            # Check if range has reached the end
+            if not chunk_size:
+                break
+
             data = self.buffer[position:position + chunk_size]
 
             if data:
+                log.log(
+                    logging.TRACE,
+                    '[%s] [%s:%s] Sending chunk - len(data): %s',
+                    self.track.uri, self.stream_num, num, len(data)
+                )
+
                 last_progress = log_progress(
                     self, '[%s:%s] Streaming' % (self.stream_num, num),
                     position, last_progress, length=end
@@ -182,6 +199,12 @@ class Stream(Emitter):
                 position += len(data)
                 yield str(data)
             elif self.state != 'buffered':
+                log.log(
+                    logging.TRACE,
+                    '[%s] [%s:%s] Waiting for buffer',
+                    self.track.uri, self.stream_num, num
+                )
+
                 ev_received.clear()
                 ev_received.wait()
             else:

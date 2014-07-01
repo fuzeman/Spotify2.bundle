@@ -1,12 +1,15 @@
+import logging_handler
+logging_handler.setup()
+
+import migrator
+migrator.run()
+
 from host import SpotifyHost
 from settings import PREFIX, VERSION, ROUTEBASE
 from utils import ViewMode
-import logging_handler
 
 from revent import REvent
 import locale
-
-logging_handler.setup()
 
 host = SpotifyHost()
 
@@ -55,6 +58,11 @@ def plugin_callback(method, kwargs=None, async=False):
 
 def main_menu(**kwargs):
     return plugin_callback(SpotifyHost.main_menu, kwargs)
+
+
+@route(ROUTEBASE + 'messages')
+def messages(**kwargs):
+    return plugin_callback(SpotifyHost.messages, kwargs)
 
 
 @route(ROUTEBASE + 'search')
