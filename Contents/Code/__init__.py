@@ -1,86 +1,168 @@
-from logging_handler import PlexHandler
-from plugin import SpotifyPlugin
-from search import SpotifySearch
-from settings import PREFIX, VERSION, ROUTEBASE, LOGGERS
+import logging_handler
+logging_handler.setup()
+
+import migrator
+migrator.run()
+
+from host import SpotifyHost
+from settings import PREFIX, VERSION, ROUTEBASE
 from utils import ViewMode
 
+from revent import REvent
 import locale
-import logging
 
-plugin = SpotifyPlugin()
-sp_search = SpotifySearch(plugin)
+host = SpotifyHost()
 
 
-def plugin_callback(method, kwargs=None):
+def plugin_callback(method, kwargs=None, async=False):
     """ Invokes callbacks on the plugin instance
 
     :param method:     The method on the SpotifyPlugin class to call.
     :param kwargs:     A dictionary of keyward args to pass to the method.
     """
 
-    global plugin
-    callback = lambda kw: method(plugin, **kw)
+    Log.Debug('plugin_callback - method: %s, kwargs: %s, async: %s' % (method, kwargs, async))
 
-    return callback(kwargs or {})
+    kwargs = kwargs or {}
+    result = None
+
+    if async:
+        on_complete = REvent()
+
+        kwargs['callback'] = lambda result: on_complete.set(result)
+
+        method(host, **kwargs)
+
+        result = on_complete.wait(30)
+    else:
+        result = method(host, **kwargs)
+
+    if result is None:
+        if async:
+            return MessageContainer(
+                header=L("MSG_CALLBACK_TIMEOUT_TITLE"),
+                message=L("MSG_CALLBACK_TIMEOUT_BODY")
+            )
+
+        return MessageContainer(
+            header=L("MSG_CALLBACK_FAILURE_TITLE"),
+            message=L("MSG_CALLBACK_FAILURE_BODY")
+        )
+
+    return result
+
+#
+# Core
+#
 
 
-@route(ROUTEBASE + 'artist/{uri}')
-def artist(**kwargs):
-    return plugin_callback(SpotifyPlugin.artist, kwargs)
+def main_menu(**kwargs):
+    return plugin_callback(SpotifyHost.main_menu, kwargs)
 
 
-@route(ROUTEBASE + 'album/{uri}')
-def album(**kwargs):
-    return plugin_callback(SpotifyPlugin.album, kwargs)
-
-
-@route(ROUTEBASE + 'playlist/{uri}')
-def playlist(**kwargs):
-    return plugin_callback(SpotifyPlugin.playlist, kwargs)
-
-
-@route(ROUTEBASE + 'metadata/{track_uri}')
-def metadata(**kwargs):
-    return plugin_callback(SpotifyPlugin.metadata, kwargs)
-
-
-@route(ROUTEBASE + 'playlists')
-def playlists(**kwargs):
-    return plugin_callback(SpotifyPlugin.playlists, kwargs)
-
-
-@route(ROUTEBASE + 'starred')
-def starred(**kwargs):
-    return plugin_callback(SpotifyPlugin.starred, kwargs)
+@route(ROUTEBASE + 'messages')
+def messages(**kwargs):
+    return plugin_callback(SpotifyHost.messages, kwargs)
 
 
 @route(ROUTEBASE + 'search')
 def search(**kwargs):
-    return sp_search.run(**kwargs)
-
-
-def main_menu(**kwargs):
-    return plugin_callback(SpotifyPlugin.main_menu, kwargs)
+    return plugin_callback(SpotifyHost.search, kwargs, async=True)
 
 
 @route(ROUTEBASE + 'play')
 def play(**kwargs):
-    return plugin_callback(SpotifyPlugin.play, kwargs)
+    return plugin_callback(SpotifyHost.play, kwargs)
 
 
 @route(ROUTEBASE + 'image')
 def image(**kwargs):
-    return plugin_callback(SpotifyPlugin.image, kwargs)
+    return plugin_callback(SpotifyHost.image, kwargs)
 
 
-def setup_logging():
-    logging.basicConfig(level=logging.DEBUG)
+#
+# Metadata
+#
 
-    for name in LOGGERS:
-        logger = logging.getLogger(name)
+@route(ROUTEBASE + 'artist/{uri}')
+def artist(**kwargs):
+    return plugin_callback(SpotifyHost.artist, kwargs, async=True)
 
-        logger.setLevel(logging.DEBUG)
-        logger.handlers = [PlexHandler()]
+
+@route(ROUTEBASE + 'artist/{uri}/top_tracks')
+def artist_top_tracks(**kwargs):
+    return plugin_callback(SpotifyHost.artist_top_tracks, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'artist/{uri}/albums')
+def artist_albums(**kwargs):
+    return plugin_callback(SpotifyHost.artist_albums, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'album/{uri}')
+def album(**kwargs):
+    return plugin_callback(SpotifyHost.album, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'metadata/{uri}')
+def metadata(**kwargs):
+    return plugin_callback(SpotifyHost.metadata, kwargs, async=True)
+
+#
+# Your Music
+#
+
+@route(ROUTEBASE + 'your_music')
+def your_music(**kwargs):
+    return plugin_callback(SpotifyHost.your_music, kwargs)
+
+
+@route(ROUTEBASE + 'your_music/playlists')
+def playlists(**kwargs):
+    return plugin_callback(SpotifyHost.playlists, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'playlist/{uri}')
+def playlist(**kwargs):
+    return plugin_callback(SpotifyHost.playlist, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'your_music/starred')
+def starred(**kwargs):
+    return plugin_callback(SpotifyHost.starred, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'your_music/artists')
+def artists(**kwargs):
+    return plugin_callback(SpotifyHost.artists, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'your_music/albums')
+def albums(**kwargs):
+    return plugin_callback(SpotifyHost.albums, kwargs, async=True)
+
+#
+# Explore
+#
+
+@route(ROUTEBASE + 'explore')
+def explore(**kwargs):
+    return plugin_callback(SpotifyHost.explore, kwargs)
+
+
+@route(ROUTEBASE + 'explore/featured_playlists')
+def featured_playlists(**kwargs):
+    return plugin_callback(SpotifyHost.featured_playlists, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'explore/top_playlists')
+def top_playlists(**kwargs):
+    return plugin_callback(SpotifyHost.top_playlists, kwargs, async=True)
+
+
+@route(ROUTEBASE + 'explore/new_releases')
+def new_releases(**kwargs):
+    return plugin_callback(SpotifyHost.new_releases, kwargs, async=True)
 
 
 def Start():
@@ -91,15 +173,13 @@ def Start():
     ViewMode.AddModes(Plugin)
 
     ObjectContainer.title1 = 'Spotify'
-    ObjectContainer.content = 'Items'
+    ObjectContainer.content = 'items'
     ObjectContainer.art = R('art-default.png')
     DirectoryItem.thumb = R('icon-default.png')
-
-    setup_logging()
 
     Log.Debug('Using locale: %s', locale.setlocale(locale.LC_ALL, ''))
 
 
 def ValidatePrefs():
     """ Called when the user's prefs are changed """
-    plugin_callback(SpotifyPlugin.preferences_updated)
+    plugin_callback(SpotifyHost.preferences_updated)
