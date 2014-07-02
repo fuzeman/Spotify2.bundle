@@ -7,7 +7,6 @@ from threading import Lock, Timer
 from ws4py.client.threadedclient import WebSocketClient
 import json
 import logging
-import time
 
 log = logging.getLogger(__name__)
 
@@ -168,6 +167,20 @@ class Connection(Component, Emitter):
             .pipe('error', self)\
             .send()
 
+    def schedule_heartbeat(self):
+        if not self.connected:
+            pass
+
+        def heartbeat_trigger():
+            # Send heartbeat ('sp/echo')
+            self.send_heartbeat()
+
+            # Schedule next heartbeat
+            self.schedule_heartbeat()
+
+        self.heartbeat_timer = Timer(self.heartbeat_interval, heartbeat_trigger)
+        self.heartbeat_timer.start()
+
     def on_connect(self, message):
         log.debug('SpotifyConnection "connect" event: %s', message)
 
@@ -179,9 +192,8 @@ class Connection(Component, Emitter):
         log.debug('connected')
         self.connected = True
 
-        # Start heartbeats ('sp/echo')
-        self.heartbeat_timer = Timer(self.heartbeat_interval, self.send_heartbeat)
-        self.heartbeat_timer.start()
+        # Schedule initial heartbeat
+        self.schedule_heartbeat()
 
         self.emit('connect')
 
