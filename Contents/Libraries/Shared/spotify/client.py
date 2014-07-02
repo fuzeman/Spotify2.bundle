@@ -67,6 +67,9 @@ class Spotify(Component, Emitter):
         log.info('Connecting...')
         self._resolve_ap()
 
+    def disconnect(self):
+        self.components.connection.disconnect()
+
     # Resolve AP
     def _resolve_ap(self):
         params = {
@@ -131,7 +134,7 @@ class Spotify(Component, Emitter):
 
         if catalogue != 'premium':
             self.emit('error', 'Please upgrade to premium (catalogue: %s)' % repr(catalogue))
-            self.components.connection.disconnect()
+            self.disconnect()
             return
 
         self.emit('login')

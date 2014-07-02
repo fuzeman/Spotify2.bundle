@@ -3,7 +3,7 @@ from spotify.core.helpers import repr_trim
 from spotify.core.request import Request
 
 from pyemitter import Emitter
-from threading import Lock, Thread
+from threading import Lock, Timer
 from ws4py.client.threadedclient import WebSocketClient
 import json
 import logging
@@ -22,7 +22,7 @@ class Connection(Component, Emitter):
         self.connected = False
         self.disconnecting = False
 
-        self.heartbeat_thread = None
+        self.heartbeat_timer = None
 
         self.seq = 0
         self.requests = {}
@@ -33,7 +33,9 @@ class Connection(Component, Emitter):
         self.connected = False
         self.disconnecting = False
 
-        self.heartbeat_thread = None
+        if self.heartbeat_timer:
+            self.heartbeat_timer.cancel()
+            self.heartbeat_timer = None
 
         self.seq = 0
         self.requests = {}
@@ -109,9 +111,12 @@ class Connection(Component, Emitter):
 
         if self.disconnecting:
             log.debug('Client requested disconnect, ignoring "close" event')
+            self.reset()
             return
 
         self.disconnect()
+        self.reset()
+
         self.emit('close', code=code, reason=reason)
 
     def send(self, name, *args):
@@ -163,14 +168,6 @@ class Connection(Component, Emitter):
             .pipe('error', self)\
             .send()
 
-    def heartbeat(self):
-        while self.connected:
-            time.sleep(self.heartbeat_interval)
-
-            self.send_heartbeat()
-
-        log.debug('heartbeat thread finished (disconnected)')
-
     def on_connect(self, message):
         log.debug('SpotifyConnection "connect" event: %s', message)
 
@@ -183,8 +180,8 @@ class Connection(Component, Emitter):
         self.connected = True
 
         # Start heartbeats ('sp/echo')
-        self.heartbeat_thread = Thread(target=self.heartbeat)
-        self.heartbeat_thread.start()
+        self.heartbeat_timer = Timer(self.heartbeat_interval, self.send_heartbeat)
+        self.heartbeat_timer.start()
 
         self.emit('connect')
 
