@@ -42,7 +42,6 @@ class Objects(object):
             rating_key=artist.uri,
 
             title=normalize(artist.name),
-            source_title='Spotify',
 
             art=image_url,
             thumb=image_url
@@ -70,7 +69,6 @@ class Objects(object):
             artist=', '.join([normalize(ar.name) for ar in album.artists]),
 
             track_count=track_count,
-            source_title='Spotify',
 
             art=image_url,
             thumb=image_url,
