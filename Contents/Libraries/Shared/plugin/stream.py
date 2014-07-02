@@ -173,12 +173,6 @@ class Stream(Emitter):
             )
 
         while position < self.content_length:
-            log.log(
-                logging.TRACE,
-                '[%s] [%s:%s] Tick',
-                self.track.uri, self.stream_num, num
-            )
-
             chunk_size = end - position
 
             # Clamp to maximum `chunk_size`
