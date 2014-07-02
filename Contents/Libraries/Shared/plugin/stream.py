@@ -173,6 +173,12 @@ class Stream(Emitter):
             )
 
         while position < self.content_length:
+            log.log(
+                logging.TRACE,
+                '[%s] [%s:%s] Tick',
+                self.track.uri, self.stream_num, num
+            )
+
             chunk_size = end - position
 
             # Clamp to maximum `chunk_size`
@@ -181,23 +187,29 @@ class Stream(Emitter):
 
             # Check if range has reached the end
             if not chunk_size:
+                log.debug(
+                    '[%s] [%s:%s] Range complete',
+                    self.track.uri, self.stream_num, num
+                )
                 break
 
-            data = self.buffer[position:position + chunk_size]
+            chunk = self.buffer[position:position + chunk_size]
 
-            if data:
+            if chunk:
                 log.log(
                     logging.TRACE,
-                    '[%s] [%s:%s] Sending chunk - len(data): %s',
-                    self.track.uri, self.stream_num, num, len(data)
+                    '[%s] [%s:%s] Sending chunk - len(buffer[%s:%s]): %s',
+                    self.track.uri, self.stream_num, num,
+                    position, position + chunk_size,
+                    len(chunk)
                 )
 
                 last_progress = log_progress(
                     self, '[%s:%s] Streaming' % (self.stream_num, num),
                     position, last_progress, length=end
                 )
-                position += len(data)
-                yield str(data)
+                position += len(chunk)
+                yield str(chunk)
             elif self.state != 'buffered':
                 log.log(
                     logging.TRACE,
@@ -208,6 +220,11 @@ class Stream(Emitter):
                 ev_received.clear()
                 ev_received.wait()
             else:
+                log.debug(
+                    '[%s] [%s:%s] Buffer doesn\'t contain range [%s:%s]',
+                    self.track.uri, self.stream_num, num,
+                    position, position + chunk_size
+                )
                 break
 
         self.off('received', on_received)\
