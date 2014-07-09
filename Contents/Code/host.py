@@ -206,12 +206,12 @@ class SpotifyHost(object):
                 key=route_path('search'),
                 prompt=L('PROMPT_SEARCH'),
                 title=L('SEARCH'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-search.png")
             ),
             DirectoryObject(
                 key=route_path('explore'),
                 title=L('EXPLORE'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-explore.png")
             ),
             #DirectoryObject(
             #    key=route_path('discover'),
@@ -226,11 +226,11 @@ class SpotifyHost(object):
             DirectoryObject(
                 key=route_path('your_music'),
                 title=L('YOUR_MUSIC'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-your_music.png")
             ),
             PrefsObject(
                 title=L('PREFERENCES'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-preferences.png")
             )
         ])
 
