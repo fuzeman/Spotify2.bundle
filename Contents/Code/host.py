@@ -327,22 +327,22 @@ class SpotifyHost(object):
                 DirectoryObject(
                     key=route_path('your_music/playlists'),
                     title=L('PLAYLISTS'),
-                    thumb=R("icon-playlists.png")
+                    thumb=R('icon-playlists.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/starred'),
                     title=L('STARRED'),
-                    thumb=R("icon-starred.png")
+                    thumb=R('icon-starred.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/albums'),
                     title=L('ALBUMS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-albums.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/artists'),
                     title=L('ARTISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-artists.png')
                 ),
             ],
         )
