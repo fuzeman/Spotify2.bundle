@@ -393,17 +393,17 @@ class SpotifyHost(object):
                 DirectoryObject(
                     key=route_path('explore/featured_playlists'),
                     title=L('FEATURED_PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-featured_playlists.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/top_playlists'),
                     title=L('TOP_PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-top_playlists.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/new_releases'),
                     title=L('NEW_RELEASES'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-new_releases.png")
                 )
             ],
         )
