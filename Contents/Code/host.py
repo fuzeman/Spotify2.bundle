@@ -206,12 +206,12 @@ class SpotifyHost(object):
                 key=route_path('search'),
                 prompt=L('PROMPT_SEARCH'),
                 title=L('SEARCH'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-search.png")
             ),
             DirectoryObject(
                 key=route_path('explore'),
                 title=L('EXPLORE'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-explore.png")
             ),
             #DirectoryObject(
             #    key=route_path('discover'),
@@ -226,11 +226,11 @@ class SpotifyHost(object):
             DirectoryObject(
                 key=route_path('your_music'),
                 title=L('YOUR_MUSIC'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-your_music.png")
             ),
             PrefsObject(
                 title=L('PREFERENCES'),
-                thumb=R("icon-default.png")
+                thumb=R("icon-preferences.png")
             )
         ])
 
@@ -327,22 +327,22 @@ class SpotifyHost(object):
                 DirectoryObject(
                     key=route_path('your_music/playlists'),
                     title=L('PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-playlists.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/starred'),
                     title=L('STARRED'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-starred.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/albums'),
                     title=L('ALBUMS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-albums.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/artists'),
                     title=L('ARTISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-artists.png')
                 ),
             ],
         )
@@ -393,17 +393,17 @@ class SpotifyHost(object):
                 DirectoryObject(
                     key=route_path('explore/featured_playlists'),
                     title=L('FEATURED_PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-featured_playlists.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/top_playlists'),
                     title=L('TOP_PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-top_playlists.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/new_releases'),
                     title=L('NEW_RELEASES'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-new_releases.png")
                 )
             ],
         )

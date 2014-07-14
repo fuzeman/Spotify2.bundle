@@ -45,12 +45,24 @@ class SpotifySearch(ViewBase):
             return
 
         if not plain:
-            self.append_header(
-                oc, '%s (%s)' % (self.get_title(type, True), locale.format('%d', total, grouping=True)),
-                route_path('search', query=query, type=type, count=50, plain=True)
-            )
+            oc.add(self.get_header(total, query, type))
 
         self.append_items(oc, items, count, plain, placeholders)
+
+    @classmethod
+    def get_header(cls, total, query, type):
+        key = route_path('search', query=query, type=type, count=50, plain=True)
+
+        title = '%s (%s)' % (
+            cls.get_title(type, True),
+            locale.format('%d', total, grouping=True)
+        )
+
+        return DirectoryObject(
+            key=key,
+            title=title,
+            thumb=cls.get_thumb(type)
+        )
 
     @staticmethod
     def get_title(type, plain=False):
@@ -74,16 +86,30 @@ class SpotifySearch(ViewBase):
 
     @staticmethod
     def get_content(type):
-        if type == "artists":
+        if type == 'artists':
             return ContainerContent.Artists
 
-        if type == "albums":
+        if type == 'albums':
             return ContainerContent.Albums
 
-        if type == "tracks":
+        if type == 'tracks':
             return ContainerContent.Tracks
 
-        if type == "playlists":
+        if type == 'playlists':
             return ContainerContent.Playlists
 
         return ContainerContent.Mixed
+
+    @staticmethod
+    def get_thumb(type):
+        if type == 'artists':
+            return R('icon-artists.png')
+
+        if type == 'albums':
+            return R('icon-albums.png')
+
+        if type == 'tracks':
+            return R('icon-tracks.png')
+
+        if type == 'playlists':
+            return R('icon-playlists.png')
