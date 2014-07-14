@@ -18,6 +18,8 @@ class SpotifyHost(object):
     def __init__(self):
         self.client = None
         self.server = None
+
+        self.messages = []
         self.start()
 
         self.search = SpotifySearch(self)
@@ -86,8 +88,11 @@ class SpotifyHost(object):
         self.start()
 
     def start(self):
+        self.messages = []
+
         if not self.username or not self.password:
-            Log("Username or password not set: not logging in")
+            self.messages.append((logging.ERROR, 'Username or Password not entered'))
+            Log.Error('Username or Password not entered')
             return
 
         Log.Debug('bundle_path: "%s"', self.bundle_path)
@@ -185,6 +190,19 @@ class SpotifyHost(object):
             self.local_address = None
             Log.Warn('Unable to discover local address - %s', ex)
 
+    @property
+    def all_messages(self):
+        if not self.client:
+            return [(logging.ERROR, 'Client not initialized')] + self.messages
+
+        return self.messages + self.client.messages
+
+    def last_message(self):
+        if not self.all_messages:
+            return None, ''
+
+        return self.all_messages[-1]
+
     #
     # Core
     #
@@ -192,7 +210,7 @@ class SpotifyHost(object):
     def main_menu(self):
         objects = []
 
-        level, message = self.client.last_message()
+        level, message = self.last_message()
 
         if level:
             objects.append(DirectoryObject(
@@ -245,7 +263,7 @@ class SpotifyHost(object):
             no_cache=True
         )
 
-        for level, message in self.client.messages:
+        for level, message in self.all_messages:
             oc.add(DirectoryObject(
                 key=route_path('messages'),
                 title='[%s] %s' % (logging.getLevelName(level), message)
