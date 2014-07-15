@@ -1,8 +1,7 @@
 PLUGIN_ID   = "com.plexapp.plugins.spotify2"
-VERSION     = '0.5.4'
+VERSION     = '0.5.5'
 PREFIX      = "/music/spotify"
 ROUTEBASE   = PREFIX + '/'
-SERVER_PORT = 32420
 
 LOGGERS     = [
     'spotify2',
