@@ -65,6 +65,16 @@ def messages(**kwargs):
     return plugin_callback(SpotifyHost.messages, kwargs)
 
 
+@route(ROUTEBASE + 'about')
+def about(**kwargs):
+    return plugin_callback(SpotifyHost.about, kwargs)
+
+
+@route(ROUTEBASE + 'about/credits')
+def about_credits(**kwargs):
+    return plugin_callback(SpotifyHost.about_credits, kwargs)
+
+
 @route(ROUTEBASE + 'search')
 def search(**kwargs):
     return plugin_callback(SpotifyHost.search, kwargs, async=True)

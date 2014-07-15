@@ -3,11 +3,12 @@ from containers import Containers
 from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
-from settings import PREF_SS_RANGES
-from utils import authenticated, parse_xml
+from settings import PREF_SS_RANGES, VERSION
+from utils import authenticated, parse_xml, LF
 import logging_handler
 
 from cachecontrol import CacheControl
+import json
 import logging
 import os
 import requests
@@ -35,6 +36,9 @@ class SpotifyHost(object):
         self.server_version = None
 
         self.local_address = None
+
+        # Private
+        self.credits_data = None
 
     @property
     def username(self):
@@ -79,6 +83,18 @@ class SpotifyHost(object):
     @property
     def bundle_path(self):
         return os.path.abspath(os.path.join(self.code_path, '..'))
+
+    @property
+    def credits(self):
+        if not self.credits_data:
+            try:
+                # Parse credits file
+                self.credits_data = json.loads(Resource.Load('credits.json'))
+            except (ValueError, TypeError):
+                # Invalid credits file
+                self.credits_data = {}
+
+        return self.credits_data
 
     def preferences_updated(self):
         # Update logging levels
@@ -216,7 +232,7 @@ class SpotifyHost(object):
             objects.append(DirectoryObject(
                 key=route_path('messages'),
                 title='%s: %s' % (logging.getLevelName(level), message),
-                thumb=R("icon-default.png")
+                thumb=R('icon-default.png')
             ))
 
         objects.extend([
@@ -224,12 +240,12 @@ class SpotifyHost(object):
                 key=route_path('search'),
                 prompt=L('PROMPT_SEARCH'),
                 title=L('SEARCH'),
-                thumb=R("icon-search.png")
+                thumb=R('icon-search.png')
             ),
             DirectoryObject(
                 key=route_path('explore'),
                 title=L('EXPLORE'),
-                thumb=R("icon-explore.png")
+                thumb=R('icon-explore.png')
             ),
             #DirectoryObject(
             #    key=route_path('discover'),
@@ -244,11 +260,16 @@ class SpotifyHost(object):
             DirectoryObject(
                 key=route_path('your_music'),
                 title=L('YOUR_MUSIC'),
-                thumb=R("icon-your_music.png")
+                thumb=R('icon-your_music.png')
+            ),
+            DirectoryObject(
+                key=route_path('about'),
+                title=L('ABOUT'),
+                thumb=R('icon-about.png')
             ),
             PrefsObject(
                 title=L('PREFERENCES'),
-                thumb=R("icon-preferences.png")
+                thumb=R('icon-preferences.png')
             )
         ])
 
@@ -270,6 +291,35 @@ class SpotifyHost(object):
             ))
 
         return oc
+
+    def about(self):
+        return ObjectContainer(
+            objects=[
+                DirectoryObject(
+                    key='',
+                    title=LF('VERSION', VERSION)
+                ),
+                DirectoryObject(
+                    key=route_path('about/credits'),
+                    title=L('CREDITS')
+                )
+            ]
+        )
+
+    def about_credits(self):
+        objects = []
+
+        for group, names in self.credits.items():
+            # Create objects for each name
+            for name in names:
+                objects.append(DirectoryObject(
+                    key='',
+                    title='[%s] %s' % (group, name)
+                ))
+
+        return ObjectContainer(
+            objects=objects
+        )
 
     @authenticated
     def search(self, query, callback, type='all', count=7, plain=False):
