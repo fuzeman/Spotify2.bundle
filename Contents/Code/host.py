@@ -232,7 +232,10 @@ class SpotifyHost(object):
             objects.append(DirectoryObject(
                 key=route_path('messages'),
                 title='%s: %s' % (logging.getLevelName(level), message),
-                thumb=R('icon-default.png')
+                thumb=R('icon-message-%s.png' % (
+                    'error' if level == logging.ERROR
+                    else 'warning'
+                ))
             ))
 
         objects.extend([
