@@ -3,11 +3,12 @@ from containers import Containers
 from plugin.server import Server
 from routing import route_path
 from search import SpotifySearch
-from settings import PREF_SS_RANGES
-from utils import authenticated, parse_xml
+from settings import PREF_SS_RANGES, VERSION
+from utils import authenticated, parse_xml, LF
 import logging_handler
 
 from cachecontrol import CacheControl
+import json
 import logging
 import os
 import requests
@@ -18,6 +19,8 @@ class SpotifyHost(object):
     def __init__(self):
         self.client = None
         self.server = None
+
+        self.messages = []
         self.start()
 
         self.search = SpotifySearch(self)
@@ -33,6 +36,9 @@ class SpotifyHost(object):
         self.server_version = None
 
         self.local_address = None
+
+        # Private
+        self.credits_data = None
 
     @property
     def username(self):
@@ -78,6 +84,18 @@ class SpotifyHost(object):
     def bundle_path(self):
         return os.path.abspath(os.path.join(self.code_path, '..'))
 
+    @property
+    def credits(self):
+        if not self.credits_data:
+            try:
+                # Parse credits file
+                self.credits_data = json.loads(Resource.Load('credits.json'))
+            except (ValueError, TypeError):
+                # Invalid credits file
+                self.credits_data = {}
+
+        return self.credits_data
+
     def preferences_updated(self):
         # Update logging levels
         logging_handler.setup()
@@ -86,8 +104,11 @@ class SpotifyHost(object):
         self.start()
 
     def start(self):
+        self.messages = []
+
         if not self.username or not self.password:
-            Log("Username or password not set: not logging in")
+            self.messages.append((logging.ERROR, 'Username or Password not entered'))
+            Log.Error('Username or Password not entered')
             return
 
         Log.Debug('bundle_path: "%s"', self.bundle_path)
@@ -185,6 +206,19 @@ class SpotifyHost(object):
             self.local_address = None
             Log.Warn('Unable to discover local address - %s', ex)
 
+    @property
+    def all_messages(self):
+        if not self.client:
+            return [(logging.ERROR, 'Client not initialized')] + self.messages
+
+        return self.messages + self.client.messages
+
+    def last_message(self):
+        if not self.all_messages:
+            return None, ''
+
+        return self.all_messages[-1]
+
     #
     # Core
     #
@@ -192,13 +226,16 @@ class SpotifyHost(object):
     def main_menu(self):
         objects = []
 
-        level, message = self.client.last_message()
+        level, message = self.last_message()
 
         if level:
             objects.append(DirectoryObject(
                 key=route_path('messages'),
                 title='%s: %s' % (logging.getLevelName(level), message),
-                thumb=R("icon-default.png")
+                thumb=R('icon-message-%s.png' % (
+                    'error' if level == logging.ERROR
+                    else 'warning'
+                ))
             ))
 
         objects.extend([
@@ -206,12 +243,12 @@ class SpotifyHost(object):
                 key=route_path('search'),
                 prompt=L('PROMPT_SEARCH'),
                 title=L('SEARCH'),
-                thumb=R("icon-default.png")
+                thumb=R('icon-search.png')
             ),
             DirectoryObject(
                 key=route_path('explore'),
                 title=L('EXPLORE'),
-                thumb=R("icon-default.png")
+                thumb=R('icon-explore.png')
             ),
             #DirectoryObject(
             #    key=route_path('discover'),
@@ -226,11 +263,16 @@ class SpotifyHost(object):
             DirectoryObject(
                 key=route_path('your_music'),
                 title=L('YOUR_MUSIC'),
-                thumb=R("icon-default.png")
+                thumb=R('icon-your_music.png')
+            ),
+            DirectoryObject(
+                key=route_path('about'),
+                title=L('ABOUT'),
+                thumb=R('icon-about.png')
             ),
             PrefsObject(
                 title=L('PREFERENCES'),
-                thumb=R("icon-default.png")
+                thumb=R('icon-preferences.png')
             )
         ])
 
@@ -245,13 +287,42 @@ class SpotifyHost(object):
             no_cache=True
         )
 
-        for level, message in self.client.messages:
+        for level, message in self.all_messages:
             oc.add(DirectoryObject(
                 key=route_path('messages'),
                 title='[%s] %s' % (logging.getLevelName(level), message)
             ))
 
         return oc
+
+    def about(self):
+        return ObjectContainer(
+            objects=[
+                DirectoryObject(
+                    key='',
+                    title=LF('VERSION', VERSION)
+                ),
+                DirectoryObject(
+                    key=route_path('about/credits'),
+                    title=L('CREDITS')
+                )
+            ]
+        )
+
+    def about_credits(self):
+        objects = []
+
+        for group, names in self.credits.items():
+            # Create objects for each name
+            for name in names:
+                objects.append(DirectoryObject(
+                    key='',
+                    title='[%s] %s' % (group, name)
+                ))
+
+        return ObjectContainer(
+            objects=objects
+        )
 
     @authenticated
     def search(self, query, callback, type='all', count=7, plain=False):
@@ -327,22 +398,22 @@ class SpotifyHost(object):
                 DirectoryObject(
                     key=route_path('your_music/playlists'),
                     title=L('PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-playlists.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/starred'),
                     title=L('STARRED'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-starred.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/albums'),
                     title=L('ALBUMS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-albums.png')
                 ),
                 DirectoryObject(
                     key=route_path('your_music/artists'),
                     title=L('ARTISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R('icon-artists.png')
                 ),
             ],
         )
@@ -393,17 +464,17 @@ class SpotifyHost(object):
                 DirectoryObject(
                     key=route_path('explore/featured_playlists'),
                     title=L('FEATURED_PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-featured_playlists.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/top_playlists'),
                     title=L('TOP_PLAYLISTS'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-top_playlists.png")
                 ),
                 DirectoryObject(
                     key=route_path('explore/new_releases'),
                     title=L('NEW_RELEASES'),
-                    thumb=R("icon-default.png")
+                    thumb=R("icon-new_releases.png")
                 )
             ],
         )

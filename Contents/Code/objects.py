@@ -35,17 +35,16 @@ class Objects(object):
         return None
 
     def artist(self, artist):
-        image_url = function_path('image.png', uri=self.image(artist.portraits))
+        cover_url = self.image(artist.portraits)
 
         return ArtistObject(
             key=route_path('artist', artist.uri),
             rating_key=artist.uri,
 
             title=normalize(artist.name),
-            source_title='Spotify',
 
-            art=image_url,
-            thumb=image_url
+            art=cover_url,
+            thumb=cover_url or R('placeholder-artist.png')
         )
 
     def album(self, album):
@@ -55,7 +54,7 @@ class Objects(object):
         #if Prefs["displayAlbumYear"] and album.getYear() != 0:
         #    title = "%s (%s)" % (title, album.getYear())
 
-        image_url = function_path('image.png', uri=self.image(album.covers))
+        cover_url = self.image(album.covers)
 
         track_count = None
 
@@ -70,10 +69,9 @@ class Objects(object):
             artist=', '.join([normalize(ar.name) for ar in album.artists]),
 
             track_count=track_count,
-            source_title='Spotify',
 
-            art=image_url,
-            thumb=image_url,
+            art=cover_url,
+            thumb=cover_url,
         )
 
     def track(self, track, index=None):
@@ -82,7 +80,7 @@ class Objects(object):
         if index is not None:
             rating_key = '%s::%s' % (track.uri, index)
 
-        image_url = function_path('image.png', uri=self.image(track.album.covers))
+        cover_url = self.image(track.album.covers)
 
         return TrackObject(
             items=[
@@ -107,10 +105,8 @@ class Objects(object):
             index=int(track.number),
             duration=int(track.duration),
 
-            source_title='Spotify',
-
-            art=image_url,
-            thumb=image_url
+            art=cover_url,
+            thumb=cover_url
         )
 
     @classmethod
@@ -123,17 +119,17 @@ class Objects(object):
                 thumb=R("placeholder-playlist.png")
             )
 
-        thumb = R("placeholder-playlist.png")
+        cover_url = None
 
         if item.image and item.image.file_uri:
             # Ensure we don't use invalid image uris
             if len(item.image.file_uri.code) == 27:
-                thumb = function_path('image.png', uri=cls.image([item.image]))
+                cover_url = cls.image([item.image])
 
         return DirectoryObject(
             key=route_path('playlist', item.uri),
             title=normalize(item.name),
-            thumb=thumb
+            thumb=cover_url or R('placeholder-playlist.png')
         )
 
     @staticmethod
@@ -141,7 +137,7 @@ class Objects(object):
         if covers and covers[-1]:
             # TODO might want to sort by 'size' (to ensure this is correct in all cases)
             # Pick largest cover
-            return covers[-1].file_url
+            return function_path('image.png', uri=covers[-1].file_url)
 
         Log.Info('Unable to select image, available covers: %s' % covers)
         return None

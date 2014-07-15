@@ -1,9 +1,13 @@
 {
     "MESSAGES"                      : "Messages",
+    "ABOUT"                         : "About",
+    "CREDITS"                       : "Credits",
     "SEARCH"                        : "Search",
     "EXPLORE"                       : "Explore",
     "YOUR_MUSIC"                    : "Your Music",
     "PREFERENCES"                   : "Preferences",
+
+    "VERSION"                       : "Version: %s",
 
     "ARTISTS"                       : "Artists",
     "ALBUMS"                        : "Albums",

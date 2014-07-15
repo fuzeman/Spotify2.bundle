@@ -44,7 +44,8 @@ class Server(object):
             'engine.autoreload.on': False,
 
             'server.socket_host': '0.0.0.0',
-            'server.socket_port': self.port
+            'server.socket_port': self.port,
+            'server.socket_timeout': 600
         })
 
         cherrypy.tree.mount(None, config={

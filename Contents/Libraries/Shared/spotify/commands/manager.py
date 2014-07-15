@@ -30,7 +30,7 @@ class CommandManager(Emitter):
         log.warn('Error returned from command handler, disconnecting...')
 
         # Trigger disconnection
-        self.sp.components.connection.disconnect()
+        self.sp.disconnect()
 
         # Fire 'error'
         self.emit('error', message)

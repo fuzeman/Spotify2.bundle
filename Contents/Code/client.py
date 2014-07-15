@@ -23,8 +23,8 @@ class SpotifyClient(object):
 
     def start(self):
         if self.sp:
-            # TODO stop current Spotify client
-            pass
+            self.sp.disconnect()
+            self.sp = None
 
         self.sp = Spotify()
 
