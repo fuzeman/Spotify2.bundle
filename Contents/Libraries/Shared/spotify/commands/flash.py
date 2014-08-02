@@ -1,26 +1,65 @@
 from spotify.commands.base import Command
-from spotify.commands.flash_key import FLASH_KEY
 
 import logging
+import urllib
 
 log = logging.getLogger(__name__)
 
 
 class PingFlash2(Command):
+    host = 'spflash.herokuapp.com'
+
     def process(self, ping):
-        ping = ping.split(' ')
-        pong = "undefined 0"
+        version = self.sp.config.get('cdn')
 
-        if len(ping) >= 20:
-            result = []
+        if version:
+            pos = version.rfind('/')
 
-            for idx, code in FLASH_KEY:
-                val = int(ping[idx])
+            if pos >= 0:
+                version = version[pos + 1:]
+            else:
+                version = None
 
-                result.append(str(val ^ code if type(code) is int else code[val]))
+        if not version:
+            version = 'generic'
 
-            pong = ' '.join(result)
+        self.session.get(
+            'http://%s/%s/get?ping=%s' % (
+                self.host, version,
+                urllib.quote(ping)
+            )
+        ).add_done_callback(self.on_result)
 
-        log.debug('received ping %s, sending pong: %s' % (ping, pong))
+    def on_result(self, future):
+        if not self.validate(future):
+            return
 
-        return self.send('sp/pong_flash2', pong)
+        res = future.result()
+
+        # Validate response
+        if res.status_code != 200:
+            # 503 = Backend service timeout
+            if res.status_code == 503:
+                self.emit('error', 'PingFlash2 - service unavailable')
+                return
+
+            self.emit('error', 'PingFlash2 - service returned unexpected status code (%s)' % res.status_code)
+            return
+
+        if not res.text:
+            self.emit('error', 'PingFlash2 - response doesn\'t look valid')
+            return
+
+        self.send('sp/pong_flash2', res.text)
+
+    def validate(self, future):
+        ex = future.exception()
+
+        if not ex:
+            return True
+
+        if ex.args:
+            ex = ex.args[0].reason
+
+        self.emit('close', *ex)
+        return False
