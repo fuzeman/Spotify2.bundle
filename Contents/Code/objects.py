@@ -37,7 +37,7 @@ class Objects(object):
     def artist(self, artist):
         cover_url = self.image(artist.portraits)
 
-        return ArtistObject(
+        return Artist(
             key=route_path('artist', artist.uri),
             rating_key=artist.uri,
 
@@ -61,7 +61,7 @@ class Objects(object):
         if album.discs:
             track_count = len(album.discs[0].tracks)
 
-        return AlbumObject(
+        return Album(
             key=route_path('album', album.uri),
             rating_key=album.uri,
 
