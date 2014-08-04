@@ -129,6 +129,10 @@ class Containers(ViewBase):
             items = playlists
 
         for item in items:
+            if not item:
+                # Ignore playlists which fail to load
+                continue
+
             oc.add(self.objects.playlist(item))
 
         return oc
