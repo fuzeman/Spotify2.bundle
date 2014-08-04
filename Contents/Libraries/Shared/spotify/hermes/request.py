@@ -48,3 +48,5 @@ class HermesRequest(MercuryRequest):
 
         # Store in cache for later use
         cache.store(header, content_type, internal)
+
+        return uri

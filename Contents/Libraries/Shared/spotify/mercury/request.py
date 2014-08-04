@@ -110,9 +110,13 @@ class MercuryRequest(Request):
         else:
             items = self.reply_mercury(header.content_type, data)
 
-        for x, (content_type, internal) in enumerate(items):
-            self.update_response(x, header, content_type, internal)
+        item_uris = []
 
+        for x, (content_type, internal) in enumerate(items):
+            uri = self.update_response(x, header, content_type, internal)
+            item_uris.append(uri)
+
+        log.debug('Received %s item(s) - %s', len(item_uris), repr(item_uris))
         self.respond()
 
     def reply_mercury(self, content_type, data):
@@ -178,10 +182,13 @@ class MercuryRequest(Request):
     def respond(self):
         # Check if all objects have been received
         if not self.response or not all(self.response.values()):
+            awaiting = [key for (key, value) in self.response.items() if not value]
+            log.debug('Waiting for %s item(s) - %s', len(awaiting), repr(awaiting))
             return False
 
-        items = list(self.get_items()) or self.response.values()
+        log.debug('Building object(s) from %s item(s)', len(self.response))
 
+        items = list(self.get_items()) or self.response.values()
         result = []
 
         # Build objects from protobuf responses
@@ -199,6 +206,8 @@ class MercuryRequest(Request):
             item.dict_update(self.defaults)
 
             result.append(item)
+
+        log.debug('Returning %s object(s) to response callback', len(result))
 
         # Emit success event
         if len(self.requests) == 1 and not self.multi:
@@ -265,3 +274,5 @@ class MercuryRequest(Request):
 
     def update_response(self, index, header, content_type, internal):
         self.response[internal.gid] = (content_type, internal)
+
+        return internal.gid
