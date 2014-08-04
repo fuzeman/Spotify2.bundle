@@ -153,7 +153,7 @@ class Containers(ViewBase):
     def artists(self, artists, callback):
         oc = ObjectContainer(
             title2=L('ARTISTS'),
-            content=ContainerContent.Artists
+            #content=ContainerContent.Artists
         )
 
         for artist in artists:
@@ -167,7 +167,7 @@ class Containers(ViewBase):
 
         oc = ObjectContainer(
             title2=title,
-            content=ContainerContent.Albums
+            #content=ContainerContent.Albums
         )
 
         for album in albums:
