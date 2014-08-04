@@ -1,3 +1,4 @@
+from spotify.core.helpers import repr_trim
 from spotify.core.request import Request
 from spotify.core.uri import Uri
 from spotify.objects import Parser
@@ -13,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class MercuryRequest(Request):
-    def __init__(self, sp, name, requests, schema, header=None, defaults=None, multi=None):
+    def __init__(self, sp, name, requests, schema, header=None, defaults=None, container=None, multi=None):
         """
         :type sp: spotify.client.Spotify
         :type name: str
@@ -33,6 +34,7 @@ class MercuryRequest(Request):
 
         self.request = None
         self.request_payload = None
+        self.container = container
         self.multi = multi
 
         self.response = OrderedDict()
@@ -110,9 +112,22 @@ class MercuryRequest(Request):
         else:
             items = self.reply_mercury(header.content_type, data)
 
-        for x, (content_type, internal) in enumerate(items):
-            self.update_response(x, header, content_type, internal)
+        uris = []
 
+        for x, (content_type, internal) in enumerate(items):
+            request = None
+
+            if self.container == 'objects' and x < len(self.prepared_requests):
+                request = self.prepared_requests[x]
+
+            uri = self.update_response(
+                request, header,
+                content_type, internal
+            )
+
+            uris.append(uri)
+
+        log.debug('Received %s item(s) - %s', len(uris), repr(uris))
         self.respond()
 
     def reply_mercury(self, content_type, data):
@@ -178,7 +193,11 @@ class MercuryRequest(Request):
     def respond(self):
         # Check if all objects have been received
         if not self.response or not all(self.response.values()):
+            awaiting = [key for (key, value) in self.response.items() if not value]
+            log.debug('Waiting for %s item(s) - %s', len(awaiting), repr(awaiting))
             return False
+
+        log.debug('Building object(s) from %s item(s)', len(self.response))
 
         items = list(self.get_items()) or self.response.values()
 
@@ -199,6 +218,8 @@ class MercuryRequest(Request):
             item.dict_update(self.defaults)
 
             result.append(item)
+
+        log.debug('Returning %s object(s) to response callback', len(result))
 
         # Emit success event
         if len(self.requests) == 1 and not self.multi:
@@ -263,5 +284,15 @@ class MercuryRequest(Request):
     def cached_response(self, request):
         return False
 
-    def update_response(self, index, header, content_type, internal):
-        self.response[internal.gid] = (content_type, internal)
+    def update_response(self, request, header, content_type, internal):
+        self.response[request.uri] = (content_type, internal)
+        return request.uri
+
+    def __repr__(self):
+        return "<%s uris: %s>" % (
+            self.__class__.__name__,
+            repr_trim([r.get('uri') for r in self.requests])
+        )
+
+    def __str__(self):
+        return self.__repr__()

@@ -66,6 +66,8 @@ class Track(Descriptor):
         for alternative in self.alternatives:
             if alternative.is_available():
                 break
+            else:
+                alternative = None
 
         if alternative is None:
             log.debug('Unable to find alternative for "%s"', self.uri)
