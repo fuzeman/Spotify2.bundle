@@ -1,6 +1,9 @@
 from requests_futures.sessions import FuturesSession
+import logging
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36'
+
+log = logging.getLogger(__name__)
 
 
 class Component(object):
@@ -35,7 +38,20 @@ class Component(object):
 
     @staticmethod
     def request_wrapper(request, callback=None):
+        def on_error(func, *args):
+            log.debug('Error %s returned for request: %s', repr(args), request)
+
+            if func:
+                func(None)
+
+        def on_bound(func):
+            # Bind to 'error' (so we know the real callback 'func')
+            request.on('error', lambda *args: on_error(func, *args))
+
+            # Send request
+            request.send()
+
         return request.on(
             'success', callback,
-            on_bound=lambda: request.send()
+            on_bound=on_bound
         )

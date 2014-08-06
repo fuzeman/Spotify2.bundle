@@ -37,9 +37,9 @@ class Objects(object):
     def artist(self, artist):
         cover_url = self.image(artist.portraits)
 
-        return Artist(
+        return DirectoryObject(
             key=route_path('artist', artist.uri),
-            rating_key=artist.uri,
+            #rating_key=artist.uri,
 
             title=normalize(artist.name),
 
@@ -61,14 +61,14 @@ class Objects(object):
         if album.discs:
             track_count = len(album.discs[0].tracks)
 
-        return Album(
+        return DirectoryObject(
             key=route_path('album', album.uri),
-            rating_key=album.uri,
+            #rating_key=album.uri,
 
             title=title,
-            artist=', '.join([normalize(ar.name) for ar in album.artists]),
+            tagline=', '.join([normalize(ar.name) for ar in album.artists]),
 
-            track_count=track_count,
+            #track_count=track_count,
 
             art=cover_url,
             thumb=cover_url,

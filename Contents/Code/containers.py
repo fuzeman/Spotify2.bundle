@@ -129,6 +129,10 @@ class Containers(ViewBase):
             items = playlists
 
         for item in items:
+            if not item:
+                # Ignore playlists which fail to load
+                continue
+
             oc.add(self.objects.playlist(item))
 
         return oc
@@ -153,7 +157,7 @@ class Containers(ViewBase):
     def artists(self, artists, callback):
         oc = ObjectContainer(
             title2=L('ARTISTS'),
-            content=ContainerContent.Artists
+            #content=ContainerContent.Artists
         )
 
         for artist in artists:
@@ -167,7 +171,7 @@ class Containers(ViewBase):
 
         oc = ObjectContainer(
             title2=title,
-            content=ContainerContent.Albums
+            #content=ContainerContent.Albums
         )
 
         for album in albums:

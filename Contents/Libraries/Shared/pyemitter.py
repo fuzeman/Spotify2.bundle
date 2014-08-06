@@ -74,7 +74,9 @@ class Emitter(object):
 
         # Call 'on_bound' callback
         if on_bound:
-            self.__call(on_bound)
+            self.__call(on_bound, kwargs={
+                'func': func
+            })
 
         return self
 

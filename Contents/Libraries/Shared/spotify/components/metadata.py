@@ -45,7 +45,7 @@ class Metadata(Component):
         }, {
             'method': 'GET',
             'uri': 'hm://metadata/%ss' % h_type
-        }, multi=multi)
+        }, container='objects', multi=multi)
 
         return self.request_wrapper(request, callback)
 
