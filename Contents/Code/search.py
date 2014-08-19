@@ -55,7 +55,7 @@ class SpotifySearch(ViewBase):
 
         title = '%s (%s)' % (
             cls.get_title(type, True),
-            locale.format('%d', total, grouping=True)
+            locale.format('%d', total, grouping=True).replace('\xa0', ' ')
         )
 
         return DirectoryObject(
