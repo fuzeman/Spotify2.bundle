@@ -1,9 +1,10 @@
-from spotify.components.base import Component
+from spotify.components.base import Component, USER_AGENT
 from spotify.core.helpers import repr_trim
 from spotify.core.request import Request
 
 from pyemitter import Emitter
 from threading import Lock, Timer
+from ws4py import WS_VERSION
 from ws4py.client.threadedclient import WebSocketClient
 import json
 import logging
@@ -207,6 +208,31 @@ class Client(WebSocketClient, Emitter):
         self._connection = connection
 
         self.daemon = True
+
+    @property
+    def handshake_headers(self):
+        """
+        List of headers appropriate for the upgrade
+        handshake.
+        """
+        headers = [
+            ('Host', self.host),
+            ('Connection', 'Upgrade'),
+            ('Upgrade', 'websocket'),
+            ('Origin', self.url),
+            ('Sec-WebSocket-Version', str(max(WS_VERSION))),
+            ('User-Agent', USER_AGENT),
+
+            ('Sec-WebSocket-Key', self.key.decode('utf-8')),
+        ]
+
+        if self.protocols:
+            headers.append(('Sec-WebSocket-Protocol', ','.join(self.protocols)))
+
+        if self.extra_headers:
+            headers.extend(self.extra_headers)
+
+        return headers
 
     def opened(self):
         self.emit('open')
